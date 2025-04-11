@@ -17,11 +17,6 @@ from pyqtgraph.Qt import QtGui
 
 
 # bone test
-"""def load_stl_as_mesh(filename):
-    stl_mesh = mesh.Mesh.from_file(filename)
-    vertices = np.array(stl_mesh.vectors).reshape(-1, 3)
-    faces = np.arange(len(vertices)).reshape(-1, 3)
-    return vertices, faces"""
 
 def load_stl_as_mesh(filename):
     """Load an STL file and return vertices and faces for PyQtGraph GLMeshItem"""
@@ -309,10 +304,9 @@ class KneeFlexionExperiment(QMainWindow):
         self.load_tibia_button.clicked.connect(self.load_tibia)
         bone_load_layout.addWidget(self.load_tibia_button)
 
-        # Background color control
-        self.bg_color_button = QPushButton("Change Background")
-        self.bg_color_button.clicked.connect(self.change_background)
-        bone_load_layout.addWidget(self.bg_color_button)
+        # set background color
+        self.gl_view.setBackgroundColor(QtGui.QColor(255, 255, 255))
+    
 
         tab3_layout.addWidget(self.gl_view)
         tab3_layout.addLayout(bone_load_layout)
@@ -1063,6 +1057,9 @@ class KneeFlexionExperiment(QMainWindow):
             # Load femur STL
             femur_vertices, femur_faces = load_stl_as_mesh("femur.stl")
             self.femur_original_vertices = femur_vertices.copy()
+
+            # Scale down the vertices by 0.5 (50%)
+            femur_vertices = femur_vertices * 0.2
             
             # Create mesh item
             self.femur_mesh = gl.GLMeshItem(
@@ -1090,6 +1087,9 @@ class KneeFlexionExperiment(QMainWindow):
             # Load tibia STL
             tibia_vertices, tibia_faces = load_stl_as_mesh("tibia.stl")
             self.tibia_original_vertices = tibia_vertices.copy()
+
+            # Scale down the vertices by 0.5 (50%)
+            tibia_vertices = tibia_vertices * 0.1
             
             # Create mesh item
             self.tibia_mesh = gl.GLMeshItem(
@@ -1181,27 +1181,6 @@ class KneeFlexionExperiment(QMainWindow):
             
             # Add back to view
             self.gl_view.addItem(self.tibia_mesh)
-
-    def change_background(self):
-        # Cycle through a few predefined colors
-        if not hasattr(self, 'bg_color_index'):
-            self.bg_color_index = 0
-        
-        bg_colors = [
-            (30, 40, 50),    # Dark blue/gray
-            (0, 0, 0),       # Black
-            (50, 50, 50),    # Dark gray
-            (10, 30, 10),    # Dark green
-            (255, 255, 255), # White
-        ]
-        
-        # Move to next color
-        self.bg_color_index = (self.bg_color_index + 1) % len(bg_colors)
-        color = bg_colors[self.bg_color_index]
-        
-        # Apply color
-        from pyqtgraph.Qt import QtCore
-        self.gl_view.setBackgroundColor(QtGui.QColor(*color))
         
 
 if __name__ == "__main__":
