@@ -1,0 +1,22 @@
+Successful experiment with knee flexion time: 10 seconds
+[2025-03-21 16:58:25] Successful experiment with knee flexion time: 10 seconds
+[2025-03-21 16:59:04] Successful experiment with knee flexion time: 10 seconds
+[2025-03-21 17:29:11] Successful experiment with knee flexion time: 10 seconds
+[2025-03-24 09:10:39] Successful experiment with knee flexion time: 10 seconds
+[2025-03-24 09:53:50] Successful experiment with knee flexion time: 10 seconds
+[2025-03-24 10:03:04] Successful experiment with knee flexion time: 10 seconds and knee rotation time: 3 seconds
+[2025-03-24 10:07:08] Successful experiment with knee flexion time: 4 seconds and knee rotation time: 3 seconds
+[2025-03-24 10:12:57] Round 1, Flex: Time: 5 seconds, Angle: 0 degrees
+[2025-03-24 10:13:14] Round 1, Rotation: Time: 6 seconds, Angle: 0 degrees
+[2025-03-24 10:13:23] Round 2, Flex: Time: 6 seconds, Angle: 30 degrees
+[2025-03-24 10:13:34] Round 2, Rotation: Time: 7 seconds, Angle: 30 degrees
+[2025-03-24 10:13:48] Round 3, Flex: Time: 5 seconds, Angle: 60 degrees
+[2025-03-24 10:13:56] Round 3, Rotation: Time: 6 seconds, Angle: 60 degrees
+[2025-03-24 10:14:07] Round 4, Flex: Time: 5 seconds, Angle: 90 degrees
+[2025-03-24 10:14:17] Round 4, Rotation: Time: 6 seconds, Angle: 90 degrees
+[2025-03-24 10:14:24] Round 5, Flex: Time: 5 seconds, Angle: 120 degrees
+[2025-03-24 10:14:31] Round 5, Rotation: Time: 6 seconds, Angle: 120 degrees
+[2025-03-24 10:14:31] Experiment completed successfully. All 5 rounds finished.
+------------------------------------------------------------
+[2025-03-24 13:50:55] Round 1, Flex: Time: 5 seconds, Angle: 0 degrees
+[2025-03-25 14:30:18] Round 1, Flex: Time: 5 seconds, Angle: 0 degrees
