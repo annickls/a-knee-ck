@@ -3,6 +3,7 @@ import numpy as np
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTabWidget, QMainWindow
 import pyqtgraph.opengl as gl
 from stl import mesh
+#test
 
 def load_stl_as_mesh(filename):
     stl_mesh = mesh.Mesh.from_file(filename)
