@@ -18,6 +18,25 @@ from pyqtgraph.Qt import QtGui
 
 # bone test
 
+def apply_transform(vertices, translation=(0, 0, 0), rotation=(0, 0, 0)):
+    tx, ty, tz = translation
+    rx, ry, rz = np.radians(rotation)
+
+    # Rotation matrices
+    Rx = np.array([[1, 0, 0],
+                   [0, np.cos(rx), -np.sin(rx)],
+                   [0, np.sin(rx), np.cos(rx)]])
+    Ry = np.array([[np.cos(ry), 0, np.sin(ry)],
+                   [0, 1, 0],
+                   [-np.sin(ry), 0, np.cos(ry)]])
+    Rz = np.array([[np.cos(rz), -np.sin(rz), 0],
+                   [np.sin(rz), np.cos(rz), 0],
+                   [0, 0, 1]])
+
+    R = Rz @ Ry @ Rx
+    transformed = (vertices @ R.T) + np.array([tx, ty, tz])
+    return transformed
+
 def load_stl_as_mesh(filename):
     """Load an STL file and return vertices and faces for PyQtGraph GLMeshItem"""
     try:
@@ -45,26 +64,87 @@ def load_stl_as_mesh(filename):
         ])
         return vertices, faces
 
-def apply_transform(vertices, translation=(0, 0, 0), rotation=(0, 0, 0)):
-    tx, ty, tz = translation
-    rx, ry, rz = np.radians(rotation)
-
-    # Rotation matrices
-    Rx = np.array([[1, 0, 0],
-                   [0, np.cos(rx), -np.sin(rx)],
-                   [0, np.sin(rx), np.cos(rx)]])
-    Ry = np.array([[np.cos(ry), 0, np.sin(ry)],
-                   [0, 1, 0],
-                   [-np.sin(ry), 0, np.cos(ry)]])
-    Rz = np.array([[np.cos(rz), -np.sin(rz), 0],
-                   [np.sin(rz), np.cos(rz), 0],
-                   [0, 0, 1]])
-
-    R = Rz @ Ry @ Rx
-    transformed = (vertices @ R.T) + np.array([tx, ty, tz])
+def apply_transform_quaternion(vertices, position=(0, 0, 0), quaternion=(1, 0, 0, 0)):
+    """
+    Apply transformation using position and quaternion
+    
+    Args:
+        vertices: Original vertices
+        position: (x, y, z) translation
+        quaternion: (w, x, y, z) quaternion
+    """
+    # Normalize quaternion
+    q = np.array(quaternion)
+    q = q / np.sqrt(np.sum(q * q))
+    w, x, y, z = q
+    
+    # Convert quaternion to rotation matrix
+    R = np.array([
+        [1 - 2*y*y - 2*z*z, 2*x*y - 2*w*z, 2*x*z + 2*w*y],
+        [2*x*y + 2*w*z, 1 - 2*x*x - 2*z*z, 2*y*z - 2*w*x],
+        [2*x*z - 2*w*y, 2*y*z + 2*w*x, 1 - 2*x*x - 2*y*y]
+    ])
+    
+    # Apply transformation
+    transformed = (vertices @ R.T) + np.array(position)
     return transformed
 
-# end bone test
+
+class BoneDataGenerator:
+    def __init__(self):
+        # Initial positions and orientations
+        self.femur_position = np.array([0.0, 0.0, 0.0])
+        self.femur_quaternion = np.array([1.0, 0.0, 0.0, 0.0])  # w, x, y, z
+        
+        self.tibia_position = np.array([0.0, 0.0, -40.0])
+        self.tibia_quaternion = np.array([1.0, 0.0, 0.0, 0.0])
+        
+        # Animation parameters
+        self.time = 0
+        self.freq = 0.5  # Hz
+        self.max_angle = 90  # degrees
+    
+    def update(self, dt):
+        """Update bone positions based on simulated knee flexion"""
+        self.time += dt
+        
+        # Calculate current flexion angle based on time
+        flexion_angle = self.max_angle * (np.sin(2 * np.pi * self.freq * self.time) + 1) / 2
+        
+        # Femur stays relatively static
+        self.femur_position = np.array([0.0, 0.0, 0.0])
+        
+        # Convert flexion angle to quaternion (rotation around x-axis)
+        angle_rad = np.radians(flexion_angle)
+        self.femur_quaternion = np.array([
+            np.cos(angle_rad/2), 
+            np.sin(angle_rad/2), 
+            0.0, 
+            0.0
+        ])
+        
+        # Tibia follows femur but with offset and rotation
+        self.tibia_position = np.array([
+            20 * np.sin(angle_rad),  # X-offset changes with angle
+            0.0,
+            -40 * np.cos(angle_rad)  # Z-offset changes with angle
+        ])
+        
+        # Tibia rotation also follows flexion angle
+        self.tibia_quaternion = np.array([
+            np.cos(angle_rad/2), 
+            np.sin(angle_rad/2), 
+            0.0, 
+            0.0
+        ])
+        
+        return {
+            'femur_position': self.femur_position,
+            'femur_quaternion': self.femur_quaternion,
+            'tibia_position': self.tibia_position,
+            'tibia_quaternion': self.tibia_quaternion
+        }
+
 
 
 class MplCanvas(FigureCanvas):
@@ -85,9 +165,6 @@ class MplCurrentCanvas(FigureCanvas):
         self.axes_torque = self.fig.add_subplot(122, projection='3d')
         super(MplCurrentCanvas, self).__init__(self.fig)
         self.fig.tight_layout()
-
-
-
 
 
 
@@ -114,6 +191,8 @@ class KneeFlexionExperiment(QMainWindow):
         self.viz_timer = QTimer()
         self.viz_timer.timeout.connect(self.update_visualization_timer)
         self.viz_timer.setInterval(100)  # 100ms for smoother updates
+
+
         
         # History for visualization
         self.history_size = 60  # Reduced history size for better performance
@@ -155,8 +234,6 @@ class KneeFlexionExperiment(QMainWindow):
             self.forces = np.array(self.forces)
             self.torques = np.array(self.torques)
 
-
-
             print(f"Successfully loaded {len(self.forces)} force/torque data points.")
             #print(self.forces)
             #print(self.torques)
@@ -167,8 +244,6 @@ class KneeFlexionExperiment(QMainWindow):
         except (FileNotFoundError, ValueError) as e:
             print(f"Error: {e}")
             # Create dummy data if file not found or empty
-            #self.forces = np.random.rand(100, 3) * 10 - 5  # Range from -5 to 5
-            #self.torques = np.random.rand(200, 3) * 2 - 1  # Range from -1 to 1
 
             self.forces = np.zeros((200,3))
             self.forces[0] = np.random.uniform(-13, 13, size=3)
@@ -184,11 +259,8 @@ class KneeFlexionExperiment(QMainWindow):
                 self.torques[i] = self.torques[i - 1] + delta
                 self.torques[i] = np.clip(self.torques[i], -1.5, 1.5)
 
-
             print("Using random dummy data instead.")
-            #print(self.forces)
-            #print(self.torques)
-            
+
 
         except Exception as e:
             print(f"An error occurred: {e}")
@@ -427,6 +499,24 @@ class KneeFlexionExperiment(QMainWindow):
 
         self.tab3.setLayout(tab3_layout)
 
+
+        # Timer for bone animation updates
+        self.bone_timer = QTimer()
+        self.bone_timer.timeout.connect(self.update_bones)
+        self.bone_timer.setInterval(50)  # 50ms for 20 fps
+        
+        # Initialize bone data generator
+        self.bone_data_generator = BoneDataGenerator()
+        
+        # Add a toggle for automatic bone movement
+        self.auto_bone_movement = QPushButton("Start Bone Animation")
+        self.auto_bone_movement.setCheckable(True)
+        self.auto_bone_movement.clicked.connect(self.toggle_bone_animation)
+        
+        # Add this button to your UI, for example in tab3_layout
+        tab3_layout.addWidget(self.auto_bone_movement)
+
+
         #ende test bone viz
 
 
@@ -567,7 +657,94 @@ class KneeFlexionExperiment(QMainWindow):
         self.current_test_type = 'none'
 
 
+    def toggle_bone_animation(self):
+        if self.auto_bone_movement.isChecked():
+            self.auto_bone_movement.setText("Stop Bone Animation")
+            # Disable manual sliders
+            self.disable_bone_sliders(True)
+            # Start animation timer
+            self.bone_timer.start()
+        else:
+            self.auto_bone_movement.setText("Start Bone Animation")
+            # Enable manual sliders
+            self.disable_bone_sliders(False)
+            # Stop animation timer
+            self.bone_timer.stop()
 
+    def disable_bone_sliders(self, disabled):
+        # Disable/enable all sliders when in automatic mode
+        for slider in [self.femur_x_rot_slider, self.femur_y_rot_slider, self.femur_z_rot_slider,
+                    self.femur_x_pos_slider, self.femur_y_pos_slider, self.femur_z_pos_slider,
+                    self.tibia_x_rot_slider, self.tibia_y_rot_slider, self.tibia_z_rot_slider,
+                    self.tibia_x_pos_slider, self.tibia_y_pos_slider, self.tibia_z_pos_slider]:
+            slider.setDisabled(disabled)
+
+    def update_bones(self):
+        # Get updated bone position and quaternion data
+        bone_data = self.bone_data_generator.update(0.05)  # 50ms = 0.05s
+        
+        # Update bone positions/orientations
+        if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
+            # Update femur
+            self.update_femur_with_data(
+                bone_data['femur_position'], 
+                bone_data['femur_quaternion']
+            )
+        
+        if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
+            # Update tibia
+            self.update_tibia_with_data(
+                bone_data['tibia_position'], 
+                bone_data['tibia_quaternion']
+            )
+
+    def update_femur_with_data(self, position, quaternion):
+        # Remove current mesh
+        self.gl_view.removeItem(self.femur_mesh)
+        
+        # Apply transform using quaternion
+        femur_transformed = apply_transform_quaternion(
+            self.femur_original_vertices,
+            position=position,
+            quaternion=quaternion
+        )
+        
+        # Create new mesh with transformed vertices
+        faces = np.arange(len(femur_transformed)).reshape(-1, 3)
+        self.femur_mesh = gl.GLMeshItem(
+            vertexes=femur_transformed,
+            faces=faces,
+            smooth=True,
+            drawEdges=False,
+            color=(0.8, 0.7, 0.3, 1.0)
+        )
+        
+        # Add back to view
+        self.gl_view.addItem(self.femur_mesh)
+
+    def update_tibia_with_data(self, position, quaternion):
+        # Remove current mesh
+        self.gl_view.removeItem(self.tibia_mesh)
+        
+        # Apply transform using quaternion
+        tibia_transformed = apply_transform_quaternion(
+            self.tibia_original_vertices,
+            position=position,
+            quaternion=quaternion
+        )
+        
+        # Create new mesh with transformed vertices
+        faces = np.arange(len(tibia_transformed)).reshape(-1, 3)
+        self.tibia_mesh = gl.GLMeshItem(
+            vertexes=tibia_transformed,
+            faces=faces,
+            smooth=True,
+            drawEdges=False,
+            color=(0.3, 0.7, 0.8, 1.0)
+        )
+        
+        # Add back to view
+        self.gl_view.addItem(self.tibia_mesh)
         
     def update_visualization_timer(self):
         """Called by timer to update visualization"""
