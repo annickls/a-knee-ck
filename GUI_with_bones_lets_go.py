@@ -102,7 +102,7 @@ class BoneDataGenerator:
         # Animation parameters
         self.time = 0
         self.freq = 0.05  # Hz
-        self.max_angle = 90  # degrees
+        self.max_angle = 120  # degrees
     
     def update(self, dt):
         """Update bone positions based on simulated knee flexion"""
@@ -112,7 +112,7 @@ class BoneDataGenerator:
         flexion_angle = self.max_angle * (np.sin(2 * np.pi * self.freq * self.time) + 1) / 2
         
         # Femur stays relatively static
-        self.femur_position = np.array([0.0, 0.0, 0.0])
+        self.femur_position = np.array([0.0, 500.0, -100.0])
         
         # Convert flexion angle to quaternion (rotation around x-axis)
         angle_rad = np.radians(flexion_angle)
@@ -124,11 +124,18 @@ class BoneDataGenerator:
         ])
         
         # Tibia follows femur but with offset and rotation
+        #self.tibia_position = np.array([
+        #    100 * np.sin(angle_rad),  # X-offset changes with angle
+        #    0.0,
+        #    -50 * np.cos(angle_rad)  # Z-offset changes with angle
+        #])
+
         self.tibia_position = np.array([
-            20 * np.sin(angle_rad),  # X-offset changes with angle
-            0.0,
-            -40 * np.cos(angle_rad)  # Z-offset changes with angle
+            -100.0 * np.sin(angle_rad),  # X-offset changes with angle
+            -200.0,
+            -100.0 * np.cos(angle_rad)  # Z-offset changes with angle
         ])
+
         
         # Tibia rotation also follows flexion angle
         self.tibia_quaternion = np.array([
@@ -138,7 +145,7 @@ class BoneDataGenerator:
             0.0
         ])
         
-        print(self.tibia_position)
+        #print(self.tibia_position)
 
         return {
             'femur_position': self.femur_position,
@@ -192,7 +199,7 @@ class KneeFlexionExperiment(QMainWindow):
         # Timer for visualization updates (every 100ms)
         self.viz_timer = QTimer()
         self.viz_timer.timeout.connect(self.update_visualization_timer)
-        self.viz_timer.setInterval(50)  # 100ms for smoother updates
+        self.viz_timer.setInterval(20)  # 100ms for smoother updates
 
         
         # History for visualization
@@ -366,7 +373,7 @@ class KneeFlexionExperiment(QMainWindow):
         
         # Create 3D GL View Widget for bone visualization
         self.gl_view = gl.GLViewWidget()
-        self.gl_view.setCameraPosition(distance=1500, elevation=30, azimuth=-45)
+        self.gl_view.setCameraPosition(distance=1500, elevation=30, azimuth=-55)
         self.gl_view.setMinimumHeight(400)
 
         # Add axes for reference
@@ -543,7 +550,7 @@ class KneeFlexionExperiment(QMainWindow):
         # Timer for bone animation updates
         self.bone_timer = QTimer()
         self.bone_timer.timeout.connect(self.update_bones)
-        self.bone_timer.setInterval(50)  # 50ms for 20 fps
+        self.bone_timer.setInterval(20)  # 50ms for 20 fps
         
         # Initialize bone data generator
         self.bone_data_generator = BoneDataGenerator()
@@ -723,7 +730,7 @@ class KneeFlexionExperiment(QMainWindow):
 
     def update_bones(self):
         # Get updated bone position and quaternion data
-        bone_data = self.bone_data_generator.update(0.05)  # 50ms = 0.05s
+        bone_data = self.bone_data_generator.update(0.02)  # 50ms = 0.05s
         
         # Update bone positions/orientations
         if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
@@ -743,8 +750,8 @@ class KneeFlexionExperiment(QMainWindow):
         # Also update forces if experiment is running
         if self.experiment_running:
             self.update_bone_forces(self.current_data_index)
-            print("current data index")
-            print(self.current_data_index)
+            #print("current data index")
+            #print(self.current_data_index)
 
     def update_femur_with_data(self, position, quaternion):
         # Remove current mesh
@@ -1097,8 +1104,8 @@ class KneeFlexionExperiment(QMainWindow):
         idx = data_index % len(self.forces)
         force = self.forces[idx].copy()
         torque = self.torques[idx].copy()
-        print("force")
-        print(force)
+        #print("force")
+        #print(force)
         
         # Scale forces for better visualization
         scale_factor = 20.0  # Adjust based on your needs
@@ -1129,8 +1136,8 @@ class KneeFlexionExperiment(QMainWindow):
         #self.torque_arrow.setData(pos=torque_path, color=(1, 0, 0, 1), width=3,  antialias=True)
         
         # Print debug information
-        print(f"Force arrow: {tibia_pos} to {tibia_pos + force_scaled}")
-        print(f"Force magnitude: {np.linalg.norm(force)}")
+        #print(f"Force arrow: {tibia_pos} to {tibia_pos + force_scaled}")
+        #print(f"Force magnitude: {np.linalg.norm(force)}")
 
 
     def get_tibia_center(self):
