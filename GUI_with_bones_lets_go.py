@@ -101,7 +101,7 @@ class BoneDataGenerator:
         
         # Animation parameters
         self.time = 0
-        self.freq = 0.5  # Hz
+        self.freq = 0.05  # Hz
         self.max_angle = 90  # degrees
     
     def update(self, dt):
@@ -138,6 +138,8 @@ class BoneDataGenerator:
             0.0
         ])
         
+        print(self.tibia_position)
+
         return {
             'femur_position': self.femur_position,
             'femur_quaternion': self.femur_quaternion,
@@ -190,8 +192,7 @@ class KneeFlexionExperiment(QMainWindow):
         # Timer for visualization updates (every 100ms)
         self.viz_timer = QTimer()
         self.viz_timer.timeout.connect(self.update_visualization_timer)
-        self.viz_timer.setInterval(100)  # 100ms for smoother updates
-
+        self.viz_timer.setInterval(50)  # 100ms for smoother updates
 
         
         # History for visualization
@@ -269,6 +270,13 @@ class KneeFlexionExperiment(QMainWindow):
             self.torques = np.random.rand(100, 3) * 2 - 1
             print("Using random dummy data instead.")
     
+    def on_tab_changed(self, index):
+        # If switched to bone visualization tab, always update the force arrows
+        if index == 2:
+            # Use the current data index for the update
+            self.update_bone_forces(self.current_data_index)
+            print("Tab was changed to bone view, forces updated")
+
     def setup_ui(self):
         # Main widget and layout
         main_widget = QWidget()
@@ -358,12 +366,12 @@ class KneeFlexionExperiment(QMainWindow):
         
         # Create 3D GL View Widget for bone visualization
         self.gl_view = gl.GLViewWidget()
-        self.gl_view.setCameraPosition(distance=100, elevation=30, azimuth=45)
+        self.gl_view.setCameraPosition(distance=1500, elevation=30, azimuth=-45)
         self.gl_view.setMinimumHeight(400)
 
         # Add axes for reference
         self.axes = gl.GLAxisItem()
-        self.axes.setSize(20, 20, 20)
+        self.axes.setSize(200, 200, 200)
         self.gl_view.addItem(self.axes)
 
         # Separate buttons for loading bones
@@ -378,6 +386,38 @@ class KneeFlexionExperiment(QMainWindow):
 
         # set background color
         self.gl_view.setBackgroundColor(QtGui.QColor(255, 255, 255))
+
+         # Add force visualization objects
+        self.force_arrow = gl.GLLinePlotItem(width=5, color=(0, 0, 1, 1))  # Blue for force
+        self.torque_arrow = gl.GLLinePlotItem(width=5, color=(1, 0, 0, 1))  # Red for torque
+        
+        # Origin and direction
+        start = np.array([0, 0, 0])
+        end = np.array([200, 110, 300])
+        points = np.vstack([start, end])
+        
+        # Initialize the arrows with dummy data so they're visible
+        initial_pos = np.array([[0, 0, 0], [200, 200, 200]])
+        self.force_arrow.setData(pos=points, color=(0, 0, 1, 1), width=3, antialias=True)
+        #self.torque_arrow.setData(pos=initial_pos, color=(1, 0, 0, 1), width=3, antialias=True)
+        
+
+
+        self.gl_view.addItem(self.force_arrow)
+        #self.gl_view.addItem(self.torque_arrow)
+
+
+        
+
+        # Create a line (as arrow shaft)
+        #arrow_line = gl.GLLinePlotItem(pos=points, color=(1, 0, 0, 1), width=2, antialias=True)
+        #self.gl_view.addItem(arrow_line)
+
+        
+
+        # Connect tab change signal
+        self.tabs.currentChanged.connect(self.on_tab_changed)
+
     
 
         tab3_layout.addWidget(self.gl_view)
@@ -664,6 +704,8 @@ class KneeFlexionExperiment(QMainWindow):
             self.disable_bone_sliders(True)
             # Start animation timer
             self.bone_timer.start()
+            # Update forces right away
+            self.update_bone_forces(self.current_data_index)
         else:
             self.auto_bone_movement.setText("Start Bone Animation")
             # Enable manual sliders
@@ -697,6 +739,12 @@ class KneeFlexionExperiment(QMainWindow):
                 bone_data['tibia_position'], 
                 bone_data['tibia_quaternion']
             )
+
+        # Also update forces if experiment is running
+        if self.experiment_running:
+            self.update_bone_forces(self.current_data_index)
+            print("current data index")
+            print(self.current_data_index)
 
     def update_femur_with_data(self, position, quaternion):
         # Remove current mesh
@@ -751,6 +799,8 @@ class KneeFlexionExperiment(QMainWindow):
         if self.experiment_running:
             self.current_data_index = (self.current_data_index + 1) % len(self.forces)
             self.update_visualization(self.current_data_index)
+            # Also update the 3D visualization if needed
+            self.update_bone_forces(self.current_data_index)
         
 
     
@@ -1035,6 +1085,70 @@ class KneeFlexionExperiment(QMainWindow):
             
         # Reset experiment running flag
         self.experiment_running = False
+
+
+    def update_bone_forces(self, data_index=0):
+        """Update the force/torque visualization in 3D bone view"""
+        # Skip if we're not on the bone visualization tab
+        if self.tabs.currentIndex() != 2:
+            return
+            
+        # Get current data point
+        idx = data_index % len(self.forces)
+        force = self.forces[idx].copy()
+        torque = self.torques[idx].copy()
+        print("force")
+        print(force)
+        
+        # Scale forces for better visualization
+        scale_factor = 20.0  # Adjust based on your needs
+        force_scaled = force * scale_factor
+        torque_scaled = torque * scale_factor * 20  # Torques usually need more scaling
+        
+         # Set the position of the force arrow - attach to tibia
+        tibia_pos = self.get_tibia_center()
+        #print("tibia pos")
+        #print(tibia_pos)
+        tibia_pos[0] +=50
+        tibia_pos[1] -=100
+        tibia_pos[2] += 0
+        
+        # Create line paths for the arrows
+        force_path = np.array([
+            tibia_pos,  # Start at tibia center
+            tibia_pos + force_scaled  # End based on force vector
+        ])
+        
+        torque_path = np.array([
+            tibia_pos,  # Start at tibia center
+            tibia_pos + torque_scaled  # End based on torque vector
+        ])
+        
+        # Update the arrows with increased width and opacity
+        self.force_arrow.setData(pos=force_path, color=(0, 0, 1, 1), width=3,  antialias=True)
+        #self.torque_arrow.setData(pos=torque_path, color=(1, 0, 0, 1), width=3,  antialias=True)
+        
+        # Print debug information
+        print(f"Force arrow: {tibia_pos} to {tibia_pos + force_scaled}")
+        print(f"Force magnitude: {np.linalg.norm(force)}")
+
+
+    def get_tibia_center(self):
+        """Get the current center of the tibia for attaching forces"""
+        if hasattr(self, 'tibia_mesh'):
+            if hasattr(self, 'bone_data_generator') and self.auto_bone_movement.isChecked():
+                return self.bone_data_generator.tibia_position
+            else:
+                # If using manual sliders - improve scaling
+                x = self.tibia_x_pos_slider.value() / 10
+                y = self.tibia_y_pos_slider.value() / 10
+                z = self.tibia_z_pos_slider.value() / 10
+                return np.array([x, y, z])
+        
+        # Default position that's likely to be visible
+        return np.array([0, 0, 0])
+
+
     
     def start_experiment(self):
         self.current_angle_index = 0
@@ -1081,6 +1195,12 @@ class KneeFlexionExperiment(QMainWindow):
         # Start visualization timer immediately and keep it running throughout the experiment
         if not self.viz_timer.isActive():
             self.viz_timer.start()
+
+        # Update visualization initially
+        self.update_visualization(0)
+        
+        # Also update bone forces explicitly
+        self.update_bone_forces(0)
     
     def next_angle(self):
         self.current_angle_index += 1
