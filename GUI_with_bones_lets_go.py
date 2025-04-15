@@ -13,29 +13,7 @@ import matplotlib.cm as cm
 import pyqtgraph.opengl as gl
 from stl import mesh
 from pyqtgraph.Qt import QtGui
-#import pyqtgraph as pg
 
-
-# bone test
-
-def apply_transform(vertices, translation=(0, 0, 0), rotation=(0, 0, 0)):
-    tx, ty, tz = translation
-    rx, ry, rz = np.radians(rotation)
-
-    # Rotation matrices
-    Rx = np.array([[1, 0, 0],
-                   [0, np.cos(rx), -np.sin(rx)],
-                   [0, np.sin(rx), np.cos(rx)]])
-    Ry = np.array([[np.cos(ry), 0, np.sin(ry)],
-                   [0, 1, 0],
-                   [-np.sin(ry), 0, np.cos(ry)]])
-    Rz = np.array([[np.cos(rz), -np.sin(rz), 0],
-                   [np.sin(rz), np.cos(rz), 0],
-                   [0, 0, 1]])
-
-    R = Rz @ Ry @ Rx
-    transformed = (vertices @ R.T) + np.array([tx, ty, tz])
-    return transformed
 
 def load_stl_as_mesh(filename):
     """Load an STL file and return vertices and faces for PyQtGraph GLMeshItem"""
@@ -89,64 +67,47 @@ def apply_transform_quaternion(vertices, position=(0, 0, 0), quaternion=(1, 0, 0
     transformed = (vertices @ R.T) + np.array(position)
     return transformed
 
-
 class BoneDataGenerator:
     def __init__(self):
         # Initial positions and orientations
         self.femur_position = np.array([0.0, 0.0, 0.0])
         self.femur_quaternion = np.array([1.0, 0.0, 0.0, 0.0])  # w, x, y, z
         
-        self.tibia_position = np.array([0.0, 0.0, -40.0])
+        self.tibia_position = np.array([0.0, 0.0, 0.0])
         self.tibia_quaternion = np.array([1.0, 0.0, 0.0, 0.0])
         
         # Animation parameters
         self.time = 0
-        self.freq = 0.05  # Hz
+        self.freq = 0.5  # Hz
         self.max_angle = 120  # degrees
     
     def update(self, dt):
-        """Update bone positions based on simulated knee flexion"""
+        """Update bone positions with minimal calculations"""
         self.time += dt
         
-        # Calculate current flexion angle based on time
+        # Calculate current flexion angle based on time (optimize calculation)
         flexion_angle = self.max_angle * (np.sin(2 * np.pi * self.freq * self.time) + 1) / 2
-        
-        # Femur stays relatively static
-        self.femur_position = np.array([0.0, 500.0, -100.0])
-        
-        # Convert flexion angle to quaternion (rotation around x-axis)
         angle_rad = np.radians(flexion_angle)
-        self.femur_quaternion = np.array([
-            np.cos(angle_rad/2), 
-            np.sin(angle_rad/2), 
-            0.0, 
-            0.0
-        ])
         
-        # Tibia follows femur but with offset and rotation
-        #self.tibia_position = np.array([
-        #    100 * np.sin(angle_rad),  # X-offset changes with angle
-        #    0.0,
-        #    -50 * np.cos(angle_rad)  # Z-offset changes with angle
-        #])
-
+        # Precompute sin/cos values once
+        sin_angle = np.sin(angle_rad)
+        cos_angle = np.cos(angle_rad)
+        sin_half = np.sin(angle_rad/2)
+        cos_half = np.cos(angle_rad/2)
+        
+        # Optimize to avoid repeated calculations
+        self.femur_position = np.array([0.0, 50.0, -10.0])
+        self.femur_quaternion = np.array([cos_half, sin_half, 0.0, 0.0])
+        
+        # Reuse sin/cos values
         self.tibia_position = np.array([
-            -100.0 * np.sin(angle_rad),  # X-offset changes with angle
-            -200.0,
-            -100.0 * np.cos(angle_rad)  # Z-offset changes with angle
-        ])
-
-        
-        # Tibia rotation also follows flexion angle
-        self.tibia_quaternion = np.array([
-            np.cos(angle_rad/2), 
-            np.sin(angle_rad/2), 
-            0.0, 
-            0.0
+            -100.0 * sin_angle,
+            0.0,
+            100.0 * cos_angle
         ])
         
-        #print(self.tibia_position)
-
+        self.tibia_quaternion = np.array([cos_half, sin_half, 0.0, 0.0])
+        
         return {
             'femur_position': self.femur_position,
             'femur_quaternion': self.femur_quaternion,
@@ -155,13 +116,70 @@ class BoneDataGenerator:
         }
 
 
-
 class MplCanvas(FigureCanvas):
     """Matplotlib canvas class for embedding plots in Qt"""
     def __init__(self, width=5, height=4):
         self.fig = Figure(figsize=(width, height))
         self.axes_force = self.fig.add_subplot(121, projection='3d')
         self.axes_torque = self.fig.add_subplot(122, projection='3d')
+        
+        # Set up axes once
+        force_max = 10
+        torque_max = 2
+        
+        # Force plot setup
+        self.axes_force.set_xlim([-force_max, force_max])
+        self.axes_force.set_ylim([-force_max, force_max])
+        self.axes_force.set_zlim([-force_max, force_max])
+        self.axes_force.set_title('Force History (N)')
+        self.axes_force.set_xlabel('X')
+        self.axes_force.set_ylabel('Y')
+        self.axes_force.set_zlabel('Z')
+        self.axes_force.grid(False)
+        self.axes_force.set_axis_off()
+        
+        # Torque plot setup
+        self.axes_torque.set_xlim([-torque_max, torque_max])
+        self.axes_torque.set_ylim([-torque_max, torque_max])
+        self.axes_torque.set_zlim([-torque_max, torque_max])
+        self.axes_torque.set_title('Torque History (Nm)')
+        self.axes_torque.set_xlabel('X')
+        self.axes_torque.set_ylabel('Y')
+        self.axes_torque.set_zlabel('Z')
+        self.axes_torque.grid(False)
+        self.axes_torque.set_axis_off()
+        
+        # Reference axes (drawn once)
+        self.ref_axes_force = [
+            self.axes_force.quiver(0, 0, 0, force_max*0.2, 0, 0, color='red', linewidth=1, arrow_length_ratio=0.1),
+            self.axes_force.quiver(0, 0, 0, 0, force_max*0.2, 0, color='green', linewidth=1, arrow_length_ratio=0.1),
+            self.axes_force.quiver(0, 0, 0, 0, 0, force_max*0.2, color='blue', linewidth=1, arrow_length_ratio=0.1)
+        ]
+        self.ref_axes_torque = [
+            self.axes_torque.quiver(0, 0, 0, torque_max*0.2, 0, 0, color='red', linewidth=1, arrow_length_ratio=0.1),
+            self.axes_torque.quiver(0, 0, 0, 0, torque_max*0.2, 0, color='green', linewidth=1, arrow_length_ratio=0.1),
+            self.axes_torque.quiver(0, 0, 0, 0, 0, torque_max*0.2, color='blue', linewidth=1, arrow_length_ratio=0.1)
+        ]
+        
+        # Labels for the reference axes
+        self.axes_force.text(force_max*0.22, 0, 0, "X", color='red')
+        self.axes_force.text(0, force_max*0.22, 0, "Y", color='green')
+        self.axes_force.text(0, 0, force_max*0.22, "Z", color='blue')
+        
+        self.axes_torque.text(torque_max*0.22, 0, 0, "X", color='red')
+        self.axes_torque.text(0, torque_max*0.22, 0, "Y", color='green')
+        self.axes_torque.text(0, 0, torque_max*0.22, "Z", color='blue')
+        
+        # For history, we'll maintain a list of arrows
+        self.force_arrows = []
+        self.torque_arrows = []
+        
+        # Text elements for magnitudes and components
+        self.force_mag_text = self.axes_force.text2D(0.05, 0.95, "", transform=self.axes_force.transAxes)
+        self.torque_mag_text = self.axes_torque.text2D(0.05, 0.95, "", transform=self.axes_torque.transAxes)
+        self.force_comp_text = self.axes_force.text2D(0.05, 0.90, "", transform=self.axes_force.transAxes, fontsize=8)
+        self.torque_comp_text = self.axes_torque.text2D(0.05, 0.90, "", transform=self.axes_torque.transAxes, fontsize=8)
+        
         super(MplCanvas, self).__init__(self.fig)
         self.fig.tight_layout()
 
@@ -172,10 +190,67 @@ class MplCurrentCanvas(FigureCanvas):
         self.fig = Figure(figsize=(width, height))
         self.axes_force = self.fig.add_subplot(121, projection='3d')
         self.axes_torque = self.fig.add_subplot(122, projection='3d')
+        
+        # Set up axes once
+        force_max = 12
+        torque_max = 2
+        
+        # Force plot setup
+        self.axes_force.set_xlim([-force_max, force_max])
+        self.axes_force.set_ylim([-force_max, force_max])
+        self.axes_force.set_zlim([-force_max, force_max])
+        self.axes_force.set_title('Current Force (N)')
+        self.axes_force.set_xlabel('X')
+        self.axes_force.set_ylabel('Y')
+        self.axes_force.set_zlabel('Z')
+        self.axes_force.grid(False)
+        self.axes_force.set_axis_off()
+        
+        # Torque plot setup
+        self.axes_torque.set_xlim([-torque_max, torque_max])
+        self.axes_torque.set_ylim([-torque_max, torque_max])
+        self.axes_torque.set_zlim([-torque_max, torque_max])
+        self.axes_torque.set_title('Current Torque (Nm)')
+        self.axes_torque.set_xlabel('X')
+        self.axes_torque.set_ylabel('Y')
+        self.axes_torque.set_zlabel('Z')
+        self.axes_torque.grid(False)
+        self.axes_torque.set_axis_off()
+        
+        # Reference axes (drawn once)
+        from mpl_toolkits.mplot3d import Axes3D
+        self.ref_axes_force = [
+            self.axes_force.quiver(0, 0, 0, force_max*0.2, 0, 0, color='red', linewidth=1, arrow_length_ratio=0.1),
+            self.axes_force.quiver(0, 0, 0, 0, force_max*0.2, 0, color='green', linewidth=1, arrow_length_ratio=0.1),
+            self.axes_force.quiver(0, 0, 0, 0, 0, force_max*0.2, color='blue', linewidth=1, arrow_length_ratio=0.1)
+        ]
+        self.ref_axes_torque = [
+            self.axes_torque.quiver(0, 0, 0, torque_max*0.2, 0, 0, color='red', linewidth=1, arrow_length_ratio=0.1),
+            self.axes_torque.quiver(0, 0, 0, 0, torque_max*0.2, 0, color='green', linewidth=1, arrow_length_ratio=0.1),
+            self.axes_torque.quiver(0, 0, 0, 0, 0, torque_max*0.2, color='blue', linewidth=1, arrow_length_ratio=0.1)
+        ]
+        
+        # Labels for the reference axes
+        self.axes_force.text(force_max*0.22, 0, 0, "X", color='red')
+        self.axes_force.text(0, force_max*0.22, 0, "Y", color='green')
+        self.axes_force.text(0, 0, force_max*0.22, "Z", color='blue')
+        
+        self.axes_torque.text(torque_max*0.22, 0, 0, "X", color='red')
+        self.axes_torque.text(0, torque_max*0.22, 0, "Y", color='green')
+        self.axes_torque.text(0, 0, torque_max*0.22, "Z", color='blue')
+        
+        # Initialize force and torque arrows (to be updated later)
+        self.force_arrow = self.axes_force.quiver(0, 0, 0, 1, 0, 0, color='blue', linewidth=1, arrow_length_ratio=0.1)
+        self.torque_arrow = self.axes_torque.quiver(0, 0, 0, 1, 0, 0, color='red', linewidth=1, arrow_length_ratio=0.1)
+        
+        # Text elements for magnitudes and components
+        self.force_mag_text = self.axes_force.text2D(0.05, 0.95, "", transform=self.axes_force.transAxes)
+        self.torque_mag_text = self.axes_torque.text2D(0.05, 0.95, "", transform=self.axes_torque.transAxes)
+        self.force_comp_text = self.axes_force.text2D(0.05, 0.90, "", transform=self.axes_force.transAxes, fontsize=8)
+        self.torque_comp_text = self.axes_torque.text2D(0.05, 0.90, "", transform=self.axes_torque.transAxes, fontsize=8)
+        
         super(MplCurrentCanvas, self).__init__(self.fig)
         self.fig.tight_layout()
-
-
 
 class KneeFlexionExperiment(QMainWindow):
     def __init__(self):
@@ -199,7 +274,7 @@ class KneeFlexionExperiment(QMainWindow):
         # Timer for visualization updates (every 100ms)
         self.viz_timer = QTimer()
         self.viz_timer.timeout.connect(self.update_visualization_timer)
-        self.viz_timer.setInterval(20)  # 100ms for smoother updates
+        self.viz_timer.setInterval(100)  # 100ms for smoother updates
 
         
         # History for visualization
@@ -373,7 +448,7 @@ class KneeFlexionExperiment(QMainWindow):
         
         # Create 3D GL View Widget for bone visualization
         self.gl_view = gl.GLViewWidget()
-        self.gl_view.setCameraPosition(distance=1500, elevation=30, azimuth=-55)
+        self.gl_view.setCameraPosition(distance=500, elevation=30, azimuth=-55)
         self.gl_view.setMinimumHeight(400)
 
         # Add axes for reference
@@ -398,152 +473,16 @@ class KneeFlexionExperiment(QMainWindow):
         self.force_arrow = gl.GLLinePlotItem(width=5, color=(0, 0, 1, 1))  # Blue for force
         self.torque_arrow = gl.GLLinePlotItem(width=5, color=(1, 0, 0, 1))  # Red for torque
         
-        # Origin and direction
-        start = np.array([0, 0, 0])
-        end = np.array([200, 110, 300])
-        points = np.vstack([start, end])
-        
         # Initialize the arrows with dummy data so they're visible
         initial_pos = np.array([[0, 0, 0], [200, 200, 200]])
-        self.force_arrow.setData(pos=points, color=(0, 0, 1, 1), width=3, antialias=True)
-        #self.torque_arrow.setData(pos=initial_pos, color=(1, 0, 0, 1), width=3, antialias=True)
-        
-
+        self.force_arrow.setData(pos=initial_pos, color=(0, 0, 1, 1), width=3, antialias=True)
 
         self.gl_view.addItem(self.force_arrow)
-        #self.gl_view.addItem(self.torque_arrow)
-
-
-        
-
-        # Create a line (as arrow shaft)
-        #arrow_line = gl.GLLinePlotItem(pos=points, color=(1, 0, 0, 1), width=2, antialias=True)
-        #self.gl_view.addItem(arrow_line)
-
-        
 
         # Connect tab change signal
         self.tabs.currentChanged.connect(self.on_tab_changed)
-
-    
-
         tab3_layout.addWidget(self.gl_view)
         tab3_layout.addLayout(bone_load_layout)
-
-        # Femur controls group
-        femur_group = QGroupBox("Femur Controls")
-        femur_layout = QVBoxLayout()
-
-        # Femur rotation sliders
-        femur_rot_layout = QGridLayout()
-        self.femur_x_rot_slider = QSlider(Qt.Horizontal)
-        self.femur_x_rot_slider.setRange(0, 360)
-        self.femur_x_rot_slider.setValue(0)
-        self.femur_x_rot_slider.valueChanged.connect(self.update_femur_transform)
-        femur_rot_layout.addWidget(QLabel("X Rotation:"), 0, 0)
-        femur_rot_layout.addWidget(self.femur_x_rot_slider, 0, 1)
-
-        self.femur_y_rot_slider = QSlider(Qt.Horizontal)
-        self.femur_y_rot_slider.setRange(0, 360)
-        self.femur_y_rot_slider.setValue(0)
-        self.femur_y_rot_slider.valueChanged.connect(self.update_femur_transform)
-        femur_rot_layout.addWidget(QLabel("Y Rotation:"), 1, 0)
-        femur_rot_layout.addWidget(self.femur_y_rot_slider, 1, 1)
-
-        self.femur_z_rot_slider = QSlider(Qt.Horizontal)
-        self.femur_z_rot_slider.setRange(0, 360)
-        self.femur_z_rot_slider.setValue(0)
-        self.femur_z_rot_slider.valueChanged.connect(self.update_femur_transform)
-        femur_rot_layout.addWidget(QLabel("Z Rotation:"), 2, 0)
-        femur_rot_layout.addWidget(self.femur_z_rot_slider, 2, 1)
-
-        # Femur position sliders
-        femur_pos_layout = QGridLayout()
-        self.femur_x_pos_slider = QSlider(Qt.Horizontal)
-        self.femur_x_pos_slider.setRange(-1000, 1000)
-        self.femur_x_pos_slider.setValue(0)
-        self.femur_x_pos_slider.valueChanged.connect(self.update_femur_transform)
-        femur_pos_layout.addWidget(QLabel("X Position:"), 0, 0)
-        femur_pos_layout.addWidget(self.femur_x_pos_slider, 0, 1)
-
-        self.femur_y_pos_slider = QSlider(Qt.Horizontal)
-        self.femur_y_pos_slider.setRange(-500, 500)
-        self.femur_y_pos_slider.setValue(0)
-        self.femur_y_pos_slider.valueChanged.connect(self.update_femur_transform)
-        femur_pos_layout.addWidget(QLabel("Y Position:"), 1, 0)
-        femur_pos_layout.addWidget(self.femur_y_pos_slider, 1, 1)
-
-        self.femur_z_pos_slider = QSlider(Qt.Horizontal)
-        self.femur_z_pos_slider.setRange(-50, 50)
-        self.femur_z_pos_slider.setValue(0)
-        self.femur_z_pos_slider.valueChanged.connect(self.update_femur_transform)
-        femur_pos_layout.addWidget(QLabel("Z Position:"), 2, 0)
-        femur_pos_layout.addWidget(self.femur_z_pos_slider, 2, 1)
-
-        femur_layout.addLayout(femur_rot_layout)
-        femur_layout.addLayout(femur_pos_layout)
-        femur_group.setLayout(femur_layout)
-
-        # Tibia controls group
-        tibia_group = QGroupBox("Tibia Controls")
-        tibia_layout = QVBoxLayout()
-
-        # Tibia rotation sliders
-        tibia_rot_layout = QGridLayout()
-        self.tibia_x_rot_slider = QSlider(Qt.Horizontal)
-        self.tibia_x_rot_slider.setRange(0, 360)
-        self.tibia_x_rot_slider.setValue(0)
-        self.tibia_x_rot_slider.valueChanged.connect(self.update_tibia_transform)
-        tibia_rot_layout.addWidget(QLabel("X Rotation:"), 0, 0)
-        tibia_rot_layout.addWidget(self.tibia_x_rot_slider, 0, 1)
-
-        self.tibia_y_rot_slider = QSlider(Qt.Horizontal)
-        self.tibia_y_rot_slider.setRange(0, 360)
-        self.tibia_y_rot_slider.setValue(0)
-        self.tibia_y_rot_slider.valueChanged.connect(self.update_tibia_transform)
-        tibia_rot_layout.addWidget(QLabel("Y Rotation:"), 1, 0)
-        tibia_rot_layout.addWidget(self.tibia_y_rot_slider, 1, 1)
-
-        self.tibia_z_rot_slider = QSlider(Qt.Horizontal)
-        self.tibia_z_rot_slider.setRange(0, 360)
-        self.tibia_z_rot_slider.setValue(0)
-        self.tibia_z_rot_slider.valueChanged.connect(self.update_tibia_transform)
-        tibia_rot_layout.addWidget(QLabel("Z Rotation:"), 2, 0)
-        tibia_rot_layout.addWidget(self.tibia_z_rot_slider, 2, 1)
-
-        # Tibia position sliders
-        tibia_pos_layout = QGridLayout()
-        self.tibia_x_pos_slider = QSlider(Qt.Horizontal)
-        self.tibia_x_pos_slider.setRange(-1000, 1000)
-        self.tibia_x_pos_slider.setValue(0)
-        self.tibia_x_pos_slider.valueChanged.connect(self.update_tibia_transform)
-        tibia_pos_layout.addWidget(QLabel("X Position:"), 0, 0)
-        tibia_pos_layout.addWidget(self.tibia_x_pos_slider, 0, 1)
-
-        self.tibia_y_pos_slider = QSlider(Qt.Horizontal)
-        self.tibia_y_pos_slider.setRange(-50, 50)
-        self.tibia_y_pos_slider.setValue(0)
-        self.tibia_y_pos_slider.valueChanged.connect(self.update_tibia_transform)
-        tibia_pos_layout.addWidget(QLabel("Y Position:"), 1, 0)
-        tibia_pos_layout.addWidget(self.tibia_y_pos_slider, 1, 1)
-
-        self.tibia_z_pos_slider = QSlider(Qt.Horizontal)
-        self.tibia_z_pos_slider.setRange(-1000, 1000)
-        self.tibia_z_pos_slider.setValue(0)
-        self.tibia_z_pos_slider.valueChanged.connect(self.update_tibia_transform)
-        tibia_pos_layout.addWidget(QLabel("Z Position:"), 2, 0)
-        tibia_pos_layout.addWidget(self.tibia_z_pos_slider, 2, 1)
-
-        tibia_layout.addLayout(tibia_rot_layout)
-        tibia_layout.addLayout(tibia_pos_layout)
-        tibia_group.setLayout(tibia_layout)
-
-        # Add both control groups to tab
-        controls_layout = QHBoxLayout()
-        controls_layout.addWidget(femur_group)
-        controls_layout.addWidget(tibia_group)
-        tab3_layout.addLayout(controls_layout)
-
         self.tab3.setLayout(tab3_layout)
 
 
@@ -707,26 +646,14 @@ class KneeFlexionExperiment(QMainWindow):
     def toggle_bone_animation(self):
         if self.auto_bone_movement.isChecked():
             self.auto_bone_movement.setText("Stop Bone Animation")
-            # Disable manual sliders
-            self.disable_bone_sliders(True)
             # Start animation timer
             self.bone_timer.start()
             # Update forces right away
             self.update_bone_forces(self.current_data_index)
         else:
             self.auto_bone_movement.setText("Start Bone Animation")
-            # Enable manual sliders
-            self.disable_bone_sliders(False)
             # Stop animation timer
             self.bone_timer.stop()
-
-    def disable_bone_sliders(self, disabled):
-        # Disable/enable all sliders when in automatic mode
-        for slider in [self.femur_x_rot_slider, self.femur_y_rot_slider, self.femur_z_rot_slider,
-                    self.femur_x_pos_slider, self.femur_y_pos_slider, self.femur_z_pos_slider,
-                    self.tibia_x_rot_slider, self.tibia_y_rot_slider, self.tibia_z_rot_slider,
-                    self.tibia_x_pos_slider, self.tibia_y_pos_slider, self.tibia_z_pos_slider]:
-            slider.setDisabled(disabled)
 
     def update_bones(self):
         # Get updated bone position and quaternion data
@@ -750,32 +677,32 @@ class KneeFlexionExperiment(QMainWindow):
         # Also update forces if experiment is running
         if self.experiment_running:
             self.update_bone_forces(self.current_data_index)
-            #print("current data index")
-            #print(self.current_data_index)
 
     def update_femur_with_data(self, position, quaternion):
-        # Remove current mesh
-        self.gl_view.removeItem(self.femur_mesh)
+        # Don't remove and recreate mesh - just update its transformation
         
-        # Apply transform using quaternion
-        femur_transformed = apply_transform_quaternion(
-            self.femur_original_vertices,
-            position=position,
-            quaternion=quaternion
-        )
+        # Convert quaternion to rotation matrix
+        q = np.array(quaternion)
+        q = q / np.sqrt(np.sum(q * q))
+        w, x, y, z = q
         
-        # Create new mesh with transformed vertices
-        faces = np.arange(len(femur_transformed)).reshape(-1, 3)
-        self.femur_mesh = gl.GLMeshItem(
-            vertexes=femur_transformed,
-            faces=faces,
-            smooth=True,
-            drawEdges=False,
-            color=(0.8, 0.7, 0.3, 1.0)
-        )
+        # Create rotation matrix
+        R = np.array([
+            [1 - 2*y*y - 2*z*z, 2*x*y - 2*w*z, 2*x*z + 2*w*y, 0],
+            [2*x*y + 2*w*z, 1 - 2*x*x - 2*z*z, 2*y*z - 2*w*x, 0],
+            [2*x*z - 2*w*y, 2*y*z + 2*w*x, 1 - 2*x*x - 2*y*y, 0],
+            [0, 0, 0, 1]
+        ])
         
-        # Add back to view
-        self.gl_view.addItem(self.femur_mesh)
+        # Apply translation
+        T = np.eye(4)
+        T[0:3, 3] = position
+        
+        # Apply combined transform
+        transform = np.dot(T, R)
+        
+        # Update the mesh transformation
+        self.femur_mesh.setTransform(transform)
 
     def update_tibia_with_data(self, position, quaternion):
         # Remove current mesh
@@ -838,111 +765,64 @@ class KneeFlexionExperiment(QMainWindow):
         
     def update_current_visualization(self, force, torque):
         """Update the force/torque visualization with only the current data."""
-        # Clear previous plots
-        self.canvas_current.axes_force.clear()
-        self.canvas_current.axes_torque.clear()
-        
-        # Set up force plot limits and labels
-        force_max = 12  # Increased for better visibility
-        self.canvas_current.axes_force.set_xlim([-force_max, force_max])
-        self.canvas_current.axes_force.set_ylim([-force_max, force_max])
-        self.canvas_current.axes_force.set_zlim([-force_max, force_max])
-        self.canvas_current.axes_force.set_title('Current Force (N)')
-        self.canvas_current.axes_force.set_xlabel('X')
-        self.canvas_current.axes_force.set_ylabel('Y')
-        self.canvas_current.axes_force.set_zlabel('Z')
-        self.canvas_current.axes_force.grid(False)  # Hide grid
-        self.canvas_current.axes_force.set_axis_off()  # Hide axes
-        
-        # Set up torque plot limits and labels
-        torque_max = 2
-        self.canvas_current.axes_torque.set_xlim([-torque_max, torque_max])
-        self.canvas_current.axes_torque.set_ylim([-torque_max, torque_max])
-        self.canvas_current.axes_torque.set_zlim([-torque_max, torque_max])
-        self.canvas_current.axes_torque.set_title('Current Torque (Nm)')
-        self.canvas_current.axes_torque.set_xlabel('X')
-        self.canvas_current.axes_torque.set_ylabel('Y')
-        self.canvas_current.axes_torque.set_zlabel('Z')
-        self.canvas_current.axes_torque.grid(False)  # Hide grid
-        self.canvas_current.axes_torque.set_axis_off()  # Hide axes
-        
-        # Draw reference axes
-        self.draw_reference_axes(self.canvas_current.axes_force, force_max * 0.2)
-        self.draw_reference_axes(self.canvas_current.axes_torque, torque_max * 0.2)
-        
         # Force arrow
         force_mag = np.sqrt(np.sum(force**2))
         if force_mag > 0.01:
-            self.canvas_current.axes_force.quiver(0, 0, 0, 
-                    force[0], force[1], force[2],
-                    color='blue', 
-                    linewidth=1,
-                    normalize=False,
-                    arrow_length_ratio=0.1)
+            # Remove old arrow from the plot
+            if hasattr(self, 'force_arrow_plt'):
+                self.force_arrow_plt.remove()
+                
+            # Create a new arrow
+            self.force_arrow_plt = self.canvas_current.axes_force.quiver(
+                0, 0, 0, 
+                force[0], force[1], force[2],
+                color='blue', 
+                linewidth=1,
+                normalize=False,
+                arrow_length_ratio=0.1
+            )
         
         # Torque arrow
         torque_mag = np.sqrt(np.sum(torque**2))
         if torque_mag > 0.01:
-            self.canvas_current.axes_torque.quiver(0, 0, 0, 
-                    torque[0], torque[1], torque[2],
-                    color='red', 
-                    linewidth=1,
-                    normalize=False,
-                    arrow_length_ratio=0.1)
+            # Remove old arrow from the plot
+            if hasattr(self, 'torque_arrow_plt'):
+                self.torque_arrow_plt.remove()
+                
+            # Create a new arrow
+            self.torque_arrow_plt = self.canvas_current.axes_torque.quiver(
+                0, 0, 0, 
+                torque[0], torque[1], torque[2],
+                color='red', 
+                linewidth=1,
+                normalize=False,
+                arrow_length_ratio=0.1
+            )
         
-        # Display magnitudes
-        self.canvas_current.axes_force.text2D(0.05, 0.95, f"Force Mag: {force_mag:.2f}N", transform=self.canvas_current.axes_force.transAxes)
-        self.canvas_current.axes_torque.text2D(0.05, 0.95, f"Torque Mag: {torque_mag:.2f}Nm", transform=self.canvas_current.axes_torque.transAxes)
+        # Update text elements
+        self.canvas_current.force_mag_text.set_text(f"Force Mag: {force_mag:.2f}N")
+        self.canvas_current.torque_mag_text.set_text(f"Torque Mag: {torque_mag:.2f}Nm")
+        self.canvas_current.force_comp_text.set_text(f"Fx: {force[0]:.2f}, Fy: {force[1]:.2f}, Fz: {force[2]:.2f}")
+        self.canvas_current.torque_comp_text.set_text(f"Tx: {torque[0]:.2f}, Ty: {torque[1]:.2f}, Tz: {torque[2]:.2f}")
         
-        # Add vector component values
-        self.canvas_current.axes_force.text2D(0.05, 0.90, 
-                              f"Fx: {force[0]:.2f}, Fy: {force[1]:.2f}, Fz: {force[2]:.2f}", 
-                              transform=self.canvas_current.axes_force.transAxes, fontsize=8)
-        self.canvas_current.axes_torque.text2D(0.05, 0.90, 
-                               f"Tx: {torque[0]:.2f}, Ty: {torque[1]:.2f}, Tz: {torque[2]:.2f}", 
-                               transform=self.canvas_current.axes_torque.transAxes, fontsize=8)
-        
-        # Update the figure
-        self.canvas_current.fig.tight_layout()
+        # Redraw the canvas
         self.canvas_current.draw()
     
     def update_history_visualization(self):
         """Update the force/torque visualization with history data."""
-        # Clear previous plots
-        self.canvas_history.axes_force.clear()
-        self.canvas_history.axes_torque.clear()
-        
-        # Set up force plot limits and labels
-        force_max = 10  # Increased for better visibility
-        self.canvas_history.axes_force.set_xlim([-force_max, force_max])
-        self.canvas_history.axes_force.set_ylim([-force_max, force_max])
-        self.canvas_history.axes_force.set_zlim([-force_max, force_max])
-        self.canvas_history.axes_force.set_title('Force History (N)')
-        self.canvas_history.axes_force.set_xlabel('X')
-        self.canvas_history.axes_force.set_ylabel('Y')
-        self.canvas_history.axes_force.set_zlabel('Z')
-        self.canvas_history.axes_force.grid(False)  # Hide grid
-        self.canvas_history.axes_force.set_axis_off()  # Hide axes
-        
-        # Set up torque plot limits and labels
-        torque_max = 2
-        self.canvas_history.axes_torque.set_xlim([-torque_max, torque_max])
-        self.canvas_history.axes_torque.set_ylim([-torque_max, torque_max])
-        self.canvas_history.axes_torque.set_zlim([-torque_max, torque_max])
-        self.canvas_history.axes_torque.set_title('Torque History (Nm)')
-        self.canvas_history.axes_torque.set_xlabel('X')
-        self.canvas_history.axes_torque.set_ylabel('Y')
-        self.canvas_history.axes_torque.set_zlabel('Z')
-        self.canvas_history.axes_torque.grid(False)  # Hide grid
-        self.canvas_history.axes_torque.set_axis_off()  # Hide axes
-        
-        # Draw reference axes
-        self.draw_reference_axes(self.canvas_history.axes_force, force_max * 0.2)
-        self.draw_reference_axes(self.canvas_history.axes_torque, torque_max * 0.2)
+        # We need to remove old arrows first
+        for arrow in self.canvas_history.force_arrows:
+            arrow.remove()
+        for arrow in self.canvas_history.torque_arrows:
+            arrow.remove()
+            
+        # Clear the arrow lists
+        self.canvas_history.force_arrows = []
+        self.canvas_history.torque_arrows = []
         
         # Plot history with color gradient (older = more transparent)
-        cmap_force = plt.get_cmap('Blues')  # Blues goes from white to dark blue
-        cmap_torque = plt.get_cmap('PuRd')  # PuRd goes from white to purple to red
+        cmap_force = plt.get_cmap('Blues')
+        cmap_torque = plt.get_cmap('PuRd')
         
         # Calculate max magnitudes for scaling
         force_mags = np.sqrt(np.sum(np.array(self.force_history)**2, axis=1))
@@ -959,38 +839,40 @@ class KneeFlexionExperiment(QMainWindow):
             
             # Force arrow
             force_mag = np.sqrt(np.sum(hist_force**2))
-            # Make sure width is proportionate but not too thin
             width_scale = max(0.5, 0.5 + 2.5 * (force_mag / max_force_mag) if max_force_mag > 0 else 0.5)
             
             color_force = cmap_force(color_idx)
-            color_force = (*color_force[:3], alpha)  # Set alpha for the color
+            color_force = (*color_force[:3], alpha)
             
             # Only draw if magnitude is not zero
             if force_mag > 0.01:
-                self.canvas_history.axes_force.quiver(0, 0, 0, 
-                        hist_force[0], hist_force[1], hist_force[2],
-                        color=color_force, 
-                        #linewidth=width_scale,
-                        linewidth=1,
-                        normalize=False,  # Don't normalize to see true magnitudes
-                        arrow_length_ratio=0.1)
+                arrow = self.canvas_history.axes_force.quiver(
+                    0, 0, 0, 
+                    hist_force[0], hist_force[1], hist_force[2],
+                    color=color_force, 
+                    linewidth=1,
+                    normalize=False,
+                    arrow_length_ratio=0.1
+                )
+                self.canvas_history.force_arrows.append(arrow)
             
             # Torque arrow
             torque_mag = np.sqrt(np.sum(hist_torque**2))
-            #width_scale = max(0.5, 0.5 + 2.5 * (torque_mag / max_torque_mag) if max_torque_mag > 0 else 0.5)
             
             color_torque = cmap_torque(color_idx)
-            color_torque = (*color_torque[:3], alpha)  # Set alpha for the color
+            color_torque = (*color_torque[:3], alpha)
             
             # Only draw if magnitude is not zero
             if torque_mag > 0.01:
-                self.canvas_history.axes_torque.quiver(0, 0, 0, 
-                        hist_torque[0], hist_torque[1], hist_torque[2],
-                        color=color_torque, 
-                        #linewidth=width_scale,
-                        linewidth=1,
-                        normalize=False,  # Don't normalize to see true magnitudes
-                        arrow_length_ratio=0.1)
+                arrow = self.canvas_history.axes_torque.quiver(
+                    0, 0, 0, 
+                    hist_torque[0], hist_torque[1], hist_torque[2],
+                    color=color_torque, 
+                    linewidth=1,
+                    normalize=False,
+                    arrow_length_ratio=0.1
+                )
+                self.canvas_history.torque_arrows.append(arrow)
         
         # Display magnitudes of the current force/torque
         current_force = self.force_history[-1] if self.force_history else None
@@ -1000,81 +882,39 @@ class KneeFlexionExperiment(QMainWindow):
             force_mag = np.sqrt(np.sum(current_force**2))
             torque_mag = np.sqrt(np.sum(current_torque**2))
             
-            self.canvas_history.axes_force.text2D(0.05, 0.95, f"Force Mag: {force_mag:.2f}N", transform=self.canvas_history.axes_force.transAxes)
-            self.canvas_history.axes_torque.text2D(0.05, 0.95, f"Torque Mag: {torque_mag:.2f}Nm", transform=self.canvas_history.axes_torque.transAxes)
-            
-            # Add vector component values
-            self.canvas_history.axes_force.text2D(0.05, 0.90, 
-                                  f"Fx: {current_force[0]:.2f}, Fy: {current_force[1]:.2f}, Fz: {current_force[2]:.2f}", 
-                                  transform=self.canvas_history.axes_force.transAxes, fontsize=8)
-            self.canvas_history.axes_torque.text2D(0.05, 0.90, 
-                                   f"Tx: {current_torque[0]:.2f}, Ty: {current_torque[1]:.2f}, Tz: {current_torque[2]:.2f}", 
-                                   transform=self.canvas_history.axes_torque.transAxes, fontsize=8)
+            # Update text instead of recreating
+            self.canvas_history.force_mag_text.set_text(f"Force Mag: {force_mag:.2f}N")
+            self.canvas_history.torque_mag_text.set_text(f"Torque Mag: {torque_mag:.2f}Nm")
+            self.canvas_history.force_comp_text.set_text(
+                f"Fx: {current_force[0]:.2f}, Fy: {current_force[1]:.2f}, Fz: {current_force[2]:.2f}"
+            )
+            self.canvas_history.torque_comp_text.set_text(
+                f"Tx: {current_torque[0]:.2f}, Ty: {current_torque[1]:.2f}, Tz: {current_torque[2]:.2f}"
+            )
         
-        # Update the figure
-        self.canvas_history.fig.tight_layout()
+        # Redraw the canvas
         self.canvas_history.draw()
 
-
-    
-    def draw_reference_axes(self, ax, length):
-        """Draw reference axes to help with orientation"""
-        # X axis - red
-        ax.quiver(0, 0, 0, length, 0, 0, color='red', linewidth=1, arrow_length_ratio=0.1)
-        ax.text(length*1.1, 0, 0, "X", color='red')
-        
-        # Y axis - green
-        ax.quiver(0, 0, 0, 0, length, 0, color='green', linewidth=1, arrow_length_ratio=0.1)
-        ax.text(0, length*1.1, 0, "Y", color='green')
-        
-        # Z axis - blue
-        ax.quiver(0, 0, 0, 0, 0, length, color='blue', linewidth=1, arrow_length_ratio=0.1)
-        ax.text(0, 0, length*1.1, "Z", color='blue')
         
     def update_display(self):
-        if self.current_angle_index < len(self.flexion_angles):
-            current_angle = self.flexion_angles[self.current_angle_index]
-            self.next_label.setText(f"Please flex knee to {current_angle} degrees")
-            self.next_label.setAlignment(Qt.AlignCenter)
-            # Update overall progress
-            self.overall_progress.setValue(self.current_angle_index)
+        current_angle = self.flexion_angles[self.current_angle_index]
+        self.next_label.setText(f"Please flex knee to {current_angle} degrees")
+        self.next_label.setAlignment(Qt.AlignCenter)
+        # Update overall progress
+        self.overall_progress.setValue(self.current_angle_index)
             
-            # Load the appropriate image
-            try:
-                pixmap = QPixmap(f"KW{current_angle}.jpg")
-                if pixmap.isNull():
+        # Load the appropriate image
+        try:
+            pixmap = QPixmap(f"KW{current_angle}.jpg")
+            if pixmap.isNull():
                     self.image_label.setText(f"Image for {current_angle}° not found")
-                else:
-                    # Scale the image to fit the frame while maintaining aspect ratio
-                    pixmap = pixmap.scaled(self.image_frame.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                    self.image_label.setPixmap(pixmap)
-            except Exception as e:
-                self.image_label.setText(f"Error loading image: {str(e)}")
-        else:
-            self.instruction_label.setText("Experiment Complete!")
-            self.overall_progress.setValue(len(self.flexion_angles))
-            self.image_label.clear()
-            
-            # Disable all buttons except start
-            self.start_button.setEnabled(True)
-            self.next_button.setEnabled(False)
-            self.rotate_button.setEnabled(False)
-            self.varus_button.setEnabled(False)
-            self.valgus_button.setEnabled(False)
-            self.internal_rot_button.setEnabled(False)
-            self.external_rot_button.setEnabled(False)
+            else:
+                # Scale the image to fit the frame while maintaining aspect ratio
+                pixmap = pixmap.scaled(self.image_frame.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                self.image_label.setPixmap(pixmap)
+        except Exception as e:
+            self.image_label.setText(f"Error loading image: {str(e)}")
 
-            # hide instructions
-            self.next_label.hide()
-            self.rotation_progress_label.hide()
-            self.rotation_progress.hide()
-                
-            # Stop visualization timer
-            if self.viz_timer.isActive():
-                self.viz_timer.stop()
-                
-            # Reset experiment running flag
-            self.experiment_running = False
     
     def reset_buttons_and_labels(self):
         # Disable all buttons
@@ -1103,57 +943,34 @@ class KneeFlexionExperiment(QMainWindow):
         # Get current data point
         idx = data_index % len(self.forces)
         force = self.forces[idx].copy()
-        torque = self.torques[idx].copy()
-        #print("force")
-        #print(force)
         
         # Scale forces for better visualization
-        scale_factor = 20.0  # Adjust based on your needs
+        scale_factor = 20.0
         force_scaled = force * scale_factor
-        torque_scaled = torque * scale_factor * 20  # Torques usually need more scaling
         
-         # Set the position of the force arrow - attach to tibia
+        # Set the position of the force arrow - attach to tibia
         tibia_pos = self.get_tibia_center()
-        #print("tibia pos")
-        #print(tibia_pos)
-        tibia_pos[0] +=50
-        tibia_pos[1] -=100
-        tibia_pos[2] += 0
+        tibia_pos[0] += 50
+        tibia_pos[1] -= 100
         
         # Create line paths for the arrows
         force_path = np.array([
-            tibia_pos,  # Start at tibia center
-            tibia_pos + force_scaled  # End based on force vector
+            tibia_pos,
+            tibia_pos + force_scaled
         ])
         
-        torque_path = np.array([
-            tibia_pos,  # Start at tibia center
-            tibia_pos + torque_scaled  # End based on torque vector
-        ])
-        
-        # Update the arrows with increased width and opacity
-        self.force_arrow.setData(pos=force_path, color=(0, 0, 1, 1), width=3,  antialias=True)
-        #self.torque_arrow.setData(pos=torque_path, color=(1, 0, 0, 1), width=3,  antialias=True)
-        
-        # Print debug information
-        #print(f"Force arrow: {tibia_pos} to {tibia_pos + force_scaled}")
-        #print(f"Force magnitude: {np.linalg.norm(force)}")
+        # Update the arrows - pyqtgraph already uses efficient updates here
+        self.force_arrow.setData(pos=force_path, color=(0, 0, 1, 1), width=3, antialias=True)
 
 
     def get_tibia_center(self):
         """Get the current center of the tibia for attaching forces"""
-        if hasattr(self, 'tibia_mesh'):
-            if hasattr(self, 'bone_data_generator') and self.auto_bone_movement.isChecked():
-                return self.bone_data_generator.tibia_position
-            else:
-                # If using manual sliders - improve scaling
-                x = self.tibia_x_pos_slider.value() / 10
-                y = self.tibia_y_pos_slider.value() / 10
-                z = self.tibia_z_pos_slider.value() / 10
-                return np.array([x, y, z])
+        
+        return self.bone_data_generator.tibia_position
+           
         
         # Default position that's likely to be visible
-        return np.array([0, 0, 0])
+        #return np.array([0, 0, 0])
 
 
     
@@ -1355,33 +1172,35 @@ class KneeFlexionExperiment(QMainWindow):
             self.next_button.setEnabled(False)
 
 
-    #bone test start
     def load_femur(self):
         try:
             # Load femur STL
-            femur_vertices, femur_faces = load_stl_as_mesh("femur.stl")
+            femur_vertices, femur_faces = load_stl_as_mesh("femur_simplified.stl")
             self.femur_original_vertices = femur_vertices.copy()
-
-            # Scale down the vertices by 0.5 (50%)
-            femur_vertices = femur_vertices * 0.2
             
-            # Create mesh item
+            # Scale down the vertices (do this once)
+            #femur_vertices = femur_vertices * 0.9
+            
+            # Store vertices in a numpy array for faster operations
+            self.femur_verts = np.array(femur_vertices, dtype=np.float32)
+            self.femur_faces = np.array(femur_faces, dtype=np.uint32)
+            
+            # Create a SINGLE mesh item to reuse
             self.femur_mesh = gl.GLMeshItem(
-                vertexes=femur_vertices, 
-                faces=femur_faces,
+                vertexes=self.femur_verts,
+                faces=self.femur_faces,
                 smooth=True, 
                 drawEdges=False,
-                color=(0.8, 0.7, 0.3, 1.0)  # Golden color
+                color=(0.8, 0.7, 0.3, 1.0)
             )
             self.gl_view.addItem(self.femur_mesh)
+            
+            # Set up transform matrix (initialize once)
+            self.femur_transform = np.identity(4, dtype=np.float32)
             
             # Disable load button
             self.load_femur_button.setEnabled(False)
             self.load_femur_button.setText("Femur Loaded")
-            
-            # Initial transform
-            self.update_femur_transform()
-            
         except Exception as e:
             print(f"Error loading femur: {e}")
             self.load_femur_button.setText("Error")
@@ -1389,11 +1208,11 @@ class KneeFlexionExperiment(QMainWindow):
     def load_tibia(self):
         try:
             # Load tibia STL
-            tibia_vertices, tibia_faces = load_stl_as_mesh("tibia.stl")
+            tibia_vertices, tibia_faces = load_stl_as_mesh("tibia_simplified.stl")
             self.tibia_original_vertices = tibia_vertices.copy()
 
             # Scale down the vertices by 0.5 (50%)
-            tibia_vertices = tibia_vertices * 0.1
+            tibia_vertices = tibia_vertices * 0.2
             
             # Create mesh item
             self.tibia_mesh = gl.GLMeshItem(
@@ -1410,81 +1229,11 @@ class KneeFlexionExperiment(QMainWindow):
             self.load_tibia_button.setText("Tibia Loaded")
             
             # Initial transform
-            self.update_tibia_transform()
+            #self.update_tibia_transform()
             
         except Exception as e:
             print(f"Error loading tibia: {e}")
             self.load_tibia_button.setText("Error")
-
-    def update_femur_transform(self):
-        if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
-            # Get rotation values
-            x_rot = self.femur_x_rot_slider.value()
-            y_rot = self.femur_y_rot_slider.value()
-            z_rot = self.femur_z_rot_slider.value()
-            
-            # Get position values
-            x_pos = self.femur_x_pos_slider.value()
-            y_pos = self.femur_y_pos_slider.value()
-            z_pos = self.femur_z_pos_slider.value()
-            
-            # Remove current mesh
-            self.gl_view.removeItem(self.femur_mesh)
-            
-            # Apply transform
-            femur_transformed = apply_transform(
-                self.femur_original_vertices,
-                translation=(x_pos, y_pos, z_pos),
-                rotation=(x_rot, y_rot, z_rot)
-            )
-            
-            # Create new mesh with transformed vertices
-            faces = np.arange(len(femur_transformed)).reshape(-1, 3)
-            self.femur_mesh = gl.GLMeshItem(
-                vertexes=femur_transformed,
-                faces=faces,
-                smooth=True,
-                drawEdges=False,
-                color=(0.8, 0.7, 0.3, 1.0)
-            )
-            
-            # Add back to view
-            self.gl_view.addItem(self.femur_mesh)
-
-    def update_tibia_transform(self):
-        if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
-            # Get rotation values
-            x_rot = self.tibia_x_rot_slider.value()
-            y_rot = self.tibia_y_rot_slider.value()
-            z_rot = self.tibia_z_rot_slider.value()
-            
-            # Get position values
-            x_pos = self.tibia_x_pos_slider.value()
-            y_pos = self.tibia_y_pos_slider.value()
-            z_pos = self.tibia_z_pos_slider.value()
-            
-            # Remove current mesh
-            self.gl_view.removeItem(self.tibia_mesh)
-            
-            # Apply transform
-            tibia_transformed = apply_transform(
-                self.tibia_original_vertices,
-                translation=(x_pos, y_pos, z_pos),
-                rotation=(x_rot, y_rot, z_rot)
-            )
-            
-            # Create new mesh with transformed vertices
-            faces = np.arange(len(tibia_transformed)).reshape(-1, 3)
-            self.tibia_mesh = gl.GLMeshItem(
-                vertexes=tibia_transformed,
-                faces=faces,
-                smooth=True,
-                drawEdges=False,
-                color=(0.3, 0.7, 0.8, 1.0)
-            )
-            
-            # Add back to view
-            self.gl_view.addItem(self.tibia_mesh)
         
 
 if __name__ == "__main__":
