@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D
@@ -69,44 +70,60 @@ def apply_transform_quaternion(vertices, position=(0, 0, 0), quaternion=(1, 0, 0
 
 class BoneDataGenerator:
     def __init__(self):
-        # Initial positions and orientations
-        self.femur_position = np.array([0.0, 0.0, 0.0])
+        # Fixed femur position and orientation
+        self.femur_position = np.array([0.0, 50.0, 20.0])
         self.femur_quaternion = np.array([1.0, 0.0, 0.0, 0.0])  # w, x, y, z
         
-        self.tibia_position = np.array([0.0, 0.0, 0.0])
+        # Initial tibia position and orientation (will be updated during animation)
+        self.tibia_position = np.array([0.0, 0.0, -100.0])
         self.tibia_quaternion = np.array([1.0, 0.0, 0.0, 0.0])
+
+        # Define anatomical pivot point for tibia rotation
+        # This represents the tibia's articulation point with the femur
+        self.tibia_pivot_point = np.array([300.0, 0.0, -50.0])
+        
+        # Define joint center (pivot point) relative to femur
+        self.joint_center = np.array([-440.0, 70.0, 150.0])
+        
+        # Define rotation axis (medio-lateral axis for flexion/extension)
+        self.rotation_axis = np.array([0.0, 1.0, 0.0])  # Y-axis for flexion/extension
         
         # Animation parameters
         self.time = 0
         self.freq = 0.5  # Hz
-        self.max_angle = 120  # degrees
+        self.max_angle = 90  # degrees
     
     def update(self, dt):
-        """Update bone positions with minimal calculations"""
+        """Update bone positions with tibia rotating around fixed femur"""
         self.time += dt
         
-        # Calculate current flexion angle based on time (optimize calculation)
+        # Calculate current flexion angle based on time
         flexion_angle = self.max_angle * (np.sin(2 * np.pi * self.freq * self.time) + 1) / 2
         angle_rad = np.radians(flexion_angle)
         
-        # Precompute sin/cos values once
-        sin_angle = np.sin(angle_rad)
-        cos_angle = np.cos(angle_rad)
+        # Keep femur static
+        # (no need to update femur_position or femur_quaternion as they remain constant)
+        
+        # Calculate rotation quaternion for tibia (around X-axis)
         sin_half = np.sin(angle_rad/2)
         cos_half = np.cos(angle_rad/2)
         
-        # Optimize to avoid repeated calculations
-        self.femur_position = np.array([0.0, 50.0, -10.0])
-        self.femur_quaternion = np.array([cos_half, sin_half, 0.0, 0.0])
+        # Quaternion for rotation around Y-axis (medio-lateral for flexion/extension)
+        self.tibia_quaternion = np.array([cos_half, 0.0, sin_half, 0.0])  # Y-axis rotation
         
-        # Reuse sin/cos values
+        # Calculate tibia position based on rotation around joint center
+        # In a real knee, the tibia would translate slightly during flexion,
+        # but for simplicity we'll use a simple rotation model
+        
+        # Offset from joint center when fully extended
+        offset_length = 100.0  # Length of tibia from joint center
+        
+        # Calculate new position based on rotation
         self.tibia_position = np.array([
-            -100.0 * sin_angle,
-            0.0,
-            100.0 * cos_angle
+            self.joint_center[0] + offset_length * np.sin(angle_rad),  # X changes with rotation
+            self.joint_center[1],                                       # Y stays aligned with femur
+            self.joint_center[2] - offset_length * np.cos(angle_rad)   # Z changes with rotation
         ])
-        
-        self.tibia_quaternion = np.array([cos_half, sin_half, 0.0, 0.0])
         
         return {
             'femur_position': self.femur_position,
@@ -274,7 +291,7 @@ class KneeFlexionExperiment(QMainWindow):
         # Timer for visualization updates (every 100ms)
         self.viz_timer = QTimer()
         self.viz_timer.timeout.connect(self.update_visualization_timer)
-        self.viz_timer.setInterval(100)  # 100ms for smoother updates
+        self.viz_timer.setInterval(500)  # 100ms for smoother updates
 
         
         # History for visualization
@@ -470,12 +487,12 @@ class KneeFlexionExperiment(QMainWindow):
         self.gl_view.setBackgroundColor(QtGui.QColor(255, 255, 255))
 
          # Add force visualization objects
-        self.force_arrow = gl.GLLinePlotItem(width=3, color=(0, 0, 1, 1))  # Blue for force
-        self.torque_arrow = gl.GLLinePlotItem(width=3, color=(1, 0, 0, 1))  # Red for torque
+        self.force_arrow = gl.GLLinePlotItem(width=2, color=(1, 0, 0, 1))  # Blue for force
+        self.torque_arrow = gl.GLLinePlotItem(width=2, color=(1, 0, 0, 1))  # Red for torque
         
         # Initialize the arrows with dummy data so they're visible
         initial_pos = np.array([[0, 0, 0], [200, 200, 200]])
-        self.force_arrow.setData(pos=initial_pos, color=(0, 0, 1, 1), width=3, antialias=True)
+        self.force_arrow.setData(pos=initial_pos, color=(1, 0, 0, 1), width=3, antialias=True)
         self.force_arrow.setGLOptions('opaque') 
         self.force_arrow.setDepthValue(-10)
 
@@ -707,28 +724,39 @@ class KneeFlexionExperiment(QMainWindow):
         self.femur_mesh.setTransform(transform)
 
     def update_tibia_with_data(self, position, quaternion):
-        # Remove current mesh
-        self.gl_view.removeItem(self.tibia_mesh)
+        # Define the specific pivot point relative to the tibia's local coordinates
+        pivot_point = np.array([100, 0, 0])  # Change this to your desired anatomical point
+        # Get the anatomical pivot point from the bone data generator
+        #pivot_point = self.bone_data_generator.tibia_pivot_point
         
-        # Apply transform using quaternion
-        tibia_transformed = apply_transform_quaternion(
-            self.tibia_original_vertices,
-            position=position,
-            quaternion=quaternion
-        )
+        # Convert quaternion to rotation matrix
+        q = np.array(quaternion)
+        q = q / np.sqrt(np.sum(q * q))
+        w, x, y, z = q
         
-        # Create new mesh with transformed vertices
-        faces = np.arange(len(tibia_transformed)).reshape(-1, 3)
-        self.tibia_mesh = gl.GLMeshItem(
-            vertexes=tibia_transformed,
-            faces=faces,
-            smooth=True,
-            drawEdges=False,
-            color=(0.3, 0.7, 0.8, 1.0)
-        )
+        # Create rotation matrix
+        R = np.array([
+            [1 - 2*y*y - 2*z*z, 2*x*y - 2*w*z, 2*x*z + 2*w*y, 0],
+            [2*x*y + 2*w*z, 1 - 2*x*x - 2*z*z, 2*y*z - 2*w*x, 0],
+            [2*x*z - 2*w*y, 2*y*z + 2*w*x, 1 - 2*x*x - 2*y*y, 0],
+            [0, 0, 0, 1]
+        ])
         
-        # Add back to view
-        self.gl_view.addItem(self.tibia_mesh)
+        # Create translation matrices
+        T_to_origin = np.eye(4)
+        T_to_origin[0:3, 3] = -pivot_point  # Move pivot point to origin
+        
+        T_from_origin = np.eye(4)
+        T_from_origin[0:3, 3] = pivot_point  # Move back from origin
+        
+        T_position = np.eye(4)
+        T_position[0:3, 3] = position  # Final position
+        
+        # Apply combined transform: translate to origin, rotate, translate back, then to final position
+        transform = np.dot(T_position, np.dot(T_from_origin, np.dot(R, T_to_origin)))
+        
+        # Apply the transform to the mesh
+        self.tibia_mesh.setTransform(transform)
         
     def update_visualization_timer(self):
         """Called by timer to update visualization"""
@@ -947,11 +975,13 @@ class KneeFlexionExperiment(QMainWindow):
         force = self.forces[idx].copy()
         
         # Scale forces for better visualization
-        scale_factor = 10.0
+        scale_factor = 20.0
         force_scaled = force * scale_factor
 
         # Set the position of the force arrow - attach to tibia at specific point
         tibia_pos = self.get_tibia_force_origin()
+        tibia_pos[0] -= 20
+        tibia_pos[2] -=40
         
         # Create line paths for the arrows
         force_path = np.array([
@@ -960,7 +990,7 @@ class KneeFlexionExperiment(QMainWindow):
         ])
         
         # Update the arrows - pyqtgraph already uses efficient updates here
-        self.force_arrow.setData(pos=force_path, color=(0, 0, 1, 1), width=3, antialias=True)
+        self.force_arrow.setData(pos=force_path, color=(1, 0, 0, 1), width=2, antialias=True)
 
     def get_tibia_force_origin(self):
         """Get the specific point on the tibia where the force arrow should originate"""
@@ -968,7 +998,6 @@ class KneeFlexionExperiment(QMainWindow):
         base_position = self.bone_data_generator.tibia_position.copy()
         
         # Define anatomical offset - these values should be adjusted to match your specific model
-        # For a typical knee model, force might originate near the tibial plateau
         anatomical_offset = np.array([190, -20, 0])  # X, Y, Z offset in model coordinates
         
         # Return the origin point
@@ -1203,7 +1232,7 @@ class KneeFlexionExperiment(QMainWindow):
                 faces=self.femur_faces,
                 smooth=True, 
                 drawEdges=False,
-                color=(0.8, 0.7, 0.3, 1.0)
+                color = QtGui.QColor(112, 128, 144)
             )
             self.gl_view.addItem(self.femur_mesh)
             
@@ -1222,27 +1251,21 @@ class KneeFlexionExperiment(QMainWindow):
             # Load tibia STL
             tibia_vertices, tibia_faces = load_stl_as_mesh("tibia_simplified.stl")
             self.tibia_original_vertices = tibia_vertices.copy()
-
-            # Scale down the vertices by 0.5 (50%)
-            tibia_vertices = tibia_vertices * 0.2
             
-            # Create mesh item
+            # Create mesh item but don't apply any transformations yet
             self.tibia_mesh = gl.GLMeshItem(
                 vertexes=tibia_vertices, 
                 faces=tibia_faces,
                 smooth=True, 
                 drawEdges=False,
-                color=(0.3, 0.7, 0.8, 1.0)  # Blue-ish color
+                #color=(0.3, 0.7, 0.8, 1.0)  # Blue-ish color
+                color = QtGui.QColor(47, 79, 79)
             )
             self.gl_view.addItem(self.tibia_mesh)
             
             # Disable load button
             self.load_tibia_button.setEnabled(False)
             self.load_tibia_button.setText("Tibia Loaded")
-            
-            # Initial transform
-            #self.update_tibia_transform()
-            
         except Exception as e:
             print(f"Error loading tibia: {e}")
             self.load_tibia_button.setText("Error")
