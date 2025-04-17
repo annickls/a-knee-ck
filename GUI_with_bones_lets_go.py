@@ -1,7 +1,6 @@
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D
@@ -14,6 +13,9 @@ import matplotlib.cm as cm
 import pyqtgraph.opengl as gl
 from stl import mesh
 from pyqtgraph.Qt import QtGui
+import os
+import time
+import datetime
 
 
 def load_stl_as_mesh(filename):
@@ -77,10 +79,6 @@ class BoneDataGenerator:
         # Initial tibia position and orientation (will be updated during animation)
         self.tibia_position = np.array([0.0, 0.0, -100.0])
         self.tibia_quaternion = np.array([1.0, 0.0, 0.0, 0.0])
-
-        # Define anatomical pivot point for tibia rotation
-        # This represents the tibia's articulation point with the femur
-        self.tibia_pivot_point = np.array([300.0, 0.0, -50.0])
         
         # Define joint center (pivot point) relative to femur
         self.joint_center = np.array([-440.0, 70.0, 150.0])
@@ -90,7 +88,7 @@ class BoneDataGenerator:
         
         # Animation parameters
         self.time = 0
-        self.freq = 0.5  # Hz
+        self.freq = 0.2  # Hz
         self.max_angle = 90  # degrees
     
     def update(self, dt):
@@ -101,19 +99,12 @@ class BoneDataGenerator:
         flexion_angle = self.max_angle * (np.sin(2 * np.pi * self.freq * self.time) + 1) / 2
         angle_rad = np.radians(flexion_angle)
         
-        # Keep femur static
-        # (no need to update femur_position or femur_quaternion as they remain constant)
-        
         # Calculate rotation quaternion for tibia (around X-axis)
         sin_half = np.sin(angle_rad/2)
         cos_half = np.cos(angle_rad/2)
         
         # Quaternion for rotation around Y-axis (medio-lateral for flexion/extension)
         self.tibia_quaternion = np.array([cos_half, 0.0, sin_half, 0.0])  # Y-axis rotation
-        
-        # Calculate tibia position based on rotation around joint center
-        # In a real knee, the tibia would translate slightly during flexion,
-        # but for simplicity we'll use a simple rotation model
         
         # Offset from joint center when fully extended
         offset_length = 100.0  # Length of tibia from joint center
@@ -291,11 +282,11 @@ class KneeFlexionExperiment(QMainWindow):
         # Timer for visualization updates (every 100ms)
         self.viz_timer = QTimer()
         self.viz_timer.timeout.connect(self.update_visualization_timer)
-        self.viz_timer.setInterval(500)  # 100ms for smoother updates
+        self.viz_timer.setInterval(30)  # 100ms for smoother updates
 
         
         # History for visualization
-        self.history_size = 60  # Reduced history size for better performance
+        self.history_size = 50
         self.force_history = []
         self.torque_history = []
         self.current_data_index = 0
@@ -335,8 +326,6 @@ class KneeFlexionExperiment(QMainWindow):
             self.torques = np.array(self.torques)
 
             print(f"Successfully loaded {len(self.forces)} force/torque data points.")
-            #print(self.forces)
-            #print(self.torques)
             # Ensure we have at least some data
             if len(self.forces) == 0:
                 raise ValueError("No valid data points found in file")
@@ -350,7 +339,7 @@ class KneeFlexionExperiment(QMainWindow):
             for i in range(1, 200):
                 delta = np.random.uniform(-0.8, 0.8, size=3)
                 self.forces[i] = self.forces[i - 1] + delta
-                self.forces[i] = np.clip(self.forces[i], -15, 15)
+                self.forces[i] = np.clip(self.forces[i], -13, 13)
 
             self.torques = np.zeros((200,3))
             self.torques[0] = np.random.uniform(-1.5, 1.5, size=3)
@@ -370,11 +359,17 @@ class KneeFlexionExperiment(QMainWindow):
             print("Using random dummy data instead.")
     
     def on_tab_changed(self, index):
-        # If switched to bone visualization tab, always update the force arrows
-        if index == 2:
-            # Use the current data index for the update
-            self.update_bone_forces(self.current_data_index)
-            print("Tab was changed to bone view, forces updated")
+        # Update the appropriate visualization for the new tab
+        if self.experiment_running and len(self.forces) > 0:
+            if index == 0:  # Current Data tab
+                force = self.forces[self.current_data_index].copy()
+                torque = self.torques[self.current_data_index].copy()
+                self.update_current_visualization(force, torque)
+            elif index == 1:  # History tab
+                self.update_history_visualization()
+            elif index == 2:  # Bone visualization tab
+                self.update_bone_forces(self.current_data_index)
+            print(f"Tab changed to {index}, visualization updated")
 
     def setup_ui(self):
         # Main widget and layout
@@ -450,12 +445,10 @@ class KneeFlexionExperiment(QMainWindow):
         viz_label_2 = QLabel("Force & Torque Visualization")
         viz_label_2.setAlignment(Qt.AlignCenter)
         viz_label_2.setFont(QFont("Arial", 12, QFont.Bold))
-        #left_layout.addWidget(viz_label)
         tab2_layout.addWidget(viz_label_2)
         
         # Create matplotlib visualization
         self.canvas_history = MplCanvas(width=4, height=4)
-        #left_layout.addWidget(self.canvas)
         tab2_layout.addWidget(self.canvas_history)
         
         self.tab2.setLayout(tab2_layout)
@@ -508,7 +501,7 @@ class KneeFlexionExperiment(QMainWindow):
         # Timer for bone animation updates
         self.bone_timer = QTimer()
         self.bone_timer.timeout.connect(self.update_bones)
-        self.bone_timer.setInterval(20)  # 50ms for 20 fps
+        self.bone_timer.setInterval(25)  # 50ms for 20 fps
         
         # Initialize bone data generator
         self.bone_data_generator = BoneDataGenerator()
@@ -521,20 +514,10 @@ class KneeFlexionExperiment(QMainWindow):
         # Add this button to your UI, for example in tab3_layout
         tab3_layout.addWidget(self.auto_bone_movement)
 
-
-        #ende test bone viz
-
-
-
-
         left_layout.addWidget(self.tabs)
-        
         self.left_widget.setLayout(left_layout)
-        
         bottom_splitter.addWidget(self.left_widget)
         
-       
-
         
         # Right part: Control buttons and image
         right_widget = QWidget()
@@ -675,6 +658,10 @@ class KneeFlexionExperiment(QMainWindow):
             self.bone_timer.stop()
 
     def update_bones(self):
+        # Only update the bones if the bone tab is active
+        if self.tabs.currentIndex() != 2:
+            return
+            
         # Get updated bone position and quaternion data
         bone_data = self.bone_data_generator.update(0.02)  # 50ms = 0.05s
         
@@ -724,10 +711,7 @@ class KneeFlexionExperiment(QMainWindow):
         self.femur_mesh.setTransform(transform)
 
     def update_tibia_with_data(self, position, quaternion):
-        # Define the specific pivot point relative to the tibia's local coordinates
-        pivot_point = np.array([100, 0, 0])  # Change this to your desired anatomical point
-        # Get the anatomical pivot point from the bone data generator
-        #pivot_point = self.bone_data_generator.tibia_pivot_point
+        pivot_point = np.array([100, 0, 0])  # Define the specific pivot point relative to the tibia's local coordinates
         
         # Convert quaternion to rotation matrix
         q = np.array(quaternion)
@@ -762,35 +746,61 @@ class KneeFlexionExperiment(QMainWindow):
         """Called by timer to update visualization"""
         if self.experiment_running:
             self.current_data_index = (self.current_data_index + 1) % len(self.forces)
-            self.update_visualization(self.current_data_index)
-            # Also update the 3D visualization if needed
-            self.update_bone_forces(self.current_data_index)
+            
+            # Check which tab is currently active and only update the relevant visualization
+            current_tab = self.tabs.currentIndex()
+            
+            if current_tab == 0:  # Current Data tab
+                force = self.forces[self.current_data_index].copy()
+                torque = self.torques[self.current_data_index].copy()
+                self.update_current_visualization(force, torque)
+            elif current_tab == 1:  # History tab
+                # Add to history
+                force = self.forces[self.current_data_index].copy()
+                torque = self.torques[self.current_data_index].copy()
+                self.force_history.append(force)
+                self.torque_history.append(torque)
+                
+                # Keep history to specified size
+                if len(self.force_history) > self.history_size:
+                    self.force_history.pop(0)
+                    self.torque_history.pop(0)
+                    
+                self.update_history_visualization()
+            elif current_tab == 2:  # Bone visualization tab
+                self.update_bone_forces(self.current_data_index)
         
 
     
     def update_visualization(self, data_index=0):
-        """Update the force/torque visualization with the current data."""
+        """Update the appropriate visualization based on current tab."""
         # Make sure we have data
         if len(self.forces) == 0 or len(self.torques) == 0:
             return
             
         # Get current data point
         idx = data_index % len(self.forces)
-        force = self.forces[idx].copy()  # Make a copy to prevent modification of original data
+        force = self.forces[idx].copy()
         torque = self.torques[idx].copy()
         
-        # Add to history
-        self.force_history.append(force)
-        self.torque_history.append(torque)
+        # Check which tab is currently active
+        current_tab = self.tabs.currentIndex()
         
-        # Keep history to specified size
-        if len(self.force_history) > self.history_size:
-            self.force_history.pop(0)
-            self.torque_history.pop(0)
-        
-        # Update both visualizations
-        self.update_current_visualization(force, torque)
-        self.update_history_visualization()
+        if current_tab == 0:  # Current Data tab
+            self.update_current_visualization(force, torque)
+        elif current_tab == 1:  # History tab
+            # Add to history
+            self.force_history.append(force)
+            self.torque_history.append(torque)
+            
+            # Keep history to specified size
+            if len(self.force_history) > self.history_size:
+                self.force_history.pop(0)
+                self.torque_history.pop(0)
+                
+            self.update_history_visualization()
+        elif current_tab == 2:  # Bone visualization tab
+            self.update_bone_forces(data_index)
 
         
     def update_current_visualization(self, force, torque):
@@ -1006,13 +1016,8 @@ class KneeFlexionExperiment(QMainWindow):
 
     def get_tibia_center(self):
         """Get the current center of the tibia for attaching forces"""
-        
         return self.bone_data_generator.tibia_position
            
-        
-        # Default position that's likely to be visible
-        #return np.array([0, 0, 0])
-
 
     
     def start_experiment(self):
@@ -1208,9 +1213,7 @@ class KneeFlexionExperiment(QMainWindow):
             # Reset experiment running flag
             self.experiment_running = False
         elif self.current_angle_index >= (len(self.flexion_angles) - 1) and self.external_rot_button.isEnabled() == False:
-            # End of regular experiment - enable Lachmann test
-            #self.lachmann_button.setEnabled(True)
-            self.next_button.setEnabled(False)
+            self.next_button.setEnabled(False) # End of regular experiment - enable Lachmann test
 
 
     def load_femur(self):
@@ -1258,7 +1261,6 @@ class KneeFlexionExperiment(QMainWindow):
                 faces=tibia_faces,
                 smooth=True, 
                 drawEdges=False,
-                #color=(0.3, 0.7, 0.8, 1.0)  # Blue-ish color
                 color = QtGui.QColor(47, 79, 79)
             )
             self.gl_view.addItem(self.tibia_mesh)
