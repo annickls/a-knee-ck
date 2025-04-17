@@ -285,7 +285,7 @@ class KneeFlexionExperiment(QMainWindow):
 
         
         # History for visualization
-        self.history_size = 50
+        self.history_size = 100
         self.force_history = []
         self.torque_history = []
         self.current_data_index = 0
@@ -309,6 +309,84 @@ class KneeFlexionExperiment(QMainWindow):
         
         # Ensure directory exists for data files
         os.makedirs("recorded_data", exist_ok=True)
+
+
+    def create_arrow(self, start_point, end_point, color=(1,0,0,1), arrow_size=15.0, shaft_width=2.0):
+        """Create a 3D arrow from start_point to end_point"""
+        # If the points are too close, just return None
+        direction = end_point - start_point
+        length = np.linalg.norm(direction)
+        if length < 0.01:
+            return None, None
+            
+        # Normalize direction
+        direction = direction / length
+        
+        # Create shaft points (reduce length to leave room for arrowhead)
+        shaft_length = length * 0.85
+        shaft_end = start_point + direction * shaft_length
+        shaft_points = np.array([start_point, shaft_end])
+        
+        # Create shaft line
+        shaft = gl.GLLinePlotItem(pos=shaft_points, color=color, width=shaft_width, antialias=True)
+        
+        try:
+            # Create the cone for the arrowhead using the built-in function
+            md = gl.MeshData.cylinder(rows=10, cols=40, radius=[0, arrow_size], length=length*0.15)
+            
+            # Get vertices and faces
+            vertices = md.vertexes()
+            faces = md.faces()
+            
+            # Create a rotation matrix to orient the arrow along the direction vector
+            z_axis = np.array([0, 0, -1])
+            
+            # Handle special cases where cross product might fail
+            if np.allclose(direction, z_axis, rtol=1e-5, atol=1e-5):
+                # Direction is already aligned with z-axis
+                rotation_matrix = np.eye(3)
+            elif np.allclose(direction, -z_axis, rtol=1e-5, atol=1e-5):
+                # Direction is opposite to z-axis
+                rotation_matrix = np.array([
+                    [1, 0, 0],
+                    [0, -1, 0],
+                    [0, 0, -1]
+                ])
+            else:
+                # Normal case - calculate rotation axis and angle
+                rotation_axis = np.cross(z_axis, direction)
+                rotation_axis = rotation_axis / np.linalg.norm(rotation_axis)
+                
+                angle = np.arccos(np.clip(np.dot(z_axis, direction), -1.0, 1.0))
+                
+                # Rodrigues rotation formula for rotation matrix
+                K = np.array([
+                    [0, -rotation_axis[2], rotation_axis[1]],
+                    [rotation_axis[2], 0, -rotation_axis[0]],
+                    [-rotation_axis[1], rotation_axis[0], 0]
+                ])
+                rotation_matrix = np.eye(3) + np.sin(angle) * K + (1 - np.cos(angle)) * np.dot(K, K)
+            
+            # Transform vertices
+            transformed_vertices = np.dot(vertices, rotation_matrix.T)
+            transformed_vertices += shaft_end
+            
+            # Create mesh item with transformed vertices
+            head = gl.GLMeshItem(
+                vertexes=transformed_vertices, 
+                faces=faces, 
+                smooth=False, 
+                color=color, 
+                shader='balloon'
+            )
+            # Disable lighting effects
+            #head.setGLOptions('opaque')
+            
+            return shaft, head
+        except Exception as e:
+            print(f"Error creating arrow head: {e}")
+            # If arrow head creation fails, return only the shaft
+            return shaft, None
 
     
     def start_recording(self, test_name):
@@ -517,16 +595,9 @@ class KneeFlexionExperiment(QMainWindow):
         self.gl_view.setBackgroundColor(QtGui.QColor(255, 255, 255))
 
          # Add force visualization objects
-        self.force_arrow = gl.GLLinePlotItem(width=2, color=(1, 0, 0, 1))  # Blue for force
-        self.torque_arrow = gl.GLLinePlotItem(width=2, color=(1, 0, 0, 1))  # Red for torque
+        self.force_arrow_shaft = None
+        self.force_arrow_head = None
         
-        # Initialize the arrows with dummy data so they're visible
-        initial_pos = np.array([[0, 0, 0], [200, 200, 200]])
-        self.force_arrow.setData(pos=initial_pos, color=(1, 0, 0, 1), width=3, antialias=True)
-        self.force_arrow.setGLOptions('opaque') 
-        self.force_arrow.setDepthValue(-10)
-
-        self.gl_view.addItem(self.force_arrow)
 
         # Connect tab change signal
         self.tabs.currentChanged.connect(self.on_tab_changed)
@@ -791,12 +862,13 @@ class KneeFlexionExperiment(QMainWindow):
                 force = self.forces[self.current_data_index].copy()
                 torque = self.torques[self.current_data_index].copy()
                 self.update_current_visualization(force, torque)
-            elif current_tab == 1:  # History tab
+            elif (current_tab == 1):  # History tab
                 # Add to history
                 force = self.forces[self.current_data_index].copy()
                 torque = self.torques[self.current_data_index].copy()
                 self.force_history.append(force)
                 self.torque_history.append(torque)
+                
                 
                 # Keep history to specified size
                 if len(self.force_history) > self.history_size:
@@ -913,87 +985,171 @@ class KneeFlexionExperiment(QMainWindow):
     
     def update_history_visualization(self):
         """Update the force/torque visualization with history data."""
-        # We need to remove old arrows first
-        for arrow in self.canvas_history.force_arrows:
-            arrow.remove()
-        for arrow in self.canvas_history.torque_arrows:
-            arrow.remove()
+        # Check if we have data to visualize
+        if not self.force_history or not self.torque_history:
+            return
+        
+        # Determine how many arrows should be displayed (all entries in history)
+        history_length = len(self.force_history)
+        
+        # If we already have the maximum number of arrows displayed,
+        # remove the oldest one to make room for the newest
+        if len(self.canvas_history.force_arrows) >= history_length:
+            if self.canvas_history.force_arrows:
+                oldest_force_arrow = self.canvas_history.force_arrows.pop(0)
+                oldest_force_arrow.remove()
             
-        # Clear the arrow lists
-        self.canvas_history.force_arrows = []
-        self.canvas_history.torque_arrows = []
+            if self.canvas_history.torque_arrows:
+                oldest_torque_arrow = self.canvas_history.torque_arrows.pop(0)
+                oldest_torque_arrow.remove()
         
-        # Plot history with color gradient (older = more transparent)
-        cmap_force = plt.get_cmap('Blues')
-        cmap_torque = plt.get_cmap('PuRd')
-        
-        # Calculate max magnitudes for scaling
-        force_mags = np.sqrt(np.sum(np.array(self.force_history)**2, axis=1))
-        torque_mags = np.sqrt(np.sum(np.array(self.torque_history)**2, axis=1))
-        
-        max_force_mag = np.max(force_mags) if len(force_mags) > 0 else 1
-        max_torque_mag = np.max(torque_mags) if len(torque_mags) > 0 else 1
-        
-        # Plot arrows with more visible formatting
-        for i, (hist_force, hist_torque) in enumerate(zip(self.force_history, self.torque_history)):
-            # Calculate color and alpha based on position in history
-            alpha = 0.3 + 0.7 * (i / max(1, len(self.force_history) - 1))
-            color_idx = i / max(1, len(self.force_history) - 1)
+        # If we're just starting or reset, we need to draw all arrows
+        if len(self.canvas_history.force_arrows) == 0:
+            # Plot history with color gradient (older = more transparent)
+            cmap_force = plt.get_cmap('Blues')
+            cmap_torque = plt.get_cmap('PuRd')
+            
+            # Calculate max magnitudes for scaling
+            force_mags = np.sqrt(np.sum(np.array(self.force_history)**2, axis=1))
+            torque_mags = np.sqrt(np.sum(np.array(self.torque_history)**2, axis=1))
+            
+            max_force_mag = np.max(force_mags) if len(force_mags) > 0 else 1
+            max_torque_mag = np.max(torque_mags) if len(torque_mags) > 0 else 1
+            
+            # Draw all arrows in history
+            for i, (hist_force, hist_torque) in enumerate(zip(self.force_history, self.torque_history)):
+                # Calculate color and alpha based on position in history
+                alpha = 0.3 + 0.7 * (i / max(1, history_length - 1))
+                color_idx = i / max(1, history_length - 1)
+                
+                # Force arrow
+                force_mag = np.sqrt(np.sum(hist_force**2))
+                color_force = cmap_force(color_idx)
+                color_force = (*color_force[:3], alpha)
+                
+                # Only draw if magnitude is not zero
+                if force_mag > 0.01:
+                    arrow = self.canvas_history.axes_force.quiver(
+                        0, 0, 0, 
+                        hist_force[0], hist_force[1], hist_force[2],
+                        color=color_force, 
+                        linewidth=1,
+                        normalize=False,
+                        arrow_length_ratio=0.1
+                    )
+                    self.canvas_history.force_arrows.append(arrow)
+                else:
+                    # Add placeholder if magnitude is too small
+                    self.canvas_history.force_arrows.append(None)
+                
+                # Torque arrow
+                torque_mag = np.sqrt(np.sum(hist_torque**2))
+                color_torque = cmap_torque(color_idx)
+                color_torque = (*color_torque[:3], alpha)
+                
+                # Only draw if magnitude is not zero
+                if torque_mag > 0.01:
+                    arrow = self.canvas_history.axes_torque.quiver(
+                        0, 0, 0, 
+                        hist_torque[0], hist_torque[1], hist_torque[2],
+                        color=color_torque, 
+                        linewidth=1,
+                        normalize=False,
+                        arrow_length_ratio=0.1
+                    )
+                    self.canvas_history.torque_arrows.append(arrow)
+                else:
+                    # Add placeholder if magnitude is too small
+                    self.canvas_history.torque_arrows.append(None)
+        else:
+            # Just add the newest arrow
+            cmap_force = plt.get_cmap('Blues')
+            cmap_torque = plt.get_cmap('PuRd')
+            
+            # Newest data point
+            newest_force = self.force_history[-1]
+            newest_torque = self.torque_history[-1]
+            
+            # Calculate color for newest arrow (full opacity)
+            alpha = 1.0
+            color_idx = 1.0  # Newest = full color
             
             # Force arrow
-            force_mag = np.sqrt(np.sum(hist_force**2))
-            width_scale = max(0.5, 0.5 + 2.5 * (force_mag / max_force_mag) if max_force_mag > 0 else 0.5)
-            
+            force_mag = np.sqrt(np.sum(newest_force**2))
             color_force = cmap_force(color_idx)
             color_force = (*color_force[:3], alpha)
             
             # Only draw if magnitude is not zero
             if force_mag > 0.01:
-                arrow = self.canvas_history.axes_force.quiver(
+                new_force_arrow = self.canvas_history.axes_force.quiver(
                     0, 0, 0, 
-                    hist_force[0], hist_force[1], hist_force[2],
+                    newest_force[0], newest_force[1], newest_force[2],
                     color=color_force, 
                     linewidth=1,
                     normalize=False,
                     arrow_length_ratio=0.1
                 )
-                self.canvas_history.force_arrows.append(arrow)
+                self.canvas_history.force_arrows.append(new_force_arrow)
+            else:
+                # Add placeholder if magnitude is too small
+                self.canvas_history.force_arrows.append(None)
             
             # Torque arrow
-            torque_mag = np.sqrt(np.sum(hist_torque**2))
-            
+            torque_mag = np.sqrt(np.sum(newest_torque**2))
             color_torque = cmap_torque(color_idx)
             color_torque = (*color_torque[:3], alpha)
             
             # Only draw if magnitude is not zero
             if torque_mag > 0.01:
-                arrow = self.canvas_history.axes_torque.quiver(
+                new_torque_arrow = self.canvas_history.axes_torque.quiver(
                     0, 0, 0, 
-                    hist_torque[0], hist_torque[1], hist_torque[2],
+                    newest_torque[0], newest_torque[1], newest_torque[2],
                     color=color_torque, 
                     linewidth=1,
                     normalize=False,
                     arrow_length_ratio=0.1
                 )
-                self.canvas_history.torque_arrows.append(arrow)
+                self.canvas_history.torque_arrows.append(new_torque_arrow)
+            else:
+                # Add placeholder if magnitude is too small
+                self.canvas_history.torque_arrows.append(None)
+        
+        # Update the colors of all arrows to maintain the gradient effect
+        for i, (force_arrow, torque_arrow) in enumerate(zip(
+                self.canvas_history.force_arrows, 
+                self.canvas_history.torque_arrows)):
+            
+            # Calculate new color and alpha based on updated position in history
+            alpha = 0.3 + 0.7 * (i / max(1, len(self.canvas_history.force_arrows) - 1))
+            color_idx = i / max(1, len(self.canvas_history.force_arrows) - 1)
+            
+            # Update force arrow color if it exists
+            if force_arrow is not None:
+                color_force = cmap_force(color_idx)
+                color_force = (*color_force[:3], alpha)
+                force_arrow.set_color(color_force)
+            
+            # Update torque arrow color if it exists
+            if torque_arrow is not None:
+                color_torque = cmap_torque(color_idx)
+                color_torque = (*color_torque[:3], alpha)
+                torque_arrow.set_color(color_torque)
         
         # Display magnitudes of the current force/torque
-        current_force = self.force_history[-1] if self.force_history else None
-        current_torque = self.torque_history[-1] if self.torque_history else None
+        current_force = self.force_history[-1]
+        current_torque = self.torque_history[-1]
         
-        if current_force is not None and current_torque is not None:
-            force_mag = np.sqrt(np.sum(current_force**2))
-            torque_mag = np.sqrt(np.sum(current_torque**2))
-            
-            # Update text instead of recreating
-            self.canvas_history.force_mag_text.set_text(f"Force Mag: {force_mag:.2f}N")
-            self.canvas_history.torque_mag_text.set_text(f"Torque Mag: {torque_mag:.2f}Nm")
-            self.canvas_history.force_comp_text.set_text(
-                f"Fx: {current_force[0]:.2f}, Fy: {current_force[1]:.2f}, Fz: {current_force[2]:.2f}"
-            )
-            self.canvas_history.torque_comp_text.set_text(
-                f"Tx: {current_torque[0]:.2f}, Ty: {current_torque[1]:.2f}, Tz: {current_torque[2]:.2f}"
-            )
+        force_mag = np.sqrt(np.sum(current_force**2))
+        torque_mag = np.sqrt(np.sum(current_torque**2))
+        
+        self.canvas_history.force_mag_text.set_text(f"Force Mag: {force_mag:.2f}N")
+        self.canvas_history.torque_mag_text.set_text(f"Torque Mag: {torque_mag:.2f}Nm")
+        self.canvas_history.force_comp_text.set_text(
+            f"Fx: {current_force[0]:.2f}, Fy: {current_force[1]:.2f}, Fz: {current_force[2]:.2f}"
+        )
+        self.canvas_history.torque_comp_text.set_text(
+            f"Tx: {current_torque[0]:.2f}, Ty: {current_torque[1]:.2f}, Tz: {current_torque[2]:.2f}"
+        )
         
         # Redraw the canvas
         self.canvas_history.draw()
@@ -1054,16 +1210,27 @@ class KneeFlexionExperiment(QMainWindow):
         # Set the position of the force arrow - attach to tibia at specific point
         tibia_pos = self.get_tibia_force_origin()
         tibia_pos[0] -= 20
-        tibia_pos[2] -=40
+        tibia_pos[2] -= 40
         
-        # Create line paths for the arrows
-        force_path = np.array([
-            tibia_pos,
-            tibia_pos + force_scaled
-        ])
+        # Calculate end point for the arrow
+        end_point = tibia_pos + force_scaled
         
-        # Update the arrows - pyqtgraph already uses efficient updates here
-        self.force_arrow.setData(pos=force_path, color=(1, 0, 0, 1), width=2, antialias=True)
+        # First, remove old arrows if they exist
+        if hasattr(self, 'force_arrow_shaft') and self.force_arrow_shaft is not None:
+            self.gl_view.removeItem(self.force_arrow_shaft)
+        if hasattr(self, 'force_arrow_head') and self.force_arrow_head is not None:
+            self.gl_view.removeItem(self.force_arrow_head)
+        
+        # Create new arrows
+        self.force_arrow_shaft, self.force_arrow_head = self.create_arrow(
+            tibia_pos, end_point, color=(1, 0, 0, 1), arrow_size=6.0, shaft_width=2.0
+        )
+        
+        # Add new arrows to view
+        if self.force_arrow_shaft is not None:
+            self.gl_view.addItem(self.force_arrow_shaft)
+        if self.force_arrow_head is not None:
+            self.gl_view.addItem(self.force_arrow_head)
 
     def get_tibia_force_origin(self):
         """Get the specific point on the tibia where the force arrow should originate"""
@@ -1235,7 +1402,7 @@ class KneeFlexionExperiment(QMainWindow):
         self.seconds_timer.start(1000)  # Update every second
 
         # Start recording data with test name
-        self.start_recording("lachmann_test")
+        self.start_recording("lachmann")
         
         # Set flag to indicate we're in Lachmann test
         self.current_test_type = 'lachmann'
