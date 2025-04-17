@@ -267,7 +267,6 @@ class KneeFlexionExperiment(QMainWindow):
         # Configuration
         self.setWindowTitle("Knee Test Bench with Force Visualization")
         self.setGeometry(100, 100, 1200, 800)
-
         
         # Experiment parameters
         self.flexion_angles = [0, 30, 60, 90, 120]
@@ -302,6 +301,44 @@ class KneeFlexionExperiment(QMainWindow):
         
         # Update visualization initially
         self.update_visualization(0)
+
+        self.recording = False
+        self.current_recording_data = []
+        self.recording_start_time = None
+        self.current_test_name = ""
+        
+        # Ensure directory exists for data files
+        os.makedirs("recorded_data", exist_ok=True)
+
+    
+    def start_recording(self, test_name):
+        """Start recording data for the current test"""
+        self.recording = True
+        self.current_recording_data = []
+        self.recording_start_time = time.time()
+        self.current_test_name = test_name
+        print(f"Started recording data for {test_name}")
+
+    def stop_recording(self):
+        """Stop recording and save data to file"""
+        if not self.recording:
+            return
+            
+        self.recording = False
+        
+        # Create a filename with timestamp, angle, and test type
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        angle = self.flexion_angles[self.current_angle_index]
+        filename = f"recorded_data/{timestamp}_{angle}deg_{self.current_test_name}.txt"
+        
+        # Write data to file
+        with open(filename, 'w') as f:
+            f.write("# Timestamp, Fx, Fy, Fz, Tx, Ty, Tz, FemurPosX, FemurPosY, FemurPosZ, FemurQuatW, FemurQuatX, FemurQuatY, FemurQuatZ, TibiaPosX, TibiaPosY, TibiaPosZ, TibiaQuatW, TibiaQuatX, TibiaQuatY, TibiaQuatZ\n")
+            for data_point in self.current_recording_data:
+                f.write(','.join(map(str, data_point)) + '\n')
+        
+        print(f"Saved {len(self.current_recording_data)} data points to {filename}")
+        self.current_recording_data = []
 
     
     def load_force_torque_data(self):
@@ -769,6 +806,32 @@ class KneeFlexionExperiment(QMainWindow):
                 self.update_history_visualization()
             elif current_tab == 2:  # Bone visualization tab
                 self.update_bone_forces(self.current_data_index)
+
+            # Record data if recording is active
+            if self.recording:
+                current_time = time.time() - self.recording_start_time
+                force = self.forces[self.current_data_index].copy()
+                torque = self.torques[self.current_data_index].copy()
+                
+                # Get bone data
+                bone_data = self.bone_data_generator.update(0)  # Get current bone positions without updating
+                femur_pos = bone_data['femur_position']
+                femur_quat = bone_data['femur_quaternion']
+                tibia_pos = bone_data['tibia_position']
+                tibia_quat = bone_data['tibia_quaternion']
+                
+                # Combine all data into one record
+                data_point = [
+                    current_time,
+                    force[0], force[1], force[2],
+                    torque[0], torque[1], torque[2],
+                    femur_pos[0], femur_pos[1], femur_pos[2],
+                    femur_quat[0], femur_quat[1], femur_quat[2], femur_quat[3],
+                    tibia_pos[0], tibia_pos[1], tibia_pos[2],
+                    tibia_quat[0], tibia_quat[1], tibia_quat[2], tibia_quat[3]
+                ]
+                
+                self.current_recording_data.append(data_point)
         
 
     
@@ -1086,51 +1149,59 @@ class KneeFlexionExperiment(QMainWindow):
         self.lachmann_button.setEnabled(False)
 
     def start_rotation(self):
-        # Disable rotate button
-        self.rotate_button.setEnabled(False)
-        
-        # Enable varus button
-        self.varus_button.setEnabled(True)
+        self.rotate_button.setEnabled(False) # Disable rotate button
+        self.varus_button.setEnabled(True) # Enable varus button
         
         self.remaining_time = self.rotation_time
         self.rotation_progress.setValue(self.remaining_time)
         self.seconds_timer.start(1000)  # Update every second
         self.next_button.setEnabled(False)
+
+        # Start recording data with test name
+        self.start_recording(f"neutral")
         
     def start_varus(self):
-        # Disable varus button
-        self.varus_button.setEnabled(False)
+        self.varus_button.setEnabled(False) # Disable varus button
         
         self.remaining_time = self.rotation_time
         self.rotation_progress.setValue(self.remaining_time)
         self.seconds_timer.start(1000)  # Update every second
         self.valgus_button.setEnabled(True)
 
+        # Start recording data with test name
+        self.start_recording(f"var")
+
     def start_valgus(self):
-        # Disable valgus button
-        self.valgus_button.setEnabled(False)
+        self.valgus_button.setEnabled(False) # Disable valgus button
         
         self.remaining_time = self.rotation_time
         self.rotation_progress.setValue(self.remaining_time)
         self.seconds_timer.start(1000)  # Update every second
         self.internal_rot_button.setEnabled(True)
 
+        # Start recording data with test name
+        self.start_recording(f"val")
+
     def start_internal_rot(self):
-        # Disable internal rotation button
-        self.internal_rot_button.setEnabled(False)
+        self.internal_rot_button.setEnabled(False) # Disable internal rotation button
         
         self.remaining_time = self.rotation_time
         self.rotation_progress.setValue(self.remaining_time)
         self.seconds_timer.start(1000)  # Update every second
         self.external_rot_button.setEnabled(True)
 
+        # Start recording data with test name
+        self.start_recording(f"int")
+
     def start_external_rot(self):
-        # Disable external rotation button
-        self.external_rot_button.setEnabled(False)
+        self.external_rot_button.setEnabled(False) # Disable external rotation button
         
         self.remaining_time = self.rotation_time
         self.rotation_progress.setValue(self.remaining_time)
         self.seconds_timer.start(1000)  # Update every second
+
+        # Start recording data with test name
+        self.start_recording(f"ext")
 
         # Enable appropriate next button based on where we are in the test
         if self.current_angle_index >= (len(self.flexion_angles) - 1):
@@ -1162,6 +1233,9 @@ class KneeFlexionExperiment(QMainWindow):
         
         # Start the timer
         self.seconds_timer.start(1000)  # Update every second
+
+        # Start recording data with test name
+        self.start_recording("lachmann_test")
         
         # Set flag to indicate we're in Lachmann test
         self.current_test_type = 'lachmann'
@@ -1180,7 +1254,11 @@ class KneeFlexionExperiment(QMainWindow):
         self.timer.stop()
         self.seconds_timer.stop()
         self.rotation_progress.setValue(0)
-    
+
+        # Stop recording data if active
+        if self.recording:
+            self.stop_recording()
+
         # Check if we just completed a Lachmann test
         if self.current_test_type == 'lachmann':
             # Reset the flag
@@ -1221,9 +1299,7 @@ class KneeFlexionExperiment(QMainWindow):
             # Load femur STL
             femur_vertices, femur_faces = load_stl_as_mesh("femur_simplified.stl")
             self.femur_original_vertices = femur_vertices.copy()
-            
-            # Scale down the vertices (do this once)
-            #femur_vertices = femur_vertices * 0.9
+            #femur_vertices = femur_vertices * 0.9 #Scale down the vertices
             
             # Store vertices in a numpy array for faster operations
             self.femur_verts = np.array(femur_vertices, dtype=np.float32)
