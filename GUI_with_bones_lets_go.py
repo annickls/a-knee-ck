@@ -448,12 +448,12 @@ class KneeFlexionExperiment(QMainWindow):
         
         # Create 3D GL View Widget for bone visualization
         self.gl_view = gl.GLViewWidget()
-        self.gl_view.setCameraPosition(distance=500, elevation=30, azimuth=-55)
+        self.gl_view.setCameraPosition(distance=900, elevation=30, azimuth=-55)
         self.gl_view.setMinimumHeight(400)
 
         # Add axes for reference
         self.axes = gl.GLAxisItem()
-        self.axes.setSize(200, 200, 200)
+        self.axes.setSize(100, 100, 100)
         self.gl_view.addItem(self.axes)
 
         # Separate buttons for loading bones
@@ -470,12 +470,14 @@ class KneeFlexionExperiment(QMainWindow):
         self.gl_view.setBackgroundColor(QtGui.QColor(255, 255, 255))
 
          # Add force visualization objects
-        self.force_arrow = gl.GLLinePlotItem(width=5, color=(0, 0, 1, 1))  # Blue for force
-        self.torque_arrow = gl.GLLinePlotItem(width=5, color=(1, 0, 0, 1))  # Red for torque
+        self.force_arrow = gl.GLLinePlotItem(width=3, color=(0, 0, 1, 1))  # Blue for force
+        self.torque_arrow = gl.GLLinePlotItem(width=3, color=(1, 0, 0, 1))  # Red for torque
         
         # Initialize the arrows with dummy data so they're visible
         initial_pos = np.array([[0, 0, 0], [200, 200, 200]])
         self.force_arrow.setData(pos=initial_pos, color=(0, 0, 1, 1), width=3, antialias=True)
+        self.force_arrow.setGLOptions('opaque') 
+        self.force_arrow.setDepthValue(-10)
 
         self.gl_view.addItem(self.force_arrow)
 
@@ -599,12 +601,12 @@ class KneeFlexionExperiment(QMainWindow):
         right_layout.addWidget(self.next_label, 0, 1)
         right_layout.addWidget(self.image_frame, 2, 1, 5, 1)
         right_layout.addWidget(record_data_label, 1, 0, 2, 1)
-        right_layout.addWidget(self.rotate_button, 2, 0)
-        right_layout.addWidget(self.varus_button, 3, 0)
-        right_layout.addWidget(self.valgus_button, 4, 0)
-        right_layout.addWidget(self.internal_rot_button, 5, 0)
-        right_layout.addWidget(self.external_rot_button, 6, 0)
-        right_layout.addWidget(self.lachmann_button, 7, 0)  # Add the Lachmann test button
+        right_layout.addWidget(self.rotate_button, 3, 0)
+        right_layout.addWidget(self.varus_button, 4, 0)
+        right_layout.addWidget(self.valgus_button, 5, 0)
+        right_layout.addWidget(self.internal_rot_button, 6, 0)
+        right_layout.addWidget(self.external_rot_button, 7, 0)
+        right_layout.addWidget(self.lachmann_button, 8, 0)  # Add the Lachmann test button
         
         right_widget.setLayout(right_layout)
         bottom_splitter.addWidget(right_widget)
@@ -945,13 +947,11 @@ class KneeFlexionExperiment(QMainWindow):
         force = self.forces[idx].copy()
         
         # Scale forces for better visualization
-        scale_factor = 20.0
+        scale_factor = 10.0
         force_scaled = force * scale_factor
-        
-        # Set the position of the force arrow - attach to tibia
-        tibia_pos = self.get_tibia_center()
-        tibia_pos[0] += 50
-        tibia_pos[1] -= 100
+
+        # Set the position of the force arrow - attach to tibia at specific point
+        tibia_pos = self.get_tibia_force_origin()
         
         # Create line paths for the arrows
         force_path = np.array([
@@ -961,6 +961,18 @@ class KneeFlexionExperiment(QMainWindow):
         
         # Update the arrows - pyqtgraph already uses efficient updates here
         self.force_arrow.setData(pos=force_path, color=(0, 0, 1, 1), width=3, antialias=True)
+
+    def get_tibia_force_origin(self):
+        """Get the specific point on the tibia where the force arrow should originate"""
+        # Get base position from bone data generator
+        base_position = self.bone_data_generator.tibia_position.copy()
+        
+        # Define anatomical offset - these values should be adjusted to match your specific model
+        # For a typical knee model, force might originate near the tibial plateau
+        anatomical_offset = np.array([190, -20, 0])  # X, Y, Z offset in model coordinates
+        
+        # Return the origin point
+        return base_position + anatomical_offset
 
 
     def get_tibia_center(self):
