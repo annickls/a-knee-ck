@@ -17,19 +17,46 @@ import os
 import time
 import datetime
 
+from OpenGL.GL import glBegin, glEnd, glVertex3f, glColor4f, GL_LINES, GL_LINE_SMOOTH, glEnable, glHint, GL_LINE_SMOOTH_HINT, GL_NICEST
+import pyqtgraph.opengl as gl
+
+class ColoredGLAxisItem(gl.GLAxisItem):
+    def __init__(self, size=(1,1,1)):
+        gl.GLAxisItem.__init__(self)
+        self.setSize(*size)
+        
+    def paint(self):
+        self.setupGLState()
+        
+        if self.antialias:
+            glEnable(GL_LINE_SMOOTH)
+            glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
+            
+        glBegin(GL_LINES)
+        
+        # X axis (red)
+        glColor4f(1, 0, 0, 1)  # Red
+        glVertex3f(0, 0, 0)
+        glVertex3f(self.size()[0], 0, 0)
+        
+        # Y axis (green)
+        glColor4f(0, 1, 0, 1)  # Green
+        glVertex3f(0, 0, 0)
+        glVertex3f(0, self.size()[1], 0)
+        
+        # Z axis (blue)
+        glColor4f(0, 0, 1, 1)  # Blue
+        glVertex3f(0, 0, 0)
+        glVertex3f(0, 0, self.size()[2])
+        
+        glEnd()
 
 def load_stl_as_mesh(filename):
     """Load an STL file and return vertices and faces for PyQtGraph GLMeshItem"""
     try:
-        # Load the STL file
-        stl_mesh = mesh.Mesh.from_file(filename)
-        
-        # Get vertices (each face has 3 vertices)
-        vertices = stl_mesh.vectors.reshape(-1, 3)
-        
-        # Create faces array - each triplet of vertices forms a face
-        faces = np.arange(len(vertices)).reshape(-1, 3)
-        
+        stl_mesh = mesh.Mesh.from_file(filename) # Load the STL file
+        vertices = stl_mesh.vectors.reshape(-1, 3) # Get vertices (each face has 3 vertices)
+        faces = np.arange(len(vertices)).reshape(-1, 3) # Create faces array - each triplet of vertices forms a face
         return vertices, faces
     except Exception as e:
         print(f"Error loading STL file {filename}: {e}")
@@ -46,14 +73,11 @@ def load_stl_as_mesh(filename):
         return vertices, faces
 
 def apply_transform_quaternion(vertices, position=(0, 0, 0), quaternion=(1, 0, 0, 0)):
-    """
-    Apply transformation using position and quaternion
-    
+    """ Apply transformation using position and quaternion
     Args:
         vertices: Original vertices
         position: (x, y, z) translation
-        quaternion: (w, x, y, z) quaternion
-    """
+        quaternion: (w, x, y, z) quaternion"""
     # Normalize quaternion
     q = np.array(quaternion)
     q = q / np.sqrt(np.sum(q * q))
@@ -123,6 +147,8 @@ class BoneDataGenerator:
             'tibia_quaternion': self.tibia_quaternion
         }
 
+axis_factor = 0.5
+axis_linewidth = 0.7
 
 class MplCanvas(FigureCanvas):
     """Matplotlib canvas class for embedding plots in Qt"""
@@ -140,9 +166,6 @@ class MplCanvas(FigureCanvas):
         self.axes_force.set_ylim([-force_max, force_max])
         self.axes_force.set_zlim([-force_max, force_max])
         self.axes_force.set_title('Force History (N)')
-        self.axes_force.set_xlabel('X')
-        self.axes_force.set_ylabel('Y')
-        self.axes_force.set_zlabel('Z')
         self.axes_force.grid(False)
         self.axes_force.set_axis_off()
         
@@ -151,34 +174,23 @@ class MplCanvas(FigureCanvas):
         self.axes_torque.set_ylim([-torque_max, torque_max])
         self.axes_torque.set_zlim([-torque_max, torque_max])
         self.axes_torque.set_title('Torque History (Nm)')
-        self.axes_torque.set_xlabel('X')
-        self.axes_torque.set_ylabel('Y')
-        self.axes_torque.set_zlabel('Z')
         self.axes_torque.grid(False)
         self.axes_torque.set_axis_off()
         
         # Reference axes (drawn once)
         self.ref_axes_force = [
-            self.axes_force.quiver(0, 0, 0, force_max*0.2, 0, 0, color='red', linewidth=1, arrow_length_ratio=0.1),
-            self.axes_force.quiver(0, 0, 0, 0, force_max*0.2, 0, color='green', linewidth=1, arrow_length_ratio=0.1),
-            self.axes_force.quiver(0, 0, 0, 0, 0, force_max*0.2, color='blue', linewidth=1, arrow_length_ratio=0.1)
+            self.axes_force.quiver(0, 0, 0, force_max*axis_factor, 0, 0, color='salmon', linewidth=axis_linewidth, arrow_length_ratio=0.1),
+            self.axes_force.quiver(0, 0, 0, 0, force_max*axis_factor, 0, color='green', linewidth=axis_linewidth, arrow_length_ratio=0.1),
+            self.axes_force.quiver(0, 0, 0, 0, 0, force_max*axis_factor, color='skyblue', linewidth=axis_linewidth, arrow_length_ratio=0.1)
         ]
         self.ref_axes_torque = [
-            self.axes_torque.quiver(0, 0, 0, torque_max*0.2, 0, 0, color='red', linewidth=1, arrow_length_ratio=0.1),
-            self.axes_torque.quiver(0, 0, 0, 0, torque_max*0.2, 0, color='green', linewidth=1, arrow_length_ratio=0.1),
-            self.axes_torque.quiver(0, 0, 0, 0, 0, torque_max*0.2, color='blue', linewidth=1, arrow_length_ratio=0.1)
+            self.axes_torque.quiver(0, 0, 0, torque_max*axis_factor, 0, 0, color='salmon', linewidth=axis_linewidth, arrow_length_ratio=0.1),
+            self.axes_torque.quiver(0, 0, 0, 0, torque_max*axis_factor, 0, color='green', linewidth=axis_linewidth, arrow_length_ratio=0.1),
+            self.axes_torque.quiver(0, 0, 0, 0, 0, torque_max*axis_factor, color='skyblue', linewidth=axis_linewidth, arrow_length_ratio=0.1)
         ]
+
         
-        # Labels for the reference axes
-        self.axes_force.text(force_max*0.22, 0, 0, "X", color='red')
-        self.axes_force.text(0, force_max*0.22, 0, "Y", color='green')
-        self.axes_force.text(0, 0, force_max*0.22, "Z", color='blue')
-        
-        self.axes_torque.text(torque_max*0.22, 0, 0, "X", color='red')
-        self.axes_torque.text(0, torque_max*0.22, 0, "Y", color='green')
-        self.axes_torque.text(0, 0, torque_max*0.22, "Z", color='blue')
-        
-        # For history, we'll maintain a list of arrows
+        # For history: maintain a list of arrows
         self.force_arrows = []
         self.torque_arrows = []
         
@@ -208,9 +220,6 @@ class MplCurrentCanvas(FigureCanvas):
         self.axes_force.set_ylim([-force_max, force_max])
         self.axes_force.set_zlim([-force_max, force_max])
         self.axes_force.set_title('Current Force (N)')
-        self.axes_force.set_xlabel('X')
-        self.axes_force.set_ylabel('Y')
-        self.axes_force.set_zlabel('Z')
         self.axes_force.grid(False)
         self.axes_force.set_axis_off()
         
@@ -219,37 +228,33 @@ class MplCurrentCanvas(FigureCanvas):
         self.axes_torque.set_ylim([-torque_max, torque_max])
         self.axes_torque.set_zlim([-torque_max, torque_max])
         self.axes_torque.set_title('Current Torque (Nm)')
-        self.axes_torque.set_xlabel('X')
-        self.axes_torque.set_ylabel('Y')
-        self.axes_torque.set_zlabel('Z')
+        #self.axes_torque.set_xlabel('X')
+        #self.axes_torque.set_ylabel('Y')
+        #self.axes_torque.set_zlabel('Z')
         self.axes_torque.grid(False)
         self.axes_torque.set_axis_off()
         
         # Reference axes (drawn once)
         from mpl_toolkits.mplot3d import Axes3D
         self.ref_axes_force = [
-            self.axes_force.quiver(0, 0, 0, force_max*0.2, 0, 0, color='red', linewidth=1, arrow_length_ratio=0.1),
-            self.axes_force.quiver(0, 0, 0, 0, force_max*0.2, 0, color='green', linewidth=1, arrow_length_ratio=0.1),
-            self.axes_force.quiver(0, 0, 0, 0, 0, force_max*0.2, color='blue', linewidth=1, arrow_length_ratio=0.1)
+            self.axes_force.quiver(0, 0, 0, force_max*axis_factor , 0, 0, color='salmon', linewidth=axis_linewidth, arrow_length_ratio=0.1),
+            self.axes_force.quiver(0, 0, 0, 0, force_max*axis_factor, 0, color='green', linewidth=axis_linewidth, arrow_length_ratio=0.1),
+            self.axes_force.quiver(0, 0, 0, 0, 0, force_max*axis_factor, color='skyblue', linewidth=axis_linewidth, arrow_length_ratio=0.1)
         ]
         self.ref_axes_torque = [
-            self.axes_torque.quiver(0, 0, 0, torque_max*0.2, 0, 0, color='red', linewidth=1, arrow_length_ratio=0.1),
-            self.axes_torque.quiver(0, 0, 0, 0, torque_max*0.2, 0, color='green', linewidth=1, arrow_length_ratio=0.1),
-            self.axes_torque.quiver(0, 0, 0, 0, 0, torque_max*0.2, color='blue', linewidth=1, arrow_length_ratio=0.1)
+            self.axes_torque.quiver(0, 0, 0, torque_max*axis_factor, 0, 0, color='salmon', linewidth=axis_linewidth, arrow_length_ratio=0.1),
+            self.axes_torque.quiver(0, 0, 0, 0, torque_max*axis_factor, 0, color='green', linewidth=axis_linewidth, arrow_length_ratio=0.1),
+            self.axes_torque.quiver(0, 0, 0, 0, 0, torque_max*axis_factor, color='skyblue', linewidth=axis_linewidth, arrow_length_ratio=0.1)
         ]
         
         # Labels for the reference axes
-        self.axes_force.text(force_max*0.22, 0, 0, "X", color='red')
-        self.axes_force.text(0, force_max*0.22, 0, "Y", color='green')
-        self.axes_force.text(0, 0, force_max*0.22, "Z", color='blue')
-        
-        self.axes_torque.text(torque_max*0.22, 0, 0, "X", color='red')
-        self.axes_torque.text(0, torque_max*0.22, 0, "Y", color='green')
-        self.axes_torque.text(0, 0, torque_max*0.22, "Z", color='blue')
+        #self.axes_torque.text(torque_max*0.22, 0, 0, "X", color='red')
+        #self.axes_torque.text(0, torque_max*0.22, 0, "Y", color='green')
+        #self.axes_torque.text(0, 0, torque_max*0.22, "Z", color='blue')
         
         # Initialize force and torque arrows (to be updated later)
-        self.force_arrow = self.axes_force.quiver(0, 0, 0, 1, 0, 0, color='blue', linewidth=1, arrow_length_ratio=0.1)
-        self.torque_arrow = self.axes_torque.quiver(0, 0, 0, 1, 0, 0, color='red', linewidth=1, arrow_length_ratio=0.1)
+        #self.force_arrow = self.axes_force.quiver(0, 0, 0, 1, 0, 0, color='blue', linewidth=1, arrow_length_ratio=0.1)
+        #self.torque_arrow = self.axes_torque.quiver(0, 0, 0, 1, 0, 0, color='red', linewidth=1, arrow_length_ratio=0.1)
         
         # Text elements for magnitudes and components
         self.force_mag_text = self.axes_force.text2D(0.05, 0.95, "", transform=self.axes_force.transAxes)
@@ -271,7 +276,7 @@ class KneeFlexionExperiment(QMainWindow):
         # Experiment parameters
         self.flexion_angles = [0, 30, 60, 90, 120]
         self.current_angle_index = 0
-        self.rotation_time = 5  # seconds
+        self.rotation_time = 5  # time to hold knee positions [s]
         self.lachmann_time = 8  # seconds for Lachmann test
         self.timer = QTimer()
         self.timer.timeout.connect(self.rotation_complete)
@@ -282,7 +287,6 @@ class KneeFlexionExperiment(QMainWindow):
         self.viz_timer = QTimer()
         self.viz_timer.timeout.connect(self.update_visualization_timer)
         self.viz_timer.setInterval(30)  # 100ms for smoother updates
-
         
         # History for visualization
         self.history_size = 100
@@ -379,9 +383,7 @@ class KneeFlexionExperiment(QMainWindow):
                 color=color, 
                 shader='balloon'
             )
-            # Disable lighting effects
-            #head.setGLOptions('opaque')
-            
+
             return shaft, head
         except Exception as e:
             print(f"Error creating arrow head: {e}")
@@ -448,23 +450,19 @@ class KneeFlexionExperiment(QMainWindow):
         except (FileNotFoundError, ValueError) as e:
             print(f"Error: {e}")
             # Create dummy data if file not found or empty
-
             self.forces = np.zeros((200,3))
             self.forces[0] = np.random.uniform(-13, 13, size=3)
             for i in range(1, 200):
                 delta = np.random.uniform(-0.8, 0.8, size=3)
                 self.forces[i] = self.forces[i - 1] + delta
                 self.forces[i] = np.clip(self.forces[i], -13, 13)
-
             self.torques = np.zeros((200,3))
             self.torques[0] = np.random.uniform(-1.5, 1.5, size=3)
             for i in range(1, 200):
                 delta = np.random.uniform(-0.2, 0.2, size=3)
                 self.torques[i] = self.torques[i - 1] + delta
                 self.torques[i] = np.clip(self.torques[i], -1.5, 1.5)
-
             print("Using random dummy data instead.")
-
 
         except Exception as e:
             print(f"An error occurred: {e}")
@@ -519,7 +517,6 @@ class KneeFlexionExperiment(QMainWindow):
         self.left_widget = QWidget()
         left_layout = QVBoxLayout()
 
-
          #Create the QTabWidget
         self.tabs = QTabWidget()
 
@@ -527,84 +524,66 @@ class KneeFlexionExperiment(QMainWindow):
         self.tab1 = QWidget()
         self.tab2 = QWidget()
         self.tab3 = QWidget()
-
          
         # Add tabs to the tab widget
         self.tabs.addTab(self.tab1, "Current Data")
         self.tabs.addTab(self.tab2, "Current + Previous Data")
         self.tabs.addTab(self.tab3, "bone viz")
 
-
-        # Add content to the first tab
+        # first tab
         tab1_layout = QVBoxLayout()
-        #tab1_layout.addWidget(QLabel("This is Tab 1"))
-
-          # Add force/torque visualization
+        # Add force/torque visualization
         viz_label_1 = QLabel("Force & Torque Visualization")
         viz_label_1.setAlignment(Qt.AlignCenter)
         viz_label_1.setFont(QFont("Arial", 12, QFont.Bold))
-        #left_layout.addWidget(viz_label)
         tab1_layout.addWidget(viz_label_1)
-        
         # Create matplotlib visualization
         self.canvas_current = MplCurrentCanvas(width=4, height=4)
-        #left_layout.addWidget(self.canvas)
         tab1_layout.addWidget(self.canvas_current)
-
         self.tab1.setLayout(tab1_layout)
 
-        # Add content to the second tab
+        # second tab
         tab2_layout = QVBoxLayout()
-        
         # Add force/torque visualization
         viz_label_2 = QLabel("Force & Torque Visualization")
         viz_label_2.setAlignment(Qt.AlignCenter)
         viz_label_2.setFont(QFont("Arial", 12, QFont.Bold))
         tab2_layout.addWidget(viz_label_2)
-        
         # Create matplotlib visualization
         self.canvas_history = MplCanvas(width=4, height=4)
         tab2_layout.addWidget(self.canvas_history)
-        
         self.tab2.setLayout(tab2_layout)
         
-         # test bone tab
+         # bone tab
         tab3_layout = QVBoxLayout()
-        
         # Create 3D GL View Widget for bone visualization
         self.gl_view = gl.GLViewWidget()
         self.gl_view.setCameraPosition(distance=900, elevation=30, azimuth=-55)
         self.gl_view.setMinimumHeight(400)
-
         # Add axes for reference
-        self.axes = gl.GLAxisItem()
-        self.axes.setSize(100, 100, 100)
+        #self.axes = gl.GLAxisItem() #random colors
+        #self.axes.setSize(100, 100, 100)
+        self.axes = ColoredGLAxisItem(size=(100, 100, 100)) #defined colors
         self.gl_view.addItem(self.axes)
-
         # Separate buttons for loading bones
         bone_load_layout = QHBoxLayout()
         self.load_femur_button = QPushButton("Load Femur")
         self.load_femur_button.clicked.connect(self.load_femur)
         bone_load_layout.addWidget(self.load_femur_button)
-
         self.load_tibia_button = QPushButton("Load Tibia")
         self.load_tibia_button.clicked.connect(self.load_tibia)
         bone_load_layout.addWidget(self.load_tibia_button)
-
         # set background color
         self.gl_view.setBackgroundColor(QtGui.QColor(255, 255, 255))
-
          # Add force visualization objects
         self.force_arrow_shaft = None
         self.force_arrow_head = None
         
-
         # Connect tab change signal
         self.tabs.currentChanged.connect(self.on_tab_changed)
         tab3_layout.addWidget(self.gl_view)
         tab3_layout.addLayout(bone_load_layout)
         self.tab3.setLayout(tab3_layout)
-
 
         # Timer for bone animation updates
         self.bone_timer = QTimer()
@@ -685,7 +664,6 @@ class KneeFlexionExperiment(QMainWindow):
         self.lachmann_button.setEnabled(False)
         self.lachmann_button.setFixedHeight(60)
 
-
         record_data_label = QLabel("Record Data")
         record_data_label.setAlignment(Qt.AlignCenter)
         
@@ -693,7 +671,6 @@ class KneeFlexionExperiment(QMainWindow):
         self.image_frame = QFrame()
         self.image_frame.setLineWidth(2)
         self.image_frame.setMinimumSize(300, 250)
-        
         image_layout = QVBoxLayout()
         self.image_label = QLabel()
         self.image_label.setAlignment(Qt.AlignCenter)
@@ -738,7 +715,6 @@ class KneeFlexionExperiment(QMainWindow):
         # Set green color for the overall progress bar
         self.overall_progress.setStyleSheet("QProgressBar {border: 1px solid grey; border-radius: 3px; text-align: center;}"
                                            "QProgressBar::chunk {background-color: #4CAF50; width: 10px;}")
-        
         overall_progress_layout.addWidget(self.overall_progress)
         main_layout.addLayout(overall_progress_layout, 3, 0, 1, 2)
         
@@ -868,7 +844,6 @@ class KneeFlexionExperiment(QMainWindow):
                 torque = self.torques[self.current_data_index].copy()
                 self.force_history.append(force)
                 self.torque_history.append(torque)
-                
                 
                 # Keep history to specified size
                 if len(self.force_history) > self.history_size:
@@ -1248,7 +1223,6 @@ class KneeFlexionExperiment(QMainWindow):
         """Get the current center of the tibia for attaching forces"""
         return self.bone_data_generator.tibia_position
            
-
     
     def start_experiment(self):
         self.current_angle_index = 0
@@ -1318,55 +1292,45 @@ class KneeFlexionExperiment(QMainWindow):
     def start_rotation(self):
         self.rotate_button.setEnabled(False) # Disable rotate button
         self.varus_button.setEnabled(True) # Enable varus button
-        
         self.remaining_time = self.rotation_time
         self.rotation_progress.setValue(self.remaining_time)
         self.seconds_timer.start(1000)  # Update every second
         self.next_button.setEnabled(False)
-
         # Start recording data with test name
         self.start_recording(f"neutral")
         
     def start_varus(self):
         self.varus_button.setEnabled(False) # Disable varus button
-        
         self.remaining_time = self.rotation_time
         self.rotation_progress.setValue(self.remaining_time)
         self.seconds_timer.start(1000)  # Update every second
         self.valgus_button.setEnabled(True)
-
         # Start recording data with test name
         self.start_recording(f"var")
 
     def start_valgus(self):
         self.valgus_button.setEnabled(False) # Disable valgus button
-        
         self.remaining_time = self.rotation_time
         self.rotation_progress.setValue(self.remaining_time)
         self.seconds_timer.start(1000)  # Update every second
         self.internal_rot_button.setEnabled(True)
-
         # Start recording data with test name
         self.start_recording(f"val")
 
     def start_internal_rot(self):
         self.internal_rot_button.setEnabled(False) # Disable internal rotation button
-        
         self.remaining_time = self.rotation_time
         self.rotation_progress.setValue(self.remaining_time)
         self.seconds_timer.start(1000)  # Update every second
         self.external_rot_button.setEnabled(True)
-
         # Start recording data with test name
         self.start_recording(f"int")
 
     def start_external_rot(self):
         self.external_rot_button.setEnabled(False) # Disable external rotation button
-        
         self.remaining_time = self.rotation_time
         self.rotation_progress.setValue(self.remaining_time)
         self.seconds_timer.start(1000)  # Update every second
-
         # Start recording data with test name
         self.start_recording(f"ext")
 
