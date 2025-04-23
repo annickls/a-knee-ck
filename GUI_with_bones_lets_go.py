@@ -35,17 +35,17 @@ class ColoredGLAxisItem(gl.GLAxisItem):
         glBegin(GL_LINES)
         
         # X axis (red)
-        glColor4f(1, 0, 0, 1)  # Red
+        glColor4f(0.980, 0.502, 0.447, 1.0)  # Salmon
         glVertex3f(0, 0, 0)
         glVertex3f(self.size()[0], 0, 0)
         
         # Y axis (green)
-        glColor4f(0, 1, 0, 1)  # Green
+        glColor4f(0.196, 0.804, 0.196, 1.0)  # limegreen
         glVertex3f(0, 0, 0)
         glVertex3f(0, self.size()[1], 0)
         
         # Z axis (blue)
-        glColor4f(0, 0, 1, 1)  # Blue
+        glColor4f(0.0, 0.749, 1.0, 1.0)  # deepskyblue
         glVertex3f(0, 0, 0)
         glVertex3f(0, 0, self.size()[2])
         
@@ -147,8 +147,9 @@ class BoneDataGenerator:
             'tibia_quaternion': self.tibia_quaternion
         }
 
+
 axis_factor = 0.5
-axis_linewidth = 0.7
+axis_linewidth = 0.85
 
 class MplCanvas(FigureCanvas):
     """Matplotlib canvas class for embedding plots in Qt"""
@@ -180,13 +181,13 @@ class MplCanvas(FigureCanvas):
         # Reference axes (drawn once)
         self.ref_axes_force = [
             self.axes_force.quiver(0, 0, 0, force_max*axis_factor, 0, 0, color='salmon', linewidth=axis_linewidth, arrow_length_ratio=0.1),
-            self.axes_force.quiver(0, 0, 0, 0, force_max*axis_factor, 0, color='green', linewidth=axis_linewidth, arrow_length_ratio=0.1),
-            self.axes_force.quiver(0, 0, 0, 0, 0, force_max*axis_factor, color='skyblue', linewidth=axis_linewidth, arrow_length_ratio=0.1)
+            self.axes_force.quiver(0, 0, 0, 0, force_max*axis_factor, 0, color='limegreen', linewidth=axis_linewidth, arrow_length_ratio=0.1),
+            self.axes_force.quiver(0, 0, 0, 0, 0, force_max*axis_factor, color='deepskyblue', linewidth=axis_linewidth, arrow_length_ratio=0.1)
         ]
         self.ref_axes_torque = [
             self.axes_torque.quiver(0, 0, 0, torque_max*axis_factor, 0, 0, color='salmon', linewidth=axis_linewidth, arrow_length_ratio=0.1),
-            self.axes_torque.quiver(0, 0, 0, 0, torque_max*axis_factor, 0, color='green', linewidth=axis_linewidth, arrow_length_ratio=0.1),
-            self.axes_torque.quiver(0, 0, 0, 0, 0, torque_max*axis_factor, color='skyblue', linewidth=axis_linewidth, arrow_length_ratio=0.1)
+            self.axes_torque.quiver(0, 0, 0, 0, torque_max*axis_factor, 0, color='limegreen', linewidth=axis_linewidth, arrow_length_ratio=0.1),
+            self.axes_torque.quiver(0, 0, 0, 0, 0, torque_max*axis_factor, color='deepskyblue', linewidth=axis_linewidth, arrow_length_ratio=0.1)
         ]
 
         
@@ -238,13 +239,13 @@ class MplCurrentCanvas(FigureCanvas):
         from mpl_toolkits.mplot3d import Axes3D
         self.ref_axes_force = [
             self.axes_force.quiver(0, 0, 0, force_max*axis_factor , 0, 0, color='salmon', linewidth=axis_linewidth, arrow_length_ratio=0.1),
-            self.axes_force.quiver(0, 0, 0, 0, force_max*axis_factor, 0, color='green', linewidth=axis_linewidth, arrow_length_ratio=0.1),
-            self.axes_force.quiver(0, 0, 0, 0, 0, force_max*axis_factor, color='skyblue', linewidth=axis_linewidth, arrow_length_ratio=0.1)
+            self.axes_force.quiver(0, 0, 0, 0, force_max*axis_factor, 0, color='limegreen', linewidth=axis_linewidth, arrow_length_ratio=0.1),
+            self.axes_force.quiver(0, 0, 0, 0, 0, force_max*axis_factor, color='deepskyblue', linewidth=axis_linewidth, arrow_length_ratio=0.1)
         ]
         self.ref_axes_torque = [
             self.axes_torque.quiver(0, 0, 0, torque_max*axis_factor, 0, 0, color='salmon', linewidth=axis_linewidth, arrow_length_ratio=0.1),
-            self.axes_torque.quiver(0, 0, 0, 0, torque_max*axis_factor, 0, color='green', linewidth=axis_linewidth, arrow_length_ratio=0.1),
-            self.axes_torque.quiver(0, 0, 0, 0, 0, torque_max*axis_factor, color='skyblue', linewidth=axis_linewidth, arrow_length_ratio=0.1)
+            self.axes_torque.quiver(0, 0, 0, 0, torque_max*axis_factor, 0, color='limegreen', linewidth=axis_linewidth, arrow_length_ratio=0.1),
+            self.axes_torque.quiver(0, 0, 0, 0, 0, torque_max*axis_factor, color='deepskyblue', linewidth=axis_linewidth, arrow_length_ratio=0.1)
         ]
         
         # Labels for the reference axes
