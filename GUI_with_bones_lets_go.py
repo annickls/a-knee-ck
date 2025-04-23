@@ -20,36 +20,6 @@ from OpenGL.GL import glBegin, glEnd, glVertex3f, glColor4f, GL_LINES, GL_LINE_S
 import pyqtgraph.opengl as gl
 import constants
 
-class ColoredGLAxisItem(gl.GLAxisItem):
-    def __init__(self, size=(1,1,1)):
-        gl.GLAxisItem.__init__(self)
-        self.setSize(*size)
-        
-    def paint(self):
-        self.setupGLState()
-        
-        if self.antialias:
-            glEnable(GL_LINE_SMOOTH)
-            glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
-            
-        glBegin(GL_LINES)
-
-        # X axis (red)
-        glColor4f(*constants.SALMON)
-        glVertex3f(0, 0, 0)
-        glVertex3f(self.size()[0], 0, 0)
-        
-        # Y axis (green)
-        glColor4f(*constants.LIMEGREEN) 
-        glVertex3f(0, 0, 0)
-        glVertex3f(0, self.size()[1], 0)
-        
-        # Z axis (blue)
-        glColor4f(*constants.DEEPSKYBLUE)  # deepskyblue
-        glVertex3f(0, 0, 0)
-        glVertex3f(0, 0, self.size()[2])
-        
-        glEnd()
 
 def load_stl_as_mesh(filename):
     """Load an STL file and return vertices and faces for PyQtGraph GLMeshItem"""
@@ -72,16 +42,13 @@ def load_stl_as_mesh(filename):
         ])
         return vertices, faces
     
-
 def quaternion_to_transform_matrix(quaternion, position=None):
     """
     Convert a quaternion and position to a 4x4 transformation matrix.
-    
     Args:
         quaternion: A numpy array or list with 4 elements representing the quaternion [w, x, y, z]
         position: A numpy array or list with 3 elements representing the position [x, y, z]
                  If None, no translation is applied.
-        
     Returns:
         A 4x4 numpy array representing the transformation matrix
     """
@@ -166,8 +133,8 @@ class MplCanvas(FigureCanvas):
         self.mode = mode  # "current" or "history"
         
         # Set up axes once
-        force_max = 12 #if mode == "current" else 11
-        torque_max = 3
+        force_max = constants.FORCE_MAX #if mode == "current" else 11
+        torque_max = constants.TORQUE_MAX
         
         # Force plot setup
         self.axes_force.set_xlim([-force_max, force_max])
@@ -210,6 +177,37 @@ class MplCanvas(FigureCanvas):
         
         super(MplCanvas, self).__init__(self.fig)
         self.fig.tight_layout()
+
+class ColoredGLAxisItem(gl.GLAxisItem):
+    def __init__(self, size=(1,1,1)):
+        gl.GLAxisItem.__init__(self)
+        self.setSize(*size)
+        
+    def paint(self):
+        self.setupGLState()
+        
+        if self.antialias:
+            glEnable(GL_LINE_SMOOTH)
+            glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
+            
+        glBegin(GL_LINES)
+
+        # X axis (red)
+        glColor4f(*constants.SALMON)
+        glVertex3f(0, 0, 0)
+        glVertex3f(self.size()[0], 0, 0)
+        
+        # Y axis (green)
+        glColor4f(*constants.LIMEGREEN) 
+        glVertex3f(0, 0, 0)
+        glVertex3f(0, self.size()[1], 0)
+        
+        # Z axis (blue)
+        glColor4f(*constants.DEEPSKYBLUE)  # deepskyblue
+        glVertex3f(0, 0, 0)
+        glVertex3f(0, 0, self.size()[2])
+        
+        glEnd()
 
 class KneeFlexionExperiment(QMainWindow):
     def __init__(self):
@@ -363,7 +361,7 @@ class KneeFlexionExperiment(QMainWindow):
     def load_force_torque_data(self):
         
         """Load force and torque data from the txt file."""
-        filename = "print_data.F_sensor_temp_data_79.txt"
+        filename = constants.DATA_PREVIOUS_TEST
         self.forces = []
         self.torques = []
     
@@ -496,7 +494,7 @@ class KneeFlexionExperiment(QMainWindow):
         tab3_layout = QVBoxLayout()
         # Create 3D GL View Widget for bone visualization
         self.gl_view = gl.GLViewWidget()
-        self.gl_view.setCameraPosition(distance=900, elevation=30, azimuth=-55)
+        self.gl_view.setCameraPosition(distance=1000, elevation=30, azimuth=-55)
         self.gl_view.setMinimumHeight(400)
         # Add axes for reference
         self.axes = ColoredGLAxisItem(size=(100, 100, 100)) #defined colors
@@ -1057,7 +1055,7 @@ class KneeFlexionExperiment(QMainWindow):
         
         # Create new arrows
         self.force_arrow_shaft, self.force_arrow_head = self.create_arrow(
-            tibia_pos, end_point, color=(1, 0, 0, 1), arrow_size=6.0, shaft_width=2.0
+            tibia_pos, end_point, color=(1, 0, 0, 1), arrow_size=constants.ARROW_SIZE, shaft_width=constants.SHAFT_WIDTH
         )
         
         # Add new arrows to view
@@ -1244,7 +1242,7 @@ class KneeFlexionExperiment(QMainWindow):
     def load_femur(self):
         try:
             # Load femur STL
-            femur_vertices, femur_faces = load_stl_as_mesh("femur_simplified.stl")
+            femur_vertices, femur_faces = load_stl_as_mesh(constants.FEMUR)
             self.femur_original_vertices = femur_vertices.copy()
             #femur_vertices = femur_vertices * 0.9 #Scale down the vertices
             
@@ -1275,7 +1273,7 @@ class KneeFlexionExperiment(QMainWindow):
     def load_tibia(self):
         try:
             # Load tibia STL
-            tibia_vertices, tibia_faces = load_stl_as_mesh("tibia_simplified.stl")
+            tibia_vertices, tibia_faces = load_stl_as_mesh(constants.TIBIA)
             self.tibia_original_vertices = tibia_vertices.copy()
             
             # Create mesh item but don't apply any transformations yet
