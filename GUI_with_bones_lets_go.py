@@ -16,9 +16,9 @@ from pyqtgraph.Qt import QtGui
 import os
 import time
 import datetime
-
 from OpenGL.GL import glBegin, glEnd, glVertex3f, glColor4f, GL_LINES, GL_LINE_SMOOTH, glEnable, glHint, GL_LINE_SMOOTH_HINT, GL_NICEST
 import pyqtgraph.opengl as gl
+import constants
 
 class ColoredGLAxisItem(gl.GLAxisItem):
     def __init__(self, size=(1,1,1)):
@@ -33,19 +33,19 @@ class ColoredGLAxisItem(gl.GLAxisItem):
             glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
             
         glBegin(GL_LINES)
-        
+
         # X axis (red)
-        glColor4f(0.980, 0.502, 0.447, 1.0)  # Salmon
+        glColor4f(*constants.SALMON)
         glVertex3f(0, 0, 0)
         glVertex3f(self.size()[0], 0, 0)
         
         # Y axis (green)
-        glColor4f(0.196, 0.804, 0.196, 1.0)  # limegreen
+        glColor4f(*constants.LIMEGREEN) 
         glVertex3f(0, 0, 0)
         glVertex3f(0, self.size()[1], 0)
         
         # Z axis (blue)
-        glColor4f(0.0, 0.749, 1.0, 1.0)  # deepskyblue
+        glColor4f(*constants.DEEPSKYBLUE)  # deepskyblue
         glVertex3f(0, 0, 0)
         glVertex3f(0, 0, self.size()[2])
         
@@ -71,28 +71,38 @@ def load_stl_as_mesh(filename):
             [3, 0, 4], [3, 4, 7], [4, 5, 6], [4, 6, 7]
         ])
         return vertices, faces
+    
 
-def apply_transform_quaternion(vertices, position=(0, 0, 0), quaternion=(1, 0, 0, 0)):
-    """ Apply transformation using position and quaternion
+def quaternion_to_transform_matrix(quaternion, position=None):
+    """
+    Convert a quaternion and position to a 4x4 transformation matrix.
+    
     Args:
-        vertices: Original vertices
-        position: (x, y, z) translation
-        quaternion: (w, x, y, z) quaternion"""
+        quaternion: A numpy array or list with 4 elements representing the quaternion [w, x, y, z]
+        position: A numpy array or list with 3 elements representing the position [x, y, z]
+                 If None, no translation is applied.
+        
+    Returns:
+        A 4x4 numpy array representing the transformation matrix
+    """
     # Normalize quaternion
     q = np.array(quaternion)
-    q = q / np.sqrt(np.sum(q * q))
+    q = q / np.linalg.norm(q)
     w, x, y, z = q
     
-    # Convert quaternion to rotation matrix
-    R = np.array([
-        [1 - 2*y*y - 2*z*z, 2*x*y - 2*w*z, 2*x*z + 2*w*y],
-        [2*x*y + 2*w*z, 1 - 2*x*x - 2*z*z, 2*y*z - 2*w*x],
-        [2*x*z - 2*w*y, 2*y*z + 2*w*x, 1 - 2*x*x - 2*y*y]
+    # Create 4x4 transformation matrix with rotation from quaternion
+    T = np.array([
+        [1 - 2*y*y - 2*z*z, 2*x*y - 2*w*z, 2*x*z + 2*w*y, 0],
+        [2*x*y + 2*w*z, 1 - 2*x*x - 2*z*z, 2*y*z - 2*w*x, 0],
+        [2*x*z - 2*w*y, 2*y*z + 2*w*x, 1 - 2*x*x - 2*y*y, 0],
+        [0, 0, 0, 1]
     ])
     
-    # Apply transformation
-    transformed = (vertices @ R.T) + np.array(position)
-    return transformed
+    # Apply translation if provided
+    if position is not None:
+        T[0:3, 3] = position
+    
+    return T
 
 class BoneDataGenerator:
     def __init__(self):
@@ -147,26 +157,23 @@ class BoneDataGenerator:
             'tibia_quaternion': self.tibia_quaternion
         }
 
-
-axis_factor = 0.5
-axis_linewidth = 0.85
-
 class MplCanvas(FigureCanvas):
-    """Matplotlib canvas class for embedding plots in Qt"""
-    def __init__(self, width=5, height=4):
+    """Matplotlib canvas class for embedding plots in Qt that can display either current or historical force/torque data"""
+    def __init__(self, width=5, height=4, mode="current"):
         self.fig = Figure(figsize=(width, height))
         self.axes_force = self.fig.add_subplot(121, projection='3d')
         self.axes_torque = self.fig.add_subplot(122, projection='3d')
+        self.mode = mode  # "current" or "history"
         
         # Set up axes once
-        force_max = 10
-        torque_max = 2
+        force_max = 12 #if mode == "current" else 11
+        torque_max = 3
         
         # Force plot setup
         self.axes_force.set_xlim([-force_max, force_max])
         self.axes_force.set_ylim([-force_max, force_max])
         self.axes_force.set_zlim([-force_max, force_max])
-        self.axes_force.set_title('Force History (N)')
+        #self.axes_force.set_title('Current Force (N)' if mode == "current" else 'Force History (N)')
         self.axes_force.grid(False)
         self.axes_force.set_axis_off()
         
@@ -174,96 +181,34 @@ class MplCanvas(FigureCanvas):
         self.axes_torque.set_xlim([-torque_max, torque_max])
         self.axes_torque.set_ylim([-torque_max, torque_max])
         self.axes_torque.set_zlim([-torque_max, torque_max])
-        self.axes_torque.set_title('Torque History (Nm)')
+        #self.axes_torque.set_title('Current Torque (Nm)' if mode == "current" else 'Torque History (Nm)')
         self.axes_torque.grid(False)
         self.axes_torque.set_axis_off()
         
         # Reference axes (drawn once)
         self.ref_axes_force = [
-            self.axes_force.quiver(0, 0, 0, force_max*axis_factor, 0, 0, color='salmon', linewidth=axis_linewidth, arrow_length_ratio=0.1),
-            self.axes_force.quiver(0, 0, 0, 0, force_max*axis_factor, 0, color='limegreen', linewidth=axis_linewidth, arrow_length_ratio=0.1),
-            self.axes_force.quiver(0, 0, 0, 0, 0, force_max*axis_factor, color='deepskyblue', linewidth=axis_linewidth, arrow_length_ratio=0.1)
+            self.axes_force.quiver(0, 0, 0, force_max*constants.AXIS_FACTOR, 0, 0, color='salmon', linewidth=constants.AXIS_LINEWIDTH, arrow_length_ratio=0.1),
+            self.axes_force.quiver(0, 0, 0, 0, force_max*constants.AXIS_FACTOR, 0, color='limegreen', linewidth=constants.AXIS_LINEWIDTH, arrow_length_ratio=0.1),
+            self.axes_force.quiver(0, 0, 0, 0, 0, force_max*constants.AXIS_FACTOR, color='deepskyblue', linewidth=constants.AXIS_LINEWIDTH, arrow_length_ratio=0.1)
         ]
         self.ref_axes_torque = [
-            self.axes_torque.quiver(0, 0, 0, torque_max*axis_factor, 0, 0, color='salmon', linewidth=axis_linewidth, arrow_length_ratio=0.1),
-            self.axes_torque.quiver(0, 0, 0, 0, torque_max*axis_factor, 0, color='limegreen', linewidth=axis_linewidth, arrow_length_ratio=0.1),
-            self.axes_torque.quiver(0, 0, 0, 0, 0, torque_max*axis_factor, color='deepskyblue', linewidth=axis_linewidth, arrow_length_ratio=0.1)
+            self.axes_torque.quiver(0, 0, 0, torque_max*constants.AXIS_FACTOR, 0, 0, color='salmon', linewidth=constants.AXIS_LINEWIDTH, arrow_length_ratio=0.1),
+            self.axes_torque.quiver(0, 0, 0, 0, torque_max*constants.AXIS_FACTOR, 0, color='limegreen', linewidth=constants.AXIS_LINEWIDTH, arrow_length_ratio=0.1),
+            self.axes_torque.quiver(0, 0, 0, 0, 0, torque_max*constants.AXIS_FACTOR, color='deepskyblue', linewidth=constants.AXIS_LINEWIDTH, arrow_length_ratio=0.1)
         ]
-
         
-        # For history: maintain a list of arrows
-        self.force_arrows = []
-        self.torque_arrows = []
+        # For history mode: maintain a list of arrows
+        if mode == "history":
+            self.force_arrows = []
+            self.torque_arrows = []
         
         # Text elements for magnitudes and components
-        self.force_mag_text = self.axes_force.text2D(0.05, 0.95, "", transform=self.axes_force.transAxes)
-        self.torque_mag_text = self.axes_torque.text2D(0.05, 0.95, "", transform=self.axes_torque.transAxes)
-        self.force_comp_text = self.axes_force.text2D(0.05, 0.90, "", transform=self.axes_force.transAxes, fontsize=8)
-        self.torque_comp_text = self.axes_torque.text2D(0.05, 0.90, "", transform=self.axes_torque.transAxes, fontsize=8)
+        self.force_mag_text = self.axes_force.text2D(0.32, 1.0, "", transform=self.axes_force.transAxes)
+        self.torque_mag_text = self.axes_torque.text2D(0.4, 1.0, "", transform=self.axes_torque.transAxes)
+        self.force_comp_text = self.axes_force.text2D(0.32, 0.95, "", transform=self.axes_force.transAxes, fontsize=8)
+        self.torque_comp_text = self.axes_torque.text2D(0.4, 0.95, "", transform=self.axes_torque.transAxes, fontsize=8)
         
         super(MplCanvas, self).__init__(self.fig)
-        self.fig.tight_layout()
-
-
-class MplCurrentCanvas(FigureCanvas):
-    """Matplotlib canvas class for displaying only current force/torque"""
-    def __init__(self, width=5, height=4):
-        self.fig = Figure(figsize=(width, height))
-        self.axes_force = self.fig.add_subplot(121, projection='3d')
-        self.axes_torque = self.fig.add_subplot(122, projection='3d')
-        
-        # Set up axes once
-        force_max = 12
-        torque_max = 2
-        
-        # Force plot setup
-        self.axes_force.set_xlim([-force_max, force_max])
-        self.axes_force.set_ylim([-force_max, force_max])
-        self.axes_force.set_zlim([-force_max, force_max])
-        self.axes_force.set_title('Current Force (N)')
-        self.axes_force.grid(False)
-        self.axes_force.set_axis_off()
-        
-        # Torque plot setup
-        self.axes_torque.set_xlim([-torque_max, torque_max])
-        self.axes_torque.set_ylim([-torque_max, torque_max])
-        self.axes_torque.set_zlim([-torque_max, torque_max])
-        self.axes_torque.set_title('Current Torque (Nm)')
-        #self.axes_torque.set_xlabel('X')
-        #self.axes_torque.set_ylabel('Y')
-        #self.axes_torque.set_zlabel('Z')
-        self.axes_torque.grid(False)
-        self.axes_torque.set_axis_off()
-        
-        # Reference axes (drawn once)
-        from mpl_toolkits.mplot3d import Axes3D
-        self.ref_axes_force = [
-            self.axes_force.quiver(0, 0, 0, force_max*axis_factor , 0, 0, color='salmon', linewidth=axis_linewidth, arrow_length_ratio=0.1),
-            self.axes_force.quiver(0, 0, 0, 0, force_max*axis_factor, 0, color='limegreen', linewidth=axis_linewidth, arrow_length_ratio=0.1),
-            self.axes_force.quiver(0, 0, 0, 0, 0, force_max*axis_factor, color='deepskyblue', linewidth=axis_linewidth, arrow_length_ratio=0.1)
-        ]
-        self.ref_axes_torque = [
-            self.axes_torque.quiver(0, 0, 0, torque_max*axis_factor, 0, 0, color='salmon', linewidth=axis_linewidth, arrow_length_ratio=0.1),
-            self.axes_torque.quiver(0, 0, 0, 0, torque_max*axis_factor, 0, color='limegreen', linewidth=axis_linewidth, arrow_length_ratio=0.1),
-            self.axes_torque.quiver(0, 0, 0, 0, 0, torque_max*axis_factor, color='deepskyblue', linewidth=axis_linewidth, arrow_length_ratio=0.1)
-        ]
-        
-        # Labels for the reference axes
-        #self.axes_torque.text(torque_max*0.22, 0, 0, "X", color='red')
-        #self.axes_torque.text(0, torque_max*0.22, 0, "Y", color='green')
-        #self.axes_torque.text(0, 0, torque_max*0.22, "Z", color='blue')
-        
-        # Initialize force and torque arrows (to be updated later)
-        #self.force_arrow = self.axes_force.quiver(0, 0, 0, 1, 0, 0, color='blue', linewidth=1, arrow_length_ratio=0.1)
-        #self.torque_arrow = self.axes_torque.quiver(0, 0, 0, 1, 0, 0, color='red', linewidth=1, arrow_length_ratio=0.1)
-        
-        # Text elements for magnitudes and components
-        self.force_mag_text = self.axes_force.text2D(0.05, 0.95, "", transform=self.axes_force.transAxes)
-        self.torque_mag_text = self.axes_torque.text2D(0.05, 0.95, "", transform=self.axes_torque.transAxes)
-        self.force_comp_text = self.axes_force.text2D(0.05, 0.90, "", transform=self.axes_force.transAxes, fontsize=8)
-        self.torque_comp_text = self.axes_torque.text2D(0.05, 0.90, "", transform=self.axes_torque.transAxes, fontsize=8)
-        
-        super(MplCurrentCanvas, self).__init__(self.fig)
         self.fig.tight_layout()
 
 class KneeFlexionExperiment(QMainWindow):
@@ -275,10 +220,7 @@ class KneeFlexionExperiment(QMainWindow):
         self.setGeometry(100, 100, 1200, 800)
         
         # Experiment parameters
-        self.flexion_angles = [0, 30, 60, 90, 120]
         self.current_angle_index = 0
-        self.rotation_time = 5  # time to hold knee positions [s]
-        self.lachmann_time = 8  # seconds for Lachmann test
         self.timer = QTimer()
         self.timer.timeout.connect(self.rotation_complete)
         self.seconds_timer = QTimer()
@@ -290,7 +232,6 @@ class KneeFlexionExperiment(QMainWindow):
         self.viz_timer.setInterval(30)  # 100ms for smoother updates
         
         # History for visualization
-        self.history_size = 100
         self.force_history = []
         self.torque_history = []
         self.current_data_index = 0
@@ -314,7 +255,6 @@ class KneeFlexionExperiment(QMainWindow):
         
         # Ensure directory exists for data files
         os.makedirs("recorded_data", exist_ok=True)
-
 
     def create_arrow(self, start_point, end_point, color=(1,0,0,1), arrow_size=15.0, shaft_width=2.0):
         """Create a 3D arrow from start_point to end_point"""
@@ -391,7 +331,6 @@ class KneeFlexionExperiment(QMainWindow):
             # If arrow head creation fails, return only the shaft
             return shaft, None
 
-    
     def start_recording(self, test_name):
         """Start recording data for the current test"""
         self.recording = True
@@ -409,7 +348,7 @@ class KneeFlexionExperiment(QMainWindow):
         
         # Create a filename with timestamp, angle, and test type
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        angle = self.flexion_angles[self.current_angle_index]
+        angle = constants.FLEXION_ANGLES[self.current_angle_index]
         filename = f"recorded_data/{timestamp}_{angle}deg_{self.current_test_name}.txt"
         
         # Write data to file
@@ -421,7 +360,6 @@ class KneeFlexionExperiment(QMainWindow):
         print(f"Saved {len(self.current_recording_data)} data points to {filename}")
         self.current_recording_data = []
 
-    
     def load_force_torque_data(self):
         
         """Load force and torque data from the txt file."""
@@ -458,11 +396,11 @@ class KneeFlexionExperiment(QMainWindow):
                 self.forces[i] = self.forces[i - 1] + delta
                 self.forces[i] = np.clip(self.forces[i], -13, 13)
             self.torques = np.zeros((200,3))
-            self.torques[0] = np.random.uniform(-1.5, 1.5, size=3)
+            self.torques[0] = np.random.uniform(-2.5, 2.5, size=3)
             for i in range(1, 200):
                 delta = np.random.uniform(-0.2, 0.2, size=3)
                 self.torques[i] = self.torques[i - 1] + delta
-                self.torques[i] = np.clip(self.torques[i], -1.5, 1.5)
+                self.torques[i] = np.clip(self.torques[i], -2.5, 2.5)
             print("Using random dummy data instead.")
 
         except Exception as e:
@@ -501,10 +439,9 @@ class KneeFlexionExperiment(QMainWindow):
         self.rotation_progress_label = QLabel("Please Flex the knee to the desired flexion angle, then hold the desired positions for the shown amount of time")
         self.rotation_progress_label.setAlignment(Qt.AlignCenter)
         rotation_progress_layout.addWidget(self.rotation_progress_label)
-        
         self.rotation_progress = QProgressBar()
-        self.rotation_progress.setRange(0, self.rotation_time)
-        self.rotation_progress.setValue(self.rotation_time)
+        self.rotation_progress.setRange(0, constants.HOLD_TIME)
+        self.rotation_progress.setValue(constants.HOLD_TIME)
         self.rotation_progress.setTextVisible(True)
         self.rotation_progress.setFixedHeight(60)
         self.rotation_progress.setFormat("%v seconds remaining")
@@ -527,9 +464,9 @@ class KneeFlexionExperiment(QMainWindow):
         self.tab3 = QWidget()
          
         # Add tabs to the tab widget
-        self.tabs.addTab(self.tab1, "Current Data")
-        self.tabs.addTab(self.tab2, "Current + Previous Data")
-        self.tabs.addTab(self.tab3, "bone viz")
+        self.tabs.addTab(self.tab1, "current data")
+        self.tabs.addTab(self.tab2, "current + previous data")
+        self.tabs.addTab(self.tab3, "bone visualization")
 
         # first tab
         tab1_layout = QVBoxLayout()
@@ -539,7 +476,7 @@ class KneeFlexionExperiment(QMainWindow):
         viz_label_1.setFont(QFont("Arial", 12, QFont.Bold))
         tab1_layout.addWidget(viz_label_1)
         # Create matplotlib visualization
-        self.canvas_current = MplCurrentCanvas(width=4, height=4)
+        self.canvas_current = MplCanvas(width=4, height=8, mode="current")
         tab1_layout.addWidget(self.canvas_current)
         self.tab1.setLayout(tab1_layout)
 
@@ -551,7 +488,7 @@ class KneeFlexionExperiment(QMainWindow):
         viz_label_2.setFont(QFont("Arial", 12, QFont.Bold))
         tab2_layout.addWidget(viz_label_2)
         # Create matplotlib visualization
-        self.canvas_history = MplCanvas(width=4, height=4)
+        self.canvas_history = MplCanvas(width=4, height=8, mode="history")
         tab2_layout.addWidget(self.canvas_history)
         self.tab2.setLayout(tab2_layout)
         
@@ -562,11 +499,9 @@ class KneeFlexionExperiment(QMainWindow):
         self.gl_view.setCameraPosition(distance=900, elevation=30, azimuth=-55)
         self.gl_view.setMinimumHeight(400)
         # Add axes for reference
-        #self.axes = gl.GLAxisItem() #random colors
-        #self.axes.setSize(100, 100, 100)
         self.axes = ColoredGLAxisItem(size=(100, 100, 100)) #defined colors
         self.gl_view.addItem(self.axes)
-        # Separate buttons for loading bones
+        # buttons for loading bones
         bone_load_layout = QHBoxLayout()
         self.load_femur_button = QPushButton("Load Femur")
         self.load_femur_button.clicked.connect(self.load_femur)
@@ -579,27 +514,21 @@ class KneeFlexionExperiment(QMainWindow):
          # Add force visualization objects
         self.force_arrow_shaft = None
         self.force_arrow_head = None
-        
         # Connect tab change signal
         self.tabs.currentChanged.connect(self.on_tab_changed)
         tab3_layout.addWidget(self.gl_view)
         tab3_layout.addLayout(bone_load_layout)
         self.tab3.setLayout(tab3_layout)
-
         # Timer for bone animation updates
         self.bone_timer = QTimer()
         self.bone_timer.timeout.connect(self.update_bones)
-        self.bone_timer.setInterval(25)  # 50ms for 20 fps
-        
+        self.bone_timer.setInterval(25)  # 25ms for 40 fps
         # Initialize bone data generator
         self.bone_data_generator = BoneDataGenerator()
-        
         # Add a toggle for automatic bone movement
         self.auto_bone_movement = QPushButton("Start Bone Animation")
         self.auto_bone_movement.setCheckable(True)
         self.auto_bone_movement.clicked.connect(self.toggle_bone_animation)
-        
-        # Add this button to your UI, for example in tab3_layout
         tab3_layout.addWidget(self.auto_bone_movement)
 
         left_layout.addWidget(self.tabs)
@@ -614,56 +543,55 @@ class KneeFlexionExperiment(QMainWindow):
         # Start Experiment Button
         self.start_button = QPushButton("Start Experiment")
         self.start_button.clicked.connect(self.start_experiment)
-        self.start_button.setFixedHeight(60)
+        self.start_button.setFixedHeight(constants.BUTTON_HEIGHT)
         
         # Next Angle Button
         self.next_button = QPushButton("Next Angle")
         self.next_button.clicked.connect(self.next_angle)
         self.next_button.setEnabled(False)
-        self.next_button.setFixedHeight(60)
+        self.next_button.setFixedHeight(constants.BUTTON_HEIGHT)
 
         # Next Angle Label
         self.next_label = QLabel("test1")
         font = self.next_label.font()
         font.setPointSize(12)
         self.next_label.setFont(font)
-        self.next_label.setAlignment(Qt.AlignTop)
 
         # Rotate Button
         self.rotate_button = QPushButton("Hold Flexion for 5 s")
         self.rotate_button.clicked.connect(self.start_rotation)
         self.rotate_button.setEnabled(False)
-        self.rotate_button.setFixedHeight(60)
+        self.rotate_button.setFixedHeight(constants.BUTTON_HEIGHT)
 
         # Varus Button
         self.varus_button = QPushButton("Apply Varus Load for 5 s")
         self.varus_button.clicked.connect(self.start_varus)
         self.varus_button.setEnabled(False)
-        self.varus_button.setFixedHeight(60)
+        self.varus_button.setFixedHeight(constants.BUTTON_HEIGHT)
 
         # Valgus Button
         self.valgus_button = QPushButton("Apply Valgus Load for 5 s")
         self.valgus_button.clicked.connect(self.start_valgus)
         self.valgus_button.setEnabled(False)
-        self.valgus_button.setFixedHeight(60)
+        self.valgus_button.setFixedHeight(constants.BUTTON_HEIGHT)
 
         # IR Button
         self.internal_rot_button = QPushButton("Rotate Tibia internally for 5 s")
         self.internal_rot_button.clicked.connect(self.start_internal_rot)
         self.internal_rot_button.setEnabled(False)
-        self.internal_rot_button.setFixedHeight(60)
+        self.internal_rot_button.setFixedHeight(constants.BUTTON_HEIGHT)
 
         # ER Button
         self.external_rot_button = QPushButton("Rotate Tibia externally for 5 s")
         self.external_rot_button.clicked.connect(self.start_external_rot)
         self.external_rot_button.setEnabled(False)
-        self.external_rot_button.setFixedHeight(60)
+        self.external_rot_button.setFixedHeight(constants.BUTTON_HEIGHT)
 
         # Lachmann Test Button - New addition
         self.lachmann_button = QPushButton("Perform Lachmann Test for 8 s")
         self.lachmann_button.clicked.connect(self.start_lachmann)
         self.lachmann_button.setEnabled(False)
-        self.lachmann_button.setFixedHeight(60)
+        self.lachmann_button.setFixedHeight(constants.BUTTON_HEIGHT)
 
         record_data_label = QLabel("Record Data")
         record_data_label.setAlignment(Qt.AlignCenter)
@@ -674,8 +602,8 @@ class KneeFlexionExperiment(QMainWindow):
         self.image_frame.setMinimumSize(300, 250)
         image_layout = QVBoxLayout()
         self.image_label = QLabel()
-        self.image_label.setAlignment(Qt.AlignCenter)
-        image_layout.addWidget(self.image_label)
+        #self.image_label.setAlignment(Qt.AlignCenter)
+        image_layout.addWidget(self.image_label, alignment=Qt.AlignHCenter | Qt.AlignTop)
         self.image_frame.setLayout(image_layout)
         
         # Layout arrangement
@@ -685,14 +613,14 @@ class KneeFlexionExperiment(QMainWindow):
 
         right_layout.addLayout(subsub_layout, 0, 0)
         right_layout.addWidget(self.next_label, 0, 1)
-        right_layout.addWidget(self.image_frame, 2, 1, 5, 1)
+        right_layout.addWidget(self.image_frame, 1, 1, 5, 1)
         right_layout.addWidget(record_data_label, 1, 0, 2, 1)
         right_layout.addWidget(self.rotate_button, 3, 0)
         right_layout.addWidget(self.varus_button, 4, 0)
         right_layout.addWidget(self.valgus_button, 5, 0)
         right_layout.addWidget(self.internal_rot_button, 6, 0)
         right_layout.addWidget(self.external_rot_button, 7, 0)
-        right_layout.addWidget(self.lachmann_button, 8, 0)  # Add the Lachmann test button
+        right_layout.addWidget(self.lachmann_button, 8, 0)
         
         right_widget.setLayout(right_layout)
         bottom_splitter.addWidget(right_widget)
@@ -705,17 +633,14 @@ class KneeFlexionExperiment(QMainWindow):
         overall_progress_label = QLabel("Overall Experiment Progress:")
         overall_progress_label.setAlignment(Qt.AlignBottom)
         overall_progress_layout.addWidget(overall_progress_label)
-        
         self.overall_progress = QProgressBar()
-        self.overall_progress.setRange(0, len(self.flexion_angles))
+        self.overall_progress.setRange(0, len(constants.FLEXION_ANGLES))
         self.overall_progress.setValue(0)
         self.overall_progress.setTextVisible(True)
         self.overall_progress.setFixedHeight(60)
         self.overall_progress.setFormat("%v/%m angles completed")
-        
-        # Set green color for the overall progress bar
         self.overall_progress.setStyleSheet("QProgressBar {border: 1px solid grey; border-radius: 3px; text-align: center;}"
-                                           "QProgressBar::chunk {background-color: #4CAF50; width: 10px;}")
+                                           "QProgressBar::chunk {background-color: #4CAF50; width: 10px;}") # Set color for overall progress bar
         overall_progress_layout.addWidget(self.overall_progress)
         main_layout.addLayout(overall_progress_layout, 3, 0, 1, 2)
         
@@ -770,27 +695,8 @@ class KneeFlexionExperiment(QMainWindow):
             self.update_bone_forces(self.current_data_index)
 
     def update_femur_with_data(self, position, quaternion):
-        # Don't remove and recreate mesh - just update its transformation
-        
-        # Convert quaternion to rotation matrix
-        q = np.array(quaternion)
-        q = q / np.sqrt(np.sum(q * q))
-        w, x, y, z = q
-        
-        # Create rotation matrix
-        R = np.array([
-            [1 - 2*y*y - 2*z*z, 2*x*y - 2*w*z, 2*x*z + 2*w*y, 0],
-            [2*x*y + 2*w*z, 1 - 2*x*x - 2*z*z, 2*y*z - 2*w*x, 0],
-            [2*x*z - 2*w*y, 2*y*z + 2*w*x, 1 - 2*x*x - 2*y*y, 0],
-            [0, 0, 0, 1]
-        ])
-        
-        # Apply translation
-        T = np.eye(4)
-        T[0:3, 3] = position
-        
-        # Apply combined transform
-        transform = np.dot(T, R)
+        # Get 4x4 transformation matrix
+        transform = quaternion_to_transform_matrix(quaternion, position)
         
         # Update the mesh transformation
         self.femur_mesh.setTransform(transform)
@@ -798,22 +704,12 @@ class KneeFlexionExperiment(QMainWindow):
     def update_tibia_with_data(self, position, quaternion):
         pivot_point = np.array([100, 0, 0])  # Define the specific pivot point relative to the tibia's local coordinates
         
-        # Convert quaternion to rotation matrix
-        q = np.array(quaternion)
-        q = q / np.sqrt(np.sum(q * q))
-        w, x, y, z = q
-        
-        # Create rotation matrix
-        R = np.array([
-            [1 - 2*y*y - 2*z*z, 2*x*y - 2*w*z, 2*x*z + 2*w*y, 0],
-            [2*x*y + 2*w*z, 1 - 2*x*x - 2*z*z, 2*y*z - 2*w*x, 0],
-            [2*x*z - 2*w*y, 2*y*z + 2*w*x, 1 - 2*x*x - 2*y*y, 0],
-            [0, 0, 0, 1]
-        ])
+        # Get transformation matrix with rotation only, no translation
+        R_matrix = quaternion_to_transform_matrix(quaternion)
         
         # Create translation matrices
         T_to_origin = np.eye(4)
-        T_to_origin[0:3, 3] = -pivot_point  # Move pivot point to origin
+        T_to_origin[0:3, 3] = -pivot_point  # Move pivot point to origin 
         
         T_from_origin = np.eye(4)
         T_from_origin[0:3, 3] = pivot_point  # Move back from origin
@@ -822,7 +718,7 @@ class KneeFlexionExperiment(QMainWindow):
         T_position[0:3, 3] = position  # Final position
         
         # Apply combined transform: translate to origin, rotate, translate back, then to final position
-        transform = np.dot(T_position, np.dot(T_from_origin, np.dot(R, T_to_origin)))
+        transform = np.dot(T_position, np.dot(T_from_origin, np.dot(R_matrix, T_to_origin)))
         
         # Apply the transform to the mesh
         self.tibia_mesh.setTransform(transform)
@@ -847,7 +743,7 @@ class KneeFlexionExperiment(QMainWindow):
                 self.torque_history.append(torque)
                 
                 # Keep history to specified size
-                if len(self.force_history) > self.history_size:
+                if len(self.force_history) > constants.HISTORY_SIZE:
                     self.force_history.pop(0)
                     self.torque_history.pop(0)
                     
@@ -881,39 +777,29 @@ class KneeFlexionExperiment(QMainWindow):
                 
                 self.current_recording_data.append(data_point)
         
-
-    
     def update_visualization(self, data_index=0):
-        """Update the appropriate visualization based on current tab."""
-        # Make sure we have data
-        if len(self.forces) == 0 or len(self.torques) == 0:
+        """Update only the active visualization tab"""
+        current_tab = self.tabs.currentIndex()
+        
+        if not self.experiment_running or len(self.forces) == 0:
             return
             
-        # Get current data point
         idx = data_index % len(self.forces)
         force = self.forces[idx].copy()
         torque = self.torques[idx].copy()
         
-        # Check which tab is currently active
-        current_tab = self.tabs.currentIndex()
+        update_methods = {
+            0: self.update_current_visualization,
+            1: self.update_history_visualization,
+            2: self.update_bone_forces
+        }
         
-        if current_tab == 0:  # Current Data tab
-            self.update_current_visualization(force, torque)
-        elif current_tab == 1:  # History tab
-            # Add to history
-            self.force_history.append(force)
-            self.torque_history.append(torque)
-            
-            # Keep history to specified size
-            if len(self.force_history) > self.history_size:
-                self.force_history.pop(0)
-                self.torque_history.pop(0)
-                
-            self.update_history_visualization()
-        elif current_tab == 2:  # Bone visualization tab
-            self.update_bone_forces(data_index)
+        if current_tab in update_methods:
+            if current_tab == 1:
+                update_methods[current_tab]()
+            else:
+                update_methods[current_tab](force, torque)
 
-        
     def update_current_visualization(self, force, torque):
         """Update the force/torque visualization with only the current data."""
         # Force arrow
@@ -951,10 +837,10 @@ class KneeFlexionExperiment(QMainWindow):
             )
         
         # Update text elements
-        self.canvas_current.force_mag_text.set_text(f"Force Mag: {force_mag:.2f}N")
-        self.canvas_current.torque_mag_text.set_text(f"Torque Mag: {torque_mag:.2f}Nm")
-        self.canvas_current.force_comp_text.set_text(f"Fx: {force[0]:.2f}, Fy: {force[1]:.2f}, Fz: {force[2]:.2f}")
-        self.canvas_current.torque_comp_text.set_text(f"Tx: {torque[0]:.2f}, Ty: {torque[1]:.2f}, Tz: {torque[2]:.2f}")
+        self.canvas_current.force_mag_text.set_text(f"Current Force: {round(force_mag)}N")
+        self.canvas_current.torque_mag_text.set_text(f"Current Torque: {round(torque_mag)}Nm")
+        self.canvas_current.force_comp_text.set_text(f"Fx: {round(force[0])}, Fy: {round(force[1])}, Fz: {round(force[2])}")
+        self.canvas_current.torque_comp_text.set_text(f"Tx: {round(torque[0])}, Ty: {round(torque[1])}, Tz: {round(torque[2])}")
         
         # Redraw the canvas
         self.canvas_current.draw()
@@ -984,13 +870,6 @@ class KneeFlexionExperiment(QMainWindow):
             # Plot history with color gradient (older = more transparent)
             cmap_force = plt.get_cmap('Blues')
             cmap_torque = plt.get_cmap('PuRd')
-            
-            # Calculate max magnitudes for scaling
-            force_mags = np.sqrt(np.sum(np.array(self.force_history)**2, axis=1))
-            torque_mags = np.sqrt(np.sum(np.array(self.torque_history)**2, axis=1))
-            
-            max_force_mag = np.max(force_mags) if len(force_mags) > 0 else 1
-            max_torque_mag = np.max(torque_mags) if len(torque_mags) > 0 else 1
             
             # Draw all arrows in history
             for i, (hist_force, hist_torque) in enumerate(zip(self.force_history, self.torque_history)):
@@ -1114,25 +993,23 @@ class KneeFlexionExperiment(QMainWindow):
         # Display magnitudes of the current force/torque
         current_force = self.force_history[-1]
         current_torque = self.torque_history[-1]
-        
         force_mag = np.sqrt(np.sum(current_force**2))
         torque_mag = np.sqrt(np.sum(current_torque**2))
         
-        self.canvas_history.force_mag_text.set_text(f"Force Mag: {force_mag:.2f}N")
-        self.canvas_history.torque_mag_text.set_text(f"Torque Mag: {torque_mag:.2f}Nm")
+        self.canvas_history.force_mag_text.set_text(f"Force Mag: {round(force_mag)}N")
+        self.canvas_history.torque_mag_text.set_text(f"Torque Mag: {round(torque_mag)}Nm")
         self.canvas_history.force_comp_text.set_text(
-            f"Fx: {current_force[0]:.2f}, Fy: {current_force[1]:.2f}, Fz: {current_force[2]:.2f}"
+            f"Fx: {round(current_force[0])}, Fy: {round(current_force[1])}, Fz: {round(current_force[2])}"
         )
         self.canvas_history.torque_comp_text.set_text(
-            f"Tx: {current_torque[0]:.2f}, Ty: {current_torque[1]:.2f}, Tz: {current_torque[2]:.2f}"
+            f"Tx: {round(current_torque[0])}, Ty: {round(current_torque[1])}, Tz: {round(current_torque[2])}"
         )
         
         # Redraw the canvas
         self.canvas_history.draw()
 
-        
     def update_display(self):
-        current_angle = self.flexion_angles[self.current_angle_index]
+        current_angle = constants.FLEXION_ANGLES[self.current_angle_index]
         self.next_label.setText(f"Please flex knee to {current_angle} degrees")
         self.next_label.setAlignment(Qt.AlignCenter)
         # Update overall progress
@@ -1150,28 +1027,9 @@ class KneeFlexionExperiment(QMainWindow):
         except Exception as e:
             self.image_label.setText(f"Error loading image: {str(e)}")
 
-    
-    def reset_buttons_and_labels(self):
-        # Disable all buttons
-        self.start_button.setEnabled(True)
-        self.next_button.setEnabled(False)
-        self.rotate_button.setEnabled(False)
-        self.varus_button.setEnabled(False)
-        self.valgus_button.setEnabled(False)
-        self.internal_rot_button.setEnabled(False)
-        self.external_rot_button.setEnabled(False)
-        
-        # Stop visualization timer
-        if self.viz_timer.isActive():
-            self.viz_timer.stop()
-            
-        # Reset experiment running flag
-        self.experiment_running = False
-
-
     def update_bone_forces(self, data_index=0):
         """Update the force/torque visualization in 3D bone view"""
-        # Skip if we're not on the bone visualization tab
+        # Skip if not on the bone visualization tab
         if self.tabs.currentIndex() != 2:
             return
             
@@ -1219,23 +1077,21 @@ class KneeFlexionExperiment(QMainWindow):
         # Return the origin point
         return base_position + anatomical_offset
 
-
     def get_tibia_center(self):
         """Get the current center of the tibia for attaching forces"""
         return self.bone_data_generator.tibia_position
            
-    
     def start_experiment(self):
         self.current_angle_index = 0
-        self.current_angle = self.flexion_angles[self.current_angle_index]
+        self.current_angle = constants.FLEXION_ANGLES[self.current_angle_index]
         self.overall_progress.setValue(0)
         self.next_label.setText(f"Please flex knee to {self.current_angle} degrees")
         self.rotation_progress_label.show()
         self.rotation_progress.show()
 
         # Reset progress bar range to match rotation time (5 seconds)
-        self.rotation_progress.setRange(0, self.rotation_time)
-        self.rotation_progress.setValue(self.rotation_time)
+        self.rotation_progress.setRange(0, constants.HOLD_TIME)
+        self.rotation_progress.setValue(constants.HOLD_TIME)
         self.rotation_progress.setFormat("%v seconds remaining")
     
         # Reset current test type
@@ -1251,8 +1107,7 @@ class KneeFlexionExperiment(QMainWindow):
             if pixmap.isNull():
                 self.image_label.setText(f"Image for {self.current_angle}° not found")
             else:
-                # Scale the image to fit the frame while maintaining aspect ratio
-                pixmap = pixmap.scaled(self.image_frame.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                pixmap = pixmap.scaled(self.image_frame.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation) # Scale the image 
                 self.image_label.setPixmap(pixmap)
         except Exception as e:
             self.image_label.setText(f"Error loading image: {str(e)}")
@@ -1261,11 +1116,9 @@ class KneeFlexionExperiment(QMainWindow):
         self.experiment_running = True
         
         # Enable only needed buttons
-        self.start_button.setEnabled(False)
         self.next_label.show()
-        self.next_button.setEnabled(False)
+        self.start_button.setEnabled(False)
         self.rotate_button.setEnabled(True)
-        self.lachmann_button.setEnabled(False)
         
         # Start visualization timer immediately and keep it running throughout the experiment
         if not self.viz_timer.isActive():
@@ -1280,98 +1133,71 @@ class KneeFlexionExperiment(QMainWindow):
     def next_angle(self):
         self.current_angle_index += 1
         self.update_display()
-        
-        # Reset button states
         self.next_button.setEnabled(False)
         self.rotate_button.setEnabled(True)
-        self.varus_button.setEnabled(False)
-        self.valgus_button.setEnabled(False)
-        self.internal_rot_button.setEnabled(False)
-        self.external_rot_button.setEnabled(False)
-        self.lachmann_button.setEnabled(False)
 
     def start_rotation(self):
         self.rotate_button.setEnabled(False) # Disable rotate button
-        self.varus_button.setEnabled(True) # Enable varus button
-        self.remaining_time = self.rotation_time
+        self.varus_button.setEnabled(True) 
+        self.remaining_time = constants.HOLD_TIME
         self.rotation_progress.setValue(self.remaining_time)
         self.seconds_timer.start(1000)  # Update every second
         self.next_button.setEnabled(False)
-        # Start recording data with test name
-        self.start_recording(f"neutral")
+        self.start_recording(f"neutral") # Start recording data
         
     def start_varus(self):
         self.varus_button.setEnabled(False) # Disable varus button
-        self.remaining_time = self.rotation_time
+        self.remaining_time = constants.HOLD_TIME
         self.rotation_progress.setValue(self.remaining_time)
-        self.seconds_timer.start(1000)  # Update every second
+        self.seconds_timer.start(1000)  
         self.valgus_button.setEnabled(True)
-        # Start recording data with test name
-        self.start_recording(f"var")
+        self.start_recording(f"var") # Start recording data
 
     def start_valgus(self):
         self.valgus_button.setEnabled(False) # Disable valgus button
-        self.remaining_time = self.rotation_time
-        self.rotation_progress.setValue(self.remaining_time)
-        self.seconds_timer.start(1000)  # Update every second
+        self.remaining_time = constants.HOLD_TIME
+        self.rotation_progress.setValue(constants.HOLD_TIME)
+        self.seconds_timer.start(1000)  
         self.internal_rot_button.setEnabled(True)
-        # Start recording data with test name
-        self.start_recording(f"val")
+        self.start_recording(f"val") # Start recording data
 
     def start_internal_rot(self):
         self.internal_rot_button.setEnabled(False) # Disable internal rotation button
-        self.remaining_time = self.rotation_time
+        self.remaining_time = constants.HOLD_TIME
         self.rotation_progress.setValue(self.remaining_time)
         self.seconds_timer.start(1000)  # Update every second
         self.external_rot_button.setEnabled(True)
-        # Start recording data with test name
-        self.start_recording(f"int")
+        self.start_recording(f"int")# Start recording data
 
     def start_external_rot(self):
         self.external_rot_button.setEnabled(False) # Disable external rotation button
-        self.remaining_time = self.rotation_time
+        self.remaining_time = constants.HOLD_TIME
         self.rotation_progress.setValue(self.remaining_time)
         self.seconds_timer.start(1000)  # Update every second
-        # Start recording data with test name
-        self.start_recording(f"ext")
+        self.start_recording(f"ext") # Start recording data
 
         # Enable appropriate next button based on where we are in the test
-        if self.current_angle_index >= (len(self.flexion_angles) - 1):
-            # We're at the last angle, enable Lachmann test button
-            self.lachmann_button.setEnabled(True)
+        if self.current_angle_index >= (len(constants.FLEXION_ANGLES) - 1):
+            self.lachmann_button.setEnabled(True) # last angle, enable Lachmann test button
             self.next_button.setEnabled(False)
         else:
-            # We're not at the last angle, enable next button
-            self.next_button.setEnabled(True)
+            self.next_button.setEnabled(True) # not last angle: enable next button
             self.lachmann_button.setEnabled(False)
 
-
-    def start_lachmann(self):  # Fixed spelling from previous question
-        # Disable Lachmann button
+    def start_lachmann(self):  
         self.lachmann_button.setEnabled(False)
         self.image_label.clear()
         self.next_label.hide()
         
-        # Make sure progress bar is visible
-        self.rotation_progress.show()
         self.rotation_progress_label.setText("Performing Lachmann Test")
         self.rotation_progress_label.show()
-        
-        # Set timer for Lachmann test (10s)
-        self.remaining_time = self.lachmann_time
+        self.remaining_time = constants.LACHMANN_TIME # Set timer for Lachmann test
         self.rotation_progress.setValue(self.remaining_time)
-        self.rotation_progress.setRange(0, self.lachmann_time)  # Update range for 10s
+        self.rotation_progress.setRange(0, constants.LACHMANN_TIME)
         self.rotation_progress.setFormat("%v seconds remaining")
-        
-        # Start the timer
-        self.seconds_timer.start(1000)  # Update every second
-
-        # Start recording data with test name
-        self.start_recording("lachmann")
-        
-        # Set flag to indicate we're in Lachmann test
-        self.current_test_type = 'lachmann'
-
+        self.seconds_timer.start(1000)  # Start the timer and update every second
+        self.start_recording("lachmann") # Start recording data
+        self.current_test_type = 'lachmann' # Set flag to indicate we're in Lachmann test
     
     def update_seconds_progress(self):
         self.remaining_time -= 1
@@ -1380,7 +1206,6 @@ class KneeFlexionExperiment(QMainWindow):
         if self.remaining_time <= 0:
             self.seconds_timer.stop()
             self.rotation_complete()
-    
     
     def rotation_complete(self):
         self.timer.stop()
@@ -1396,21 +1221,11 @@ class KneeFlexionExperiment(QMainWindow):
             # Reset the flag
             self.current_test_type = 'none'
         
-            # Now we can show experiment complete
-            self.instruction_label.setText("Experiment Complete!")
-            self.overall_progress.setValue(len(self.flexion_angles))
+            #self.instruction_label.setText("Experiment Complete!")
+            self.overall_progress.setValue(len(constants.FLEXION_ANGLES))
             self.image_label.clear()
-        
-            # Disable all buttons except start
-            self.start_button.setEnabled(True)
-            self.next_button.setEnabled(False)
-            self.rotate_button.setEnabled(False)
-            self.varus_button.setEnabled(False)
-            self.valgus_button.setEnabled(False)
-            self.internal_rot_button.setEnabled(False)
-            self.external_rot_button.setEnabled(False)
-            self.lachmann_button.setEnabled(False)
-        
+            self.start_button.setEnabled(True) # Enable start button again
+
             # Hide instructions
             self.next_label.hide()
             self.rotation_progress_label.hide()
@@ -1422,9 +1237,9 @@ class KneeFlexionExperiment(QMainWindow):
         
             # Reset experiment running flag
             self.experiment_running = False
-        elif self.current_angle_index >= (len(self.flexion_angles) - 1) and self.external_rot_button.isEnabled() == False:
-            self.next_button.setEnabled(False) # End of regular experiment - enable Lachmann test
 
+        elif self.current_angle_index >= (len(constants.FLEXION_ANGLES) - 1) and self.external_rot_button.isEnabled() == False:
+            self.next_button.setEnabled(False) # End of regular experiment - enable Lachmann test
 
     def load_femur(self):
         try:
@@ -1480,6 +1295,7 @@ class KneeFlexionExperiment(QMainWindow):
             print(f"Error loading tibia: {e}")
             self.load_tibia_button.setText("Error")
         
+    
 
 if __name__ == "__main__":
     try:  
