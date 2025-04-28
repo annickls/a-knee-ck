@@ -1,4 +1,4 @@
-import sys
+ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QPushButton,
                             QVBoxLayout, QHBoxLayout, QWidget, QFrame, 
                             QProgressBar, QGridLayout, QSplitter, QTabWidget, QSlider, QGroupBox)
 from PyQt5.QtGui import QPixmap, QFont
-from PyQt5.QtCore import Qt, QTimer, QFileSystemWatcher
+from PyQt5.QtCore import Qt, QTimer
 import matplotlib.cm as cm
 import pyqtgraph.opengl as gl
 from stl import mesh
@@ -22,103 +22,101 @@ import constants
 import pandas as pd
 import numpy as np
 import csv
-import os.path
 
-class RealtimeCSVReader:
+class CSVDataReader:
     def __init__(self, filename=None):
-        self.filename = filename
-        self.last_modified_time = 0
-        self.last_line = ""
         self.data = None
-        self.columns = [
-            'timestamp', 
-            'force_x', 'force_y', 'force_z', 
-            'torque_x', 'torque_y', 'torque_z',
-            'tibia_x', 'tibia_y', 'tibia_z', 
-            'tibia_qx', 'tibia_qy', 'tibia_qz', 'tibia_qw',
-            'femur_x', 'femur_y', 'femur_z', 
-            'femur_qx', 'femur_qy', 'femur_qz', 'femur_qw',
-            'knee_x', 'knee_y', 'knee_z', 
-            'knee_qx', 'knee_qy', 'knee_qz', 'knee_qw'
-        ]
+        self.current_index = 0
+        self.total_frames = 0
         
         if filename:
-            self.init_file(filename)
+            self.load_data(filename)
     
-    def init_file(self, filename):
-        """Initialize the file for monitoring"""
-        self.filename = filename
-        
-        if os.path.exists(filename):
-            self.last_modified_time = os.path.getmtime(filename)
-            print(f"Monitoring file: {filename}")
-            return True
-        else:
-            print(f"File not found: {filename}")
-            return False
-            
-    def check_for_updates(self):
-        """Check if the file has been updated"""
-        if not self.filename or not os.path.exists(self.filename):
-            return False
-            
-        current_mtime = os.path.getmtime(self.filename)
-        if current_mtime > self.last_modified_time:
-            self.last_modified_time = current_mtime
-            return True
-        return False
-    
-    def get_latest_data(self):
-        """Read the latest line from the file and parse it"""
-        if not self.filename or not os.path.exists(self.filename):
-            return None
-            
+    def load_data(self, filename):
+        """Load and parse CSV data with the specified format"""
         try:
-            with open(self.filename, 'r') as f:
-                lines = f.readlines()
-                
-            if not lines:
-                return None
-                
-            # Get the last line (most recent data)
-            latest_line = lines[-1].strip()
+            # Read the data using pandas for easier handling
+            # Define the column names based on your format
+            columns = [
+                'timestamp', 
+                'force_x', 'force_y', 'force_z', 
+                'torque_x', 'torque_y', 'torque_z',
+                'tibia_x', 'tibia_y', 'tibia_z', 
+                'tibia_qx', 'tibia_qy', 'tibia_qz', 'tibia_qw',
+                'femur_x', 'femur_y', 'femur_z', 
+                'femur_qx', 'femur_qy', 'femur_qz', 'femur_qw',
+                'knee_x', 'knee_y', 'knee_z', 
+                'knee_qx', 'knee_qy', 'knee_qz', 'knee_qw'
+            ]
             
-            # Check if this line is different from the last one we processed
-            if latest_line == self.last_line:
-                return None
-                
-            self.last_line = latest_line
-                
-            # Parse the line
-            values = latest_line.split()
-            if len(values) < len(self.columns):
-                print(f"Warning: Line has fewer values than expected: {len(values)} vs {len(self.columns)}")
-                return None
-                
-            # Convert values to float
+            # Try pandas first (more robust)
             try:
-                values = [float(v) for v in values[:len(self.columns)]]
-            except ValueError as e:
-                print(f"Error parsing values: {e}")
-                return None
+                self.data = pd.read_csv(filename, delim_whitespace=True, header=None, names=columns)
+                self.total_frames = len(self.data)
+                print(f"Loaded {self.total_frames} frames from {filename}")
+                return True
+            except Exception as e:
+                print(f"Pandas parsing failed: {e}, trying manual CSV parsing...")
                 
-            # Create a dictionary with the data
-            result = {
-                'timestamp': values[0],
-                'force': np.array([values[1], values[2], values[3]]),
-                'torque': np.array([values[4], values[5], values[6]]),
-                'tibia_position': np.array([values[7], values[8], values[9]]),
-                'tibia_quaternion': np.array([values[13], values[10], values[11], values[12]]),  # Reordered to [w,x,y,z]
-                'femur_position': np.array([values[14], values[15], values[16]]),
-                'femur_quaternion': np.array([values[20], values[17], values[18], values[19]]),  # Reordered to [w,x,y,z]
-                'knee_position': np.array([values[21], values[22], values[23]]),
-                'knee_quaternion': np.array([values[27], values[24], values[25], values[26]])    # Reordered to [w,x,y,z]
-            }
-            
-            return result
+                # Fall back to manual CSV parsing if pandas fails
+                with open(filename, 'r') as f:
+                    lines = f.readlines()
+                
+                data_list = []
+                for line in lines:
+                    # Split by whitespace and convert to appropriate types
+                    values = line.strip().split()
+                    if len(values) >= len(columns):
+                        data_list.append([float(v) for v in values[:len(columns)]])
+                
+                # Convert to pandas DataFrame
+                self.data = pd.DataFrame(data_list, columns=columns)
+                self.total_frames = len(self.data)
+                print(f"Loaded {self.total_frames} frames from {filename}")
+                return True
+                
         except Exception as e:
-            print(f"Error reading latest data: {e}")
+            print(f"Error loading CSV data: {e}")
+            return False
+    
+    def get_frame(self, index=None):
+        """Get data for a specific frame, or current frame if no index provided"""
+        if self.data is None or self.total_frames == 0:
             return None
+        
+        if index is None:
+            index = self.current_index
+        
+        # Ensure index is within bounds
+        index = index % self.total_frames
+        
+        # Extract the row at the specified index
+        row = self.data.iloc[index]
+        
+        # Format data according to what your application expects
+        result = {
+            'timestamp': row['timestamp'],
+            'force': np.array([row['force_x'], row['force_y'], row['force_z']]),
+            'torque': np.array([row['torque_x'], row['torque_y'], row['torque_z']]),
+            'tibia_position': np.array([row['tibia_x'], row['tibia_y'], row['tibia_z']]),
+            'tibia_quaternion': np.array([row['tibia_qw'], row['tibia_qx'], row['tibia_qy'], row['tibia_qz']]),
+            'femur_position': np.array([row['femur_x'], row['femur_y'], row['femur_z']]),
+            'femur_quaternion': np.array([row['femur_qw'], row['femur_qx'], row['femur_qy'], row['femur_qz']]),
+            'knee_position': np.array([row['knee_x'], row['knee_y'], row['knee_z']]),
+            'knee_quaternion': np.array([row['knee_qw'], row['knee_qx'], row['knee_qy'], row['knee_qz']])
+        }
+        
+        return result
+    
+    def next_frame(self):
+        """Get the next frame and increment current index"""
+        result = self.get_frame(self.current_index)
+        self.current_index = (self.current_index + 1) % self.total_frames
+        return result
+    
+    def reset(self):
+        """Reset to the first frame"""
+        self.current_index = 0
 
 
 def load_stl_as_mesh(filename):
@@ -170,6 +168,81 @@ def quaternion_to_transform_matrix(quaternion, position=None):
         T[0:3, 3] = position
     
     return T
+
+"""class BoneDataGenerator:
+    def __init__(self):
+        # Fixed femur position and orientation
+        self.femur_position = np.array([0.0, 50.0, 20.0])
+        self.femur_quaternion = np.array([1.0, 0.0, 0.0, 0.0])  # w, x, y, z
+        
+        # Initial tibia position and orientation (will be updated during animation)
+        self.tibia_position = np.array([0.0, 0.0, -100.0])
+        self.tibia_quaternion = np.array([1.0, 0.0, 0.0, 0.0])
+        
+        # Define joint center (pivot point) relative to femur
+        self.joint_center = np.array([-440.0, 70.0, 150.0])
+        
+        # Define rotation axis (medio-lateral axis for flexion/extension)
+        self.rotation_axis = np.array([0.0, 1.0, 0.0])  # Y-axis for flexion/extension
+        
+        # Animation parameters
+        self.time = 0
+        self.freq = 0.2  # Hz
+        self.max_angle = 90  # degrees
+    
+    def update(self, dt):
+        #Update bone positions with tibia rotating around fixed femur
+        self.time += dt
+        
+        # Calculate current flexion angle based on time
+        flexion_angle = self.max_angle * (np.sin(2 * np.pi * self.freq * self.time) + 1) / 2
+        angle_rad = np.radians(flexion_angle)
+        
+        # Calculate rotation quaternion for tibia (around X-axis)
+        sin_half = np.sin(angle_rad/2)
+        cos_half = np.cos(angle_rad/2)
+        
+        # Quaternion for rotation around Y-axis (medio-lateral for flexion/extension)
+        self.tibia_quaternion = np.array([cos_half, 0.0, sin_half, 0.0])  # Y-axis rotation
+        
+        # Offset from joint center when fully extended
+        offset_length = 100.0  # Length of tibia from joint center
+        
+        # Calculate new position based on rotation
+        self.tibia_position = np.array([
+            self.joint_center[0] + offset_length * np.sin(angle_rad),  # X changes with rotation
+            self.joint_center[1],                                       # Y stays aligned with femur
+            self.joint_center[2] - offset_length * np.cos(angle_rad)   # Z changes with rotation
+        ])
+        
+        # Generate forces and torques based on current angle
+        force_magnitude = 5.0 + 8.0 * abs(np.sin(angle_rad))
+        force_dir = np.array([
+            np.sin(angle_rad) * np.sin(self.time * 0.5),
+            np.cos(angle_rad * 0.7),
+            -np.sin(self.time * 0.3)
+        ])
+        force_dir = force_dir / np.linalg.norm(force_dir)  # Normalize
+        force = force_dir * force_magnitude
+        
+        # Torque also changes with angle
+        torque_magnitude = 1.0 + 1.5 * abs(np.cos(angle_rad))
+        torque_dir = np.array([
+            np.sin(self.time * 0.4),
+            np.cos(angle_rad),
+            np.sin(angle_rad * 0.5)
+        ])
+        torque_dir = torque_dir / np.linalg.norm(torque_dir)  # Normalize
+        torque = torque_dir * torque_magnitude
+        
+        return {
+            'femur_position': self.femur_position,
+            'femur_quaternion': self.femur_quaternion,
+            'tibia_position': self.tibia_position,
+            'tibia_quaternion': self.tibia_quaternion,
+            'force': force,
+            'torque': torque
+        }"""
 
 class MplCanvas(FigureCanvas):
     """Matplotlib canvas class for embedding plots in Qt that can display either current or historical force/torque data"""
@@ -261,10 +334,7 @@ class KneeFlexionExperiment(QMainWindow):
         super().__init__()
         
         # Add the CSV data reader
-        self.data_reader = RealtimeCSVReader()
-        # Add a file watcher for real-time updates
-        self.file_watcher = QFileSystemWatcher()
-        self.file_watcher.fileChanged.connect(self.on_file_changed)
+        self.data_reader = CSVDataReader()
 
         # Configuration
         self.setWindowTitle("Knee Test Bench with Force Visualization")
@@ -282,11 +352,6 @@ class KneeFlexionExperiment(QMainWindow):
         self.viz_timer.timeout.connect(self.update_visualization_timer)
         self.viz_timer.setInterval(30)  # 100ms for smoother updates
         
-        # initialize forces and torques
-        self.forces = [0,0,0]
-        self.torques = []       
-
-
         # History for visualization
         self.force_history = []
         self.torque_history = []
@@ -295,6 +360,8 @@ class KneeFlexionExperiment(QMainWindow):
         # Experiment is running flag
         self.experiment_running = False
         
+        # Load force/torque data
+        self.load_force_torque_data()
         
         # Setup UI
         self.setup_ui()
@@ -309,11 +376,6 @@ class KneeFlexionExperiment(QMainWindow):
         
         # Ensure directory exists for data files
         os.makedirs("recorded_data", exist_ok=True)
-
-        # Timer for checking updates (every 100ms)
-        self.update_timer = QTimer()
-        self.update_timer.timeout.connect(self.check_for_csv_updates)
-        self.update_timer.setInterval(100)  # 100ms
 
     def create_arrow(self, start_point, end_point, color=(1,0,0,1), arrow_size=15.0, shaft_width=2.0):
         """Create a 3D arrow from start_point to end_point"""
@@ -419,6 +481,32 @@ class KneeFlexionExperiment(QMainWindow):
         print(f"Saved {len(self.current_recording_data)} data points to {filename}")
         self.current_recording_data = []
 
+    def load_force_torque_data(self):
+        
+        """Initialize force and torque data structures."""
+        try:
+            # Try to load data from file
+            filename = constants.DATA_PREVIOUS_TEST
+            print(f"Attempting to load data from {filename}")
+            self.forces = []
+            self.torques = []
+            
+            with open(filename, 'r') as file:
+                for line in file:
+                    values = [float(val.strip()) for val in line.strip().split(',')]
+                    if len(values) >= 6:
+                        self.forces.append(values[0:3])
+                        self.torques.append(values[3:6])
+            
+            self.forces = np.array(self.forces)
+            self.torques = np.array(self.torques)
+            print(f"Successfully loaded {len(self.forces)} force/torque data points.")
+        except Exception as e:
+            print(f"Error loading force/torque data: {e}")
+            # Just initialize empty arrays - we'll generate data dynamically
+            self.forces = np.zeros((0, 3))
+            self.torques = np.zeros((0, 3))
+            print("Will generate force/torque data dynamically.")
     
     def on_tab_changed(self, index):
         # Update the appropriate visualization for the new tab
@@ -695,47 +783,46 @@ class KneeFlexionExperiment(QMainWindow):
         if self.tabs.currentIndex() != 2:
             return
             
-        # Instead of using bone_data_generator, get data from the CSV reader
-        if self.data_reader:
-            data = self.data_reader.get_latest_data()
-            if data:  # Check if we got valid data
-                # Update bone positions/orientations
-                if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
-                    # Update femur
-                    self.update_femur_with_data(
-                        data['femur_position'], 
-                        data['femur_quaternion']
-                    )
-                
-                if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
-                    # Update tibia
-                    self.update_tibia_with_data(
-                        data['tibia_position'], 
-                        data['tibia_quaternion']
-                    )
-                
-                # Update forces and torques if bone animation is active
-                if self.auto_bone_movement.isChecked():
-                    # Get current force/torque and update the visualization
-                    force = data['force']
-                    torque = data['torque']
+        # Get updated bone position, quaternion, force and torque data
+        bone_data = self.bone_data_generator.update(0.02)  # 50ms = 0.02s
+        
+        # Update bone positions/orientations
+        if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
+            # Update femur
+            self.update_femur_with_data(
+                bone_data['femur_position'], 
+                bone_data['femur_quaternion']
+            )
+        
+        if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
+            # Update tibia
+            self.update_tibia_with_data(
+                bone_data['tibia_position'], 
+                bone_data['tibia_quaternion']
+            )
+        
+        # Update forces and torques if bone animation is active
+        if self.auto_bone_movement.isChecked():
+            # Get current force/torque and update the visualization
+            force = bone_data['force']
+            torque = bone_data['torque']
+            
+            # Store current data point
+            if len(self.forces) > 100:  # Keep only last 100 points in memory
+                self.forces = np.vstack([self.forces[1:], force])
+                self.torques = np.vstack([self.torques[1:], torque])
+            else:
+                if len(self.forces) == 0:
+                    self.forces = np.array([force])
+                    self.torques = np.array([torque])
+                else:
+                    self.forces = np.vstack([self.forces, force])
+                    self.torques = np.vstack([self.torques, torque])
                     
-                    # Store current data point
-                    if len(self.forces) > 100:  # Keep only last 100 points in memory
-                        self.forces = np.vstack([self.forces[1:], force])
-                        self.torques = np.vstack([self.torques[1:], torque])
-                    else:
-                        if len(self.forces) == 0:
-                            self.forces = np.array([force])
-                            self.torques = np.array([torque])
-                        else:
-                            self.forces = np.vstack([self.forces, force])
-                            self.torques = np.vstack([self.torques, torque])
-                            
-                    self.current_data_index = len(self.forces) - 1
-                    
-                    # Update force visualization on bone
-                    self.update_bone_forces(self.current_data_index)
+            self.current_data_index = len(self.forces) - 1
+            
+            # Update force visualization on bone
+            self.update_bone_forces(self.current_data_index)
 
     def update_femur_with_data(self, position, quaternion):
         # Get 4x4 transformation matrix
@@ -767,86 +854,87 @@ class KneeFlexionExperiment(QMainWindow):
         self.tibia_mesh.setTransform(transform)
         
     def update_visualization_timer(self):
+        
         """Called by timer to update visualization"""
-        if self.experiment_running and self.data_reader:
-            # Check if the CSV file has been updated
-            if self.data_reader.check_for_updates():
-                # Get the latest data from CSV reader
-                data = self.data_reader.get_latest_data()
+        if self.experiment_running and self.data_reader and self.data_reader.total_frames > 0:
+            # Get bone positions and force/torque data
+            #bone_data = self.bone_data_generator.update(0.03)  # Update with small time step
+            # Get data from CSV reader instead of bone data generator
+            data = self.data_reader.next_frame()
+            
+            # Extract force/torque data
+            force = data['force']
+            torque = data['torque']
+            
+            # Store current data point for visualization
+            if len(self.forces) > 100:  # Keep only last 100 points in memory
+                self.forces = np.vstack([self.forces[1:], force])
+                self.torques = np.vstack([self.torques[1:], torque])
+            else:
+                if len(self.forces) == 0:
+                    self.forces = np.array([force])
+                    self.torques = np.array([torque])
+                else:
+                    self.forces = np.vstack([self.forces, force])
+                    self.torques = np.vstack([self.torques, torque])
+            
+            self.current_data_index = len(self.forces) - 1
+            
+            # Check which tab is currently active and update the relevant visualization
+            current_tab = self.tabs.currentIndex()
+            
+            if current_tab == 0:  # Current Data tab
+                self.update_current_visualization(force, torque)
+            elif current_tab == 1:  # History tab
+                # Add to history
+                self.force_history.append(force)
+                self.torque_history.append(torque)
                 
-                if data:  # Only proceed if we got valid data
-                    # Extract force/torque data
-                    force = data['force']
-                    torque = data['torque']
+                # Keep history to specified size
+                if len(self.force_history) > constants.HISTORY_SIZE:
+                    self.force_history.pop(0)
+                    self.torque_history.pop(0)
                     
-                    # Store current data point for visualization
-                    if len(self.forces) > 100:  # Keep only last 100 points in memory
-                        self.forces = np.vstack([self.forces[1:], force])
-                        self.torques = np.vstack([self.torques[1:], torque])
-                    else:
-                        if len(self.forces) == 0:
-                            self.forces = np.array([force])
-                            self.torques = np.array([torque])
-                        else:
-                            self.forces = np.vstack([self.forces, force])
-                            self.torques = np.vstack([self.torques, torque])
-                    
-                    self.current_data_index = len(self.forces) - 1
-                    
-                    # Check which tab is currently active and update the relevant visualization
-                    current_tab = self.tabs.currentIndex()
-                    
-                    if current_tab == 0:  # Current Data tab
-                        self.update_current_visualization(force, torque)
-                    elif current_tab == 1:  # History tab
-                        # Add to history
-                        self.force_history.append(force)
-                        self.torque_history.append(torque)
-                        
-                        # Keep history to specified size
-                        if len(self.force_history) > constants.HISTORY_SIZE:
-                            self.force_history.pop(0)
-                            self.torque_history.pop(0)
-                            
-                        self.update_history_visualization()
-                    elif current_tab == 2:  # Bone visualization tab
-                        # Update bone positions and orientations
-                        if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
-                            self.update_femur_with_data(
-                                data['femur_position'], 
-                                data['femur_quaternion']
-                            )
-                        
-                        if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
-                            self.update_tibia_with_data(
-                                data['tibia_position'], 
-                                data['tibia_quaternion']
-                            )
-                        
-                        self.update_bone_forces(self.current_data_index)
+                self.update_history_visualization()
+            elif current_tab == 2:  # Bone visualization tab
+                # Update bone positions and orientations
+                if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
+                    self.update_femur_with_data(
+                        data['femur_position'], 
+                        data['femur_quaternion']
+                    )
+                
+                if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
+                    self.update_tibia_with_data(
+                        data['tibia_position'], 
+                        data['tibia_quaternion']
+                    )
+                
+                self.update_bone_forces(self.current_data_index)
 
-                    # Record data if recording is active
-                    if self.recording:
-                        current_time = time.time() - self.recording_start_time
-                        
-                        # Get bone data
-                        femur_pos = data['femur_position']
-                        femur_quat = data['femur_quaternion']
-                        tibia_pos = data['tibia_position']
-                        tibia_quat = data['tibia_quaternion']
-                        
-                        # Combine all data into one record
-                        data_point = [
-                            current_time,
-                            force[0], force[1], force[2],
-                            torque[0], torque[1], torque[2],
-                            femur_pos[0], femur_pos[1], femur_pos[2],
-                            femur_quat[0], femur_quat[1], femur_quat[2], femur_quat[3],
-                            tibia_pos[0], tibia_pos[1], tibia_pos[2],
-                            tibia_quat[0], tibia_quat[1], tibia_quat[2], tibia_quat[3]
-                        ]
-                        
-                        self.current_recording_data.append(data_point)
+            # Record data if recording is active
+            if self.recording:
+                current_time = time.time() - self.recording_start_time
+                
+                # Get bone data
+                femur_pos = data['femur_position']
+                femur_quat = data['femur_quaternion']
+                tibia_pos = data['tibia_position']
+                tibia_quat = data['tibia_quaternion']
+                
+                # Combine all data into one record
+                data_point = [
+                    current_time,
+                    force[0], force[1], force[2],
+                    torque[0], torque[1], torque[2],
+                    femur_pos[0], femur_pos[1], femur_pos[2],
+                    femur_quat[0], femur_quat[1], femur_quat[2], femur_quat[3],
+                    tibia_pos[0], tibia_pos[1], tibia_pos[2],
+                    tibia_quat[0], tibia_quat[1], tibia_quat[2], tibia_quat[3]
+                ]
+                
+                self.current_recording_data.append(data_point)
+                pass
         
     def update_visualization(self, data_index=0):
         """Update only the active visualization tab"""
@@ -1100,21 +1188,13 @@ class KneeFlexionExperiment(QMainWindow):
 
     def update_bone_forces(self, data_index=0):
         """Update the force/torque visualization in 3D bone view"""
-        
-        
         # Skip if not on the bone visualization tab
         if self.tabs.currentIndex() != 2:
             return
             
         # Get current data point
-        if self.forces:
-            idx = data_index % len(self.forces)
-            force = self.forces[idx].copy()
-        else:
-            print("no forces")
-            print(data_index)
-            print (self.forces)
-            print(len(self.forces))
+        idx = data_index % len(self.forces)
+        force = self.forces[idx].copy()
         
         # Scale forces for better visualization
         scale_factor = 20.0
@@ -1159,376 +1239,28 @@ class KneeFlexionExperiment(QMainWindow):
     def get_tibia_center(self):
         """Get the current center of the tibia for attaching forces"""
         return self.bone_data_generator.tibia_position
-           
-    def start_experiment(self):
-        self.current_angle_index = 0
-        self.current_angle = constants.FLEXION_ANGLES[self.current_angle_index]
-        self.overall_progress.setValue(0)
-        self.next_label.setText(f"Please flex knee to {self.current_angle} degrees")
-        self.rotation_progress_label.show()
-        self.rotation_progress.show()
 
-        # Reset progress bar range to match rotation time (5 seconds)
-        self.rotation_progress.setRange(0, constants.HOLD_TIME)
-        self.rotation_progress.setValue(constants.HOLD_TIME)
-        self.rotation_progress.setFormat("%v seconds remaining")
-    
-        # Reset current test type
-        self.current_test_type = 'none'
-        
-        # Reset visualization history
-        self.force_history = []
-        self.torque_history = []
-        self.current_data_index = 0
-        
-        try:
-            pixmap = QPixmap(f"KW{self.current_angle}.jpg")
-            if pixmap.isNull():
-                self.image_label.setText(f"Image for {self.current_angle}° not found")
-            else:
-                pixmap = pixmap.scaled(self.image_frame.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation) # Scale the image 
-                self.image_label.setPixmap(pixmap)
-        except Exception as e:
-            self.image_label.setText(f"Error loading image: {str(e)}")
-        
-        # Set experiment running flag
-        self.experiment_running = True
-        
-        # Enable only needed buttons
-        self.next_label.show()
-        self.start_button.setEnabled(False)
-        self.rotate_button.setEnabled(True)
-        
-        # Start visualization timer immediately and keep it running throughout the experiment
-        if not self.viz_timer.isActive():
-            self.viz_timer.start()
 
-        # Update visualization initially
-        self.update_visualization(0)
-        
-        # Also update bone forces explicitly
-        self.update_bone_forces(0)
-    
-    def next_angle(self):
-        self.current_angle_index += 1
-        self.update_display()
-        self.next_button.setEnabled(False)
-        self.rotate_button.setEnabled(True)
 
-    def start_rotation(self):
-        self.rotate_button.setEnabled(False) # Disable rotate button
-        self.varus_button.setEnabled(True) 
-        self.remaining_time = constants.HOLD_TIME
-        self.rotation_progress.setValue(self.remaining_time)
-        self.seconds_timer.start(1000)  # Update every second
-        self.next_button.setEnabled(False)
-        self.start_recording(f"neutral") # Start recording data
-        
-    def start_varus(self):
-        self.varus_button.setEnabled(False) # Disable varus button
-        self.remaining_time = constants.HOLD_TIME
-        self.rotation_progress.setValue(self.remaining_time)
-        self.seconds_timer.start(1000)  
-        self.valgus_button.setEnabled(True)
-        self.start_recording(f"var") # Start recording data
-
-    def start_valgus(self):
-        self.valgus_button.setEnabled(False) # Disable valgus button
-        self.remaining_time = constants.HOLD_TIME
-        self.rotation_progress.setValue(constants.HOLD_TIME)
-        self.seconds_timer.start(1000)  
-        self.internal_rot_button.setEnabled(True)
-        self.start_recording(f"val") # Start recording data
-
-    def start_internal_rot(self):
-        self.internal_rot_button.setEnabled(False) # Disable internal rotation button
-        self.remaining_time = constants.HOLD_TIME
-        self.rotation_progress.setValue(self.remaining_time)
-        self.seconds_timer.start(1000)  # Update every second
-        self.external_rot_button.setEnabled(True)
-        self.start_recording(f"int")# Start recording data
-
-    def start_external_rot(self):
-        self.external_rot_button.setEnabled(False) # Disable external rotation button
-        self.remaining_time = constants.HOLD_TIME
-        self.rotation_progress.setValue(self.remaining_time)
-        self.seconds_timer.start(1000)  # Update every second
-        self.start_recording(f"ext") # Start recording data
-
-        # Enable appropriate next button based on where we are in the test
-        if self.current_angle_index >= (len(constants.FLEXION_ANGLES) - 1):
-            self.lachmann_button.setEnabled(True) # last angle, enable Lachmann test button
-            self.next_button.setEnabled(False)
-        else:
-            self.next_button.setEnabled(True) # not last angle: enable next button
-            self.lachmann_button.setEnabled(False)
-
-    def start_lachmann(self):  
-        self.lachmann_button.setEnabled(False)
-        self.image_label.clear()
-        self.next_label.hide()
-        
-        self.rotation_progress_label.setText("Performing Lachmann Test")
-        self.rotation_progress_label.show()
-        self.remaining_time = constants.LACHMANN_TIME # Set timer for Lachmann test
-        self.rotation_progress.setValue(self.remaining_time)
-        self.rotation_progress.setRange(0, constants.LACHMANN_TIME)
-        self.rotation_progress.setFormat("%v seconds remaining")
-        self.seconds_timer.start(1000)  # Start the timer and update every second
-        self.start_recording("lachmann") # Start recording data
-        self.current_test_type = 'lachmann' # Set flag to indicate we're in Lachmann test
-    
-    def update_seconds_progress(self):
-        self.remaining_time -= 1
-        self.rotation_progress.setValue(self.remaining_time)
-        
-        if self.remaining_time <= 0:
-            self.seconds_timer.stop()
-            self.rotation_complete()
-    
-    def rotation_complete(self):
-        self.timer.stop()
-        self.seconds_timer.stop()
-        self.rotation_progress.setValue(0)
-
-        # Stop recording data if active
-        if self.recording:
-            self.stop_recording()
-
-        # Check if we just completed a Lachmann test
-        if self.current_test_type == 'lachmann':
-            # Reset the flag
-            self.current_test_type = 'none'
-        
-            #self.instruction_label.setText("Experiment Complete!")
-            self.overall_progress.setValue(len(constants.FLEXION_ANGLES))
-            self.image_label.clear()
-            self.start_button.setEnabled(True) # Enable start button again
-
-            # Hide instructions
-            self.next_label.hide()
-            self.rotation_progress_label.hide()
-            self.rotation_progress.hide()
-        
-            # Stop visualization timer
-            if self.viz_timer.isActive():
-                self.viz_timer.stop()
-        
-            # Reset experiment running flag
-            self.experiment_running = False
-
-        elif self.current_angle_index >= (len(constants.FLEXION_ANGLES) - 1) and self.external_rot_button.isEnabled() == False:
-            self.next_button.setEnabled(False) # End of regular experiment - enable Lachmann test
-
-    def load_femur(self):
-        try:
-            # Load femur STL
-            femur_vertices, femur_faces = load_stl_as_mesh(constants.FEMUR)
-            self.femur_original_vertices = femur_vertices.copy()
-            #femur_vertices = femur_vertices * 0.9 #Scale down the vertices
-            
-            # Store vertices in a numpy array for faster operations
-            self.femur_verts = np.array(femur_vertices, dtype=np.float32)
-            self.femur_faces = np.array(femur_faces, dtype=np.uint32)
-            
-            # Create a SINGLE mesh item to reuse
-            self.femur_mesh = gl.GLMeshItem(
-                vertexes=self.femur_verts,
-                faces=self.femur_faces,
-                smooth=True, 
-                drawEdges=False,
-                color = QtGui.QColor(112, 128, 144)
-            )
-            self.gl_view.addItem(self.femur_mesh)
-            
-            # Set up transform matrix (initialize once)
-            self.femur_transform = np.identity(4, dtype=np.float32)
-            
-            # Disable load button
-            self.load_femur_button.setEnabled(False)
-            self.load_femur_button.setText("Femur Loaded")
-        except Exception as e:
-            print(f"Error loading femur: {e}")
-            self.load_femur_button.setText("Error")
-
-    def load_tibia(self):
-        try:
-            # Load tibia STL
-            tibia_vertices, tibia_faces = load_stl_as_mesh(constants.TIBIA)
-            self.tibia_original_vertices = tibia_vertices.copy()
-            
-            # Create mesh item but don't apply any transformations yet
-            self.tibia_mesh = gl.GLMeshItem(
-                vertexes=tibia_vertices, 
-                faces=tibia_faces,
-                smooth=True, 
-                drawEdges=False,
-                color = QtGui.QColor(47, 79, 79)
-            )
-            self.gl_view.addItem(self.tibia_mesh)
-            
-            # Disable load button
-            self.load_tibia_button.setEnabled(False)
-            self.load_tibia_button.setText("Tibia Loaded")
-        except Exception as e:
-            print(f"Error loading tibia: {e}")
-            self.load_tibia_button.setText("Error")
-        
     def load_csv_data(self):
-        """Open a file dialog to select and load CSV data for real-time monitoring"""
+        """Open a file dialog to select and load CSV data"""
         from PyQt5.QtWidgets import QFileDialog
-        
+                
         options = QFileDialog.Options()
         filename, _ = QFileDialog.getOpenFileName(
-            self, "Select CSV Data File to Monitor", "", "CSV Files (*.csv);;Text Files (*.txt);;All Files (*)",
+            self, "Load CSV Data File", "", "CSV Files (*.csv);;Text Files (*.txt);;All Files (*)",
             options=options
         )
-        
+                
         if filename:
-            # Initialize the real-time CSV reader
-            if self.data_reader.init_file(filename):
-                # Add the file to the watcher
-                self.file_watcher.addPath(filename)
-                
-                # Start the update timer
-                self.update_timer.start()
-                
-                # Update status
-                self.instruction_label.setText(f"Monitoring: {os.path.basename(filename)}")
-
-    def on_file_changed(self, path):
-        """Called when the file is changed (might be deleted or renamed)"""
-        # Re-add the file to the watcher if it still exists
-        if os.path.exists(path):
-            self.file_watcher.addPath(path)
-
-    def check_for_csv_updates(self):
-        """Check if the CSV file has new data and update visualization"""
-        if self.data_reader.check_for_updates():
-            # Get the latest data
-            data = self.data_reader.get_latest_data()
-            
-            if data:
-                # Extract force/torque data
-                force = data['force']
-                torque = data['torque']
-                
-                # Store current data point for visualization
-                if len(self.forces) > 100:  # Keep only last 100 points in memory
-                    self.forces = np.vstack([self.forces[1:], force])
-                    self.torques = np.vstack([self.torques[1:], torque])
-                else:
-                    if len(self.forces) == 0:
-                        self.forces = np.array([force])
-                        self.torques = np.array([torque])
-                    else:
-                        self.forces = np.vstack([self.forces, force])
-                        self.torques = np.vstack([self.torques, torque])
-                
-                self.current_data_index = len(self.forces) - 1
-                
-                # Update visualizations depending on active tab
-                current_tab = self.tabs.currentIndex()
-                
-                if current_tab == 0:  # Current Data tab
-                    self.update_current_visualization(force, torque)
-                elif current_tab == 1:  # History tab
-                    # Add to history
-                    self.force_history.append(force)
-                    self.torque_history.append(torque)
+             # Create a new CSV data reader
+            self.data_reader = CSVDataReader(filename)
                     
-                    # Keep history to specified size
-                    if len(self.force_history) > constants.HISTORY_SIZE:
-                        self.force_history.pop(0)
-                        self.torque_history.pop(0)
+                    # If data was loaded successfully
+            if self.data_reader.total_frames > 0:
+                        # Update UI with first frame
+                self.update_from_csv_data()
                         
-                    self.update_history_visualization()
-                elif current_tab == 2:  # Bone visualization tab
-                    # Update bone positions
-                    if hasattr(self, 'femur_mesh'):
-                        self.update_femur_with_data(
-                            data['femur_position'], 
-                            data['femur_quaternion']
-                        )
-                    
-                    if hasattr(self, 'tibia_mesh'):
-                        self.update_tibia_with_data(
-                            data['tibia_position'], 
-                            data['tibia_quaternion']
-                        )
-                    
-                    self.update_bone_forces(self.current_data_index)
-
-    def update_from_csv_data(self):
-        """Update UI and visualizations with first frame of CSV data"""
-        if not self.data_reader or self.data_reader.total_frames == 0:
-            return
-        
-        # Get the first frame
-        data = self.data_reader.get_frame(0)
-        
-        if data:
-            # Initialize forces and torques with first frame
-            self.forces = np.array([data['force']])
-            self.torques = np.array([data['torque']])
-            self.current_data_index = 0
-            
-            # Clear history
-            self.force_history = []
-            self.torque_history = []
-            
-            # Update current tab
-            current_tab = self.tabs.currentIndex()
-            if current_tab == 0:  # Current Data tab
-                self.update_current_visualization(data['force'], data['torque'])
-            elif current_tab == 1:  # History tab
-                # Just clear history view
-                if hasattr(self.canvas_history, 'force_arrows'):
-                    for arrow in self.canvas_history.force_arrows:
-                        if arrow:
-                            arrow.remove()
-                    self.canvas_history.force_arrows = []
-                    
-                if hasattr(self.canvas_history, 'torque_arrows'):
-                    for arrow in self.canvas_history.torque_arrows:
-                        if arrow:
-                            arrow.remove()
-                    self.canvas_history.torque_arrows = []
-                    
-                self.canvas_history.draw()
-            elif current_tab == 2:  # Bone visualization tab
-                # Update bone positions and orientations
-                if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
-                    self.update_femur_with_data(
-                        data['femur_position'], 
-                        data['femur_quaternion']
-                    )
-                
-                if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
-                    self.update_tibia_with_data(
-                        data['tibia_position'], 
-                        data['tibia_quaternion']
-                    )
-                
-                self.update_bone_forces(self.current_data_index)
-            
-            # Enable experiment buttons
-            self.experiment_running = True
-            self.next_button.setEnabled(True)
-            self.rotate_button.setEnabled(True)
-            self.varus_button.setEnabled(True)
-            self.valgus_button.setEnabled(True)
-            self.internal_rot_button.setEnabled(True)
-            self.external_rot_button.setEnabled(True)
-            self.lachmann_button.setEnabled(True)
-
-if __name__ == "__main__":
-    try:  
-        app = QApplication(sys.argv)
-        window = KneeFlexionExperiment()
-        window.show()
-        sys.exit(app.exec_())
-    except Exception as e:
-        print(f"Error starting application: {e}")
-        import traceback
-        traceback.print_exc()
+                        # Start the visualization timer if it's not already running
+                if not self.viz_timer.isActive():
+                    self.viz_timer.start()
