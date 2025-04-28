@@ -117,11 +117,33 @@ class BoneDataGenerator:
             self.joint_center[2] - offset_length * np.cos(angle_rad)   # Z changes with rotation
         ])
         
+        # Generate forces and torques based on current angle
+        force_magnitude = 5.0 + 8.0 * abs(np.sin(angle_rad))
+        force_dir = np.array([
+            np.sin(angle_rad) * np.sin(self.time * 0.5),
+            np.cos(angle_rad * 0.7),
+            -np.sin(self.time * 0.3)
+        ])
+        force_dir = force_dir / np.linalg.norm(force_dir)  # Normalize
+        force = force_dir * force_magnitude
+        
+        # Torque also changes with angle
+        torque_magnitude = 1.0 + 1.5 * abs(np.cos(angle_rad))
+        torque_dir = np.array([
+            np.sin(self.time * 0.4),
+            np.cos(angle_rad),
+            np.sin(angle_rad * 0.5)
+        ])
+        torque_dir = torque_dir / np.linalg.norm(torque_dir)  # Normalize
+        torque = torque_dir * torque_magnitude
+        
         return {
             'femur_position': self.femur_position,
             'femur_quaternion': self.femur_quaternion,
             'tibia_position': self.tibia_position,
-            'tibia_quaternion': self.tibia_quaternion
+            'tibia_quaternion': self.tibia_quaternion,
+            'force': force,
+            'torque': torque
         }
 
 class MplCanvas(FigureCanvas):
@@ -360,53 +382,30 @@ class KneeFlexionExperiment(QMainWindow):
 
     def load_force_torque_data(self):
         
-        """Load force and torque data from the txt file."""
-        filename = constants.DATA_PREVIOUS_TEST
-        self.forces = []
-        self.torques = []
-    
+        """Initialize force and torque data structures."""
         try:
+            # Try to load data from file
+            filename = constants.DATA_PREVIOUS_TEST
             print(f"Attempting to load data from {filename}")
+            self.forces = []
+            self.torques = []
+            
             with open(filename, 'r') as file:
                 for line in file:
-                    # Remove any whitespace and split by comma
                     values = [float(val.strip()) for val in line.strip().split(',')]
-                    if len(values) >= 6:  # Ensure we have at least 6 values
+                    if len(values) >= 6:
                         self.forces.append(values[0:3])
                         self.torques.append(values[3:6])
             
-            # Convert to numpy arrays after the file is processed
             self.forces = np.array(self.forces)
             self.torques = np.array(self.torques)
-
             print(f"Successfully loaded {len(self.forces)} force/torque data points.")
-            # Ensure we have at least some data
-            if len(self.forces) == 0:
-                raise ValueError("No valid data points found in file")
-                
-        except (FileNotFoundError, ValueError) as e:
-            print(f"Error: {e}")
-            # Create dummy data if file not found or empty
-            self.forces = np.zeros((200,3))
-            self.forces[0] = np.random.uniform(-13, 13, size=3)
-            for i in range(1, 200):
-                delta = np.random.uniform(-0.8, 0.8, size=3)
-                self.forces[i] = self.forces[i - 1] + delta
-                self.forces[i] = np.clip(self.forces[i], -13, 13)
-            self.torques = np.zeros((200,3))
-            self.torques[0] = np.random.uniform(-2.5, 2.5, size=3)
-            for i in range(1, 200):
-                delta = np.random.uniform(-0.2, 0.2, size=3)
-                self.torques[i] = self.torques[i - 1] + delta
-                self.torques[i] = np.clip(self.torques[i], -2.5, 2.5)
-            print("Using random dummy data instead.")
-
         except Exception as e:
-            print(f"An error occurred: {e}")
-            # Create dummy data if error
-            self.forces = np.random.rand(100, 3) * 10 - 5
-            self.torques = np.random.rand(100, 3) * 2 - 1
-            print("Using random dummy data instead.")
+            print(f"Error loading force/torque data: {e}")
+            # Just initialize empty arrays - we'll generate data dynamically
+            self.forces = np.zeros((0, 3))
+            self.torques = np.zeros((0, 3))
+            print("Will generate force/torque data dynamically.")
     
     def on_tab_changed(self, index):
         # Update the appropriate visualization for the new tab
@@ -666,12 +665,12 @@ class KneeFlexionExperiment(QMainWindow):
             self.bone_timer.stop()
 
     def update_bones(self):
-        # Only update the bones if the bone tab is active
+        # Only update if the bone tab is active
         if self.tabs.currentIndex() != 2:
             return
             
-        # Get updated bone position and quaternion data
-        bone_data = self.bone_data_generator.update(0.02)  # 50ms = 0.05s
+        # Get updated bone position, quaternion, force and torque data
+        bone_data = self.bone_data_generator.update(0.02)  # 50ms = 0.02s
         
         # Update bone positions/orientations
         if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
@@ -687,9 +686,28 @@ class KneeFlexionExperiment(QMainWindow):
                 bone_data['tibia_position'], 
                 bone_data['tibia_quaternion']
             )
-
-        # Also update forces if experiment is running
-        if self.experiment_running:
+        
+        # Update forces and torques if bone animation is active
+        if self.auto_bone_movement.isChecked():
+            # Get current force/torque and update the visualization
+            force = bone_data['force']
+            torque = bone_data['torque']
+            
+            # Store current data point
+            if len(self.forces) > 100:  # Keep only last 100 points in memory
+                self.forces = np.vstack([self.forces[1:], force])
+                self.torques = np.vstack([self.torques[1:], torque])
+            else:
+                if len(self.forces) == 0:
+                    self.forces = np.array([force])
+                    self.torques = np.array([torque])
+                else:
+                    self.forces = np.vstack([self.forces, force])
+                    self.torques = np.vstack([self.torques, torque])
+                    
+            self.current_data_index = len(self.forces) - 1
+            
+            # Update force visualization on bone
             self.update_bone_forces(self.current_data_index)
 
     def update_femur_with_data(self, position, quaternion):
@@ -722,21 +740,37 @@ class KneeFlexionExperiment(QMainWindow):
         self.tibia_mesh.setTransform(transform)
         
     def update_visualization_timer(self):
+        
         """Called by timer to update visualization"""
         if self.experiment_running:
-            self.current_data_index = (self.current_data_index + 1) % len(self.forces)
+            # Get bone positions and force/torque data
+            bone_data = self.bone_data_generator.update(0.03)  # Update with small time step
             
-            # Check which tab is currently active and only update the relevant visualization
+            # Extract force/torque data
+            force = bone_data['force']
+            torque = bone_data['torque']
+            
+            # Store current data point for visualization
+            if len(self.forces) > 100:  # Keep only last 100 points in memory
+                self.forces = np.vstack([self.forces[1:], force])
+                self.torques = np.vstack([self.torques[1:], torque])
+            else:
+                if len(self.forces) == 0:
+                    self.forces = np.array([force])
+                    self.torques = np.array([torque])
+                else:
+                    self.forces = np.vstack([self.forces, force])
+                    self.torques = np.vstack([self.torques, torque])
+            
+            self.current_data_index = len(self.forces) - 1
+            
+            # Check which tab is currently active and update the relevant visualization
             current_tab = self.tabs.currentIndex()
             
             if current_tab == 0:  # Current Data tab
-                force = self.forces[self.current_data_index].copy()
-                torque = self.torques[self.current_data_index].copy()
                 self.update_current_visualization(force, torque)
-            elif (current_tab == 1):  # History tab
+            elif current_tab == 1:  # History tab
                 # Add to history
-                force = self.forces[self.current_data_index].copy()
-                torque = self.torques[self.current_data_index].copy()
                 self.force_history.append(force)
                 self.torque_history.append(torque)
                 
@@ -752,11 +786,8 @@ class KneeFlexionExperiment(QMainWindow):
             # Record data if recording is active
             if self.recording:
                 current_time = time.time() - self.recording_start_time
-                force = self.forces[self.current_data_index].copy()
-                torque = self.torques[self.current_data_index].copy()
                 
                 # Get bone data
-                bone_data = self.bone_data_generator.update(0)  # Get current bone positions without updating
                 femur_pos = bone_data['femur_position']
                 femur_quat = bone_data['femur_quaternion']
                 tibia_pos = bone_data['tibia_position']
