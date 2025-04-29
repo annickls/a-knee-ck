@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import sys
+=======
+ import sys
+>>>>>>> 4b405d1b8a3e530b282113e28be32f36d8618bb5
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -8,7 +12,11 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QPushButton,
                             QVBoxLayout, QHBoxLayout, QWidget, QFrame, 
                             QProgressBar, QGridLayout, QSplitter, QTabWidget, QSlider, QGroupBox)
 from PyQt5.QtGui import QPixmap, QFont
+<<<<<<< HEAD
 from PyQt5.QtCore import Qt, QTimer, QFileSystemWatcher
+=======
+from PyQt5.QtCore import Qt, QTimer
+>>>>>>> 4b405d1b8a3e530b282113e28be32f36d8618bb5
 import matplotlib.cm as cm
 import pyqtgraph.opengl as gl
 from stl import mesh
@@ -22,6 +30,7 @@ import constants
 import pandas as pd
 import numpy as np
 import csv
+<<<<<<< HEAD
 import os.path
 
 class RealtimeCSVReader:
@@ -119,6 +128,103 @@ class RealtimeCSVReader:
         except Exception as e:
             print(f"Error reading latest data: {e}")
             return None
+=======
+
+class CSVDataReader:
+    def __init__(self, filename=None):
+        self.data = None
+        self.current_index = 0
+        self.total_frames = 0
+        
+        if filename:
+            self.load_data(filename)
+    
+    def load_data(self, filename):
+        """Load and parse CSV data with the specified format"""
+        try:
+            # Read the data using pandas for easier handling
+            # Define the column names based on your format
+            columns = [
+                'timestamp', 
+                'force_x', 'force_y', 'force_z', 
+                'torque_x', 'torque_y', 'torque_z',
+                'tibia_x', 'tibia_y', 'tibia_z', 
+                'tibia_qx', 'tibia_qy', 'tibia_qz', 'tibia_qw',
+                'femur_x', 'femur_y', 'femur_z', 
+                'femur_qx', 'femur_qy', 'femur_qz', 'femur_qw',
+                'knee_x', 'knee_y', 'knee_z', 
+                'knee_qx', 'knee_qy', 'knee_qz', 'knee_qw'
+            ]
+            
+            # Try pandas first (more robust)
+            try:
+                self.data = pd.read_csv(filename, delim_whitespace=True, header=None, names=columns)
+                self.total_frames = len(self.data)
+                print(f"Loaded {self.total_frames} frames from {filename}")
+                return True
+            except Exception as e:
+                print(f"Pandas parsing failed: {e}, trying manual CSV parsing...")
+                
+                # Fall back to manual CSV parsing if pandas fails
+                with open(filename, 'r') as f:
+                    lines = f.readlines()
+                
+                data_list = []
+                for line in lines:
+                    # Split by whitespace and convert to appropriate types
+                    values = line.strip().split()
+                    if len(values) >= len(columns):
+                        data_list.append([float(v) for v in values[:len(columns)]])
+                
+                # Convert to pandas DataFrame
+                self.data = pd.DataFrame(data_list, columns=columns)
+                self.total_frames = len(self.data)
+                print(f"Loaded {self.total_frames} frames from {filename}")
+                return True
+                
+        except Exception as e:
+            print(f"Error loading CSV data: {e}")
+            return False
+    
+    def get_frame(self, index=None):
+        """Get data for a specific frame, or current frame if no index provided"""
+        if self.data is None or self.total_frames == 0:
+            return None
+        
+        if index is None:
+            index = self.current_index
+        
+        # Ensure index is within bounds
+        index = index % self.total_frames
+        
+        # Extract the row at the specified index
+        row = self.data.iloc[index]
+        
+        # Format data according to what your application expects
+        result = {
+            'timestamp': row['timestamp'],
+            'force': np.array([row['force_x'], row['force_y'], row['force_z']]),
+            'torque': np.array([row['torque_x'], row['torque_y'], row['torque_z']]),
+            'tibia_position': np.array([row['tibia_x'], row['tibia_y'], row['tibia_z']]),
+            'tibia_quaternion': np.array([row['tibia_qw'], row['tibia_qx'], row['tibia_qy'], row['tibia_qz']]),
+            'femur_position': np.array([row['femur_x'], row['femur_y'], row['femur_z']]),
+            'femur_quaternion': np.array([row['femur_qw'], row['femur_qx'], row['femur_qy'], row['femur_qz']]),
+            'knee_position': np.array([row['knee_x'], row['knee_y'], row['knee_z']]),
+            'knee_quaternion': np.array([row['knee_qw'], row['knee_qx'], row['knee_qy'], row['knee_qz']])
+        }
+        
+        return result
+    
+    def next_frame(self):
+        """Get the next frame and increment current index"""
+        result = self.get_frame(self.current_index)
+        self.current_index = (self.current_index + 1) % self.total_frames
+        return result
+    
+    def reset(self):
+        """Reset to the first frame"""
+        self.current_index = 0
+>>>>>>> 4b405d1b8a3e530b282113e28be32f36d8618bb5
 
 
 def load_stl_as_mesh(filename):
@@ -171,6 +277,84 @@ def quaternion_to_transform_matrix(quaternion, position=None):
     
     return T
 
+<<<<<<< HEAD
+=======
+"""class BoneDataGenerator:
+    def __init__(self):
+        # Fixed femur position and orientation
+        self.femur_position = np.array([0.0, 50.0, 20.0])
+        self.femur_quaternion = np.array([1.0, 0.0, 0.0, 0.0])  # w, x, y, z
+        
+        # Initial tibia position and orientation (will be updated during animation)
+        self.tibia_position = np.array([0.0, 0.0, -100.0])
+        self.tibia_quaternion = np.array([1.0, 0.0, 0.0, 0.0])
+        
+        # Define joint center (pivot point) relative to femur
+        self.joint_center = np.array([-440.0, 70.0, 150.0])
+        
+        # Define rotation axis (medio-lateral axis for flexion/extension)
+        self.rotation_axis = np.array([0.0, 1.0, 0.0])  # Y-axis for flexion/extension
+        
+        # Animation parameters
+        self.time = 0
+        self.freq = 0.2  # Hz
+        self.max_angle = 90  # degrees
+    
+    def update(self, dt):
+        #Update bone positions with tibia rotating around fixed femur
+        self.time += dt
+        
+        # Calculate current flexion angle based on time
+        flexion_angle = self.max_angle * (np.sin(2 * np.pi * self.freq * self.time) + 1) / 2
+        angle_rad = np.radians(flexion_angle)
+        
+        # Calculate rotation quaternion for tibia (around X-axis)
+        sin_half = np.sin(angle_rad/2)
+        cos_half = np.cos(angle_rad/2)
+        
+        # Quaternion for rotation around Y-axis (medio-lateral for flexion/extension)
+        self.tibia_quaternion = np.array([cos_half, 0.0, sin_half, 0.0])  # Y-axis rotation
+        
+        # Offset from joint center when fully extended
+        offset_length = 100.0  # Length of tibia from joint center
+        
+        # Calculate new position based on rotation
+        self.tibia_position = np.array([
+            self.joint_center[0] + offset_length * np.sin(angle_rad),  # X changes with rotation
+            self.joint_center[1],                                       # Y stays aligned with femur
+            self.joint_center[2] - offset_length * np.cos(angle_rad)   # Z changes with rotation
+        ])
+        
+        # Generate forces and torques based on current angle
+        force_magnitude = 5.0 + 8.0 * abs(np.sin(angle_rad))
+        force_dir = np.array([
+            np.sin(angle_rad) * np.sin(self.time * 0.5),
+            np.cos(angle_rad * 0.7),
+            -np.sin(self.time * 0.3)
+        ])
+        force_dir = force_dir / np.linalg.norm(force_dir)  # Normalize
+        force = force_dir * force_magnitude
+        
+        # Torque also changes with angle
+        torque_magnitude = 1.0 + 1.5 * abs(np.cos(angle_rad))
+        torque_dir = np.array([
+            np.sin(self.time * 0.4),
+            np.cos(angle_rad),
+            np.sin(angle_rad * 0.5)
+        ])
+        torque_dir = torque_dir / np.linalg.norm(torque_dir)  # Normalize
+        torque = torque_dir * torque_magnitude
+        
+        return {
+            'femur_position': self.femur_position,
+            'femur_quaternion': self.femur_quaternion,
+            'tibia_position': self.tibia_position,
+            'tibia_quaternion': self.tibia_quaternion,
+            'force': force,
+            'torque': torque
+        }"""
+
+>>>>>>> 4b405d1b8a3e530b282113e28be32f36d8618bb5
 class MplCanvas(FigureCanvas):
     """Matplotlib canvas class for embedding plots in Qt that can display either current or historical force/torque data"""
     def __init__(self, width=5, height=4, mode="current"):
@@ -261,10 +445,14 @@ class KneeFlexionExperiment(QMainWindow):
         super().__init__()
         
         # Add the CSV data reader
+<<<<<<< HEAD
         self.data_reader = RealtimeCSVReader()
         # Add a file watcher for real-time updates
         self.file_watcher = QFileSystemWatcher()
         self.file_watcher.fileChanged.connect(self.on_file_changed)
+=======
+        self.data_reader = CSVDataReader()
+>>>>>>> 4b405d1b8a3e530b282113e28be32f36d8618bb5
 
         # Configuration
         self.setWindowTitle("Knee Test Bench with Force Visualization")
@@ -282,11 +470,14 @@ class KneeFlexionExperiment(QMainWindow):
         self.viz_timer.timeout.connect(self.update_visualization_timer)
         self.viz_timer.setInterval(30)  # 100ms for smoother updates
         
+<<<<<<< HEAD
         # initialize forces and torques
         self.forces = [0,0,0]
         self.torques = []       
 
 
+=======
+>>>>>>> 4b405d1b8a3e530b282113e28be32f36d8618bb5
         # History for visualization
         self.force_history = []
         self.torque_history = []
@@ -295,6 +486,11 @@ class KneeFlexionExperiment(QMainWindow):
         # Experiment is running flag
         self.experiment_running = False
         
+<<<<<<< HEAD
+=======
+        # Load force/torque data
+        self.load_force_torque_data()
+>>>>>>> 4b405d1b8a3e530b282113e28be32f36d8618bb5
         
         # Setup UI
         self.setup_ui()
@@ -310,11 +506,14 @@ class KneeFlexionExperiment(QMainWindow):
         # Ensure directory exists for data files
         os.makedirs("recorded_data", exist_ok=True)
 
+<<<<<<< HEAD
         # Timer for checking updates (every 100ms)
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.check_for_csv_updates)
         self.update_timer.setInterval(100)  # 100ms
 
+=======
+>>>>>>> 4b405d1b8a3e530b282113e28be32f36d8618bb5
     def create_arrow(self, start_point, end_point, color=(1,0,0,1), arrow_size=15.0, shaft_width=2.0):
         """Create a 3D arrow from start_point to end_point"""
         # If the points are too close, just return None
@@ -419,6 +618,35 @@ class KneeFlexionExperiment(QMainWindow):
         print(f"Saved {len(self.current_recording_data)} data points to {filename}")
         self.current_recording_data = []
 
+<<<<<<< HEAD
+=======
+    def load_force_torque_data(self):
+        
+        """Initialize force and torque data structures."""
+        try:
+            # Try to load data from file
+            filename = constants.DATA_PREVIOUS_TEST
+            print(f"Attempting to load data from {filename}")
+            self.forces = []
+            self.torques = []
+            
+            with open(filename, 'r') as file:
+                for line in file:
+                    values = [float(val.strip()) for val in line.strip().split(',')]
+                    if len(values) >= 6:
+                        self.forces.append(values[0:3])
+                        self.torques.append(values[3:6])
+            
+            self.forces = np.array(self.forces)
+            self.torques = np.array(self.torques)
+            print(f"Successfully loaded {len(self.forces)} force/torque data points.")
+        except Exception as e:
+            print(f"Error loading force/torque data: {e}")
+            # Just initialize empty arrays - we'll generate data dynamically
+            self.forces = np.zeros((0, 3))
+            self.torques = np.zeros((0, 3))
+            print("Will generate force/torque data dynamically.")
+>>>>>>> 4b405d1b8a3e530b282113e28be32f36d8618bb5
     
     def on_tab_changed(self, index):
         # Update the appropriate visualization for the new tab
@@ -695,6 +923,7 @@ class KneeFlexionExperiment(QMainWindow):
         if self.tabs.currentIndex() != 2:
             return
             
+<<<<<<< HEAD
         # Instead of using bone_data_generator, get data from the CSV reader
         if self.data_reader:
             data = self.data_reader.get_latest_data()
@@ -736,6 +965,48 @@ class KneeFlexionExperiment(QMainWindow):
                     
                     # Update force visualization on bone
                     self.update_bone_forces(self.current_data_index)
+=======
+        # Get updated bone position, quaternion, force and torque data
+        bone_data = self.bone_data_generator.update(0.02)  # 50ms = 0.02s
+        
+        # Update bone positions/orientations
+        if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
+            # Update femur
+            self.update_femur_with_data(
+                bone_data['femur_position'], 
+                bone_data['femur_quaternion']
+            )
+        
+        if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
+            # Update tibia
+            self.update_tibia_with_data(
+                bone_data['tibia_position'], 
+                bone_data['tibia_quaternion']
+            )
+        
+        # Update forces and torques if bone animation is active
+        if self.auto_bone_movement.isChecked():
+            # Get current force/torque and update the visualization
+            force = bone_data['force']
+            torque = bone_data['torque']
+            
+            # Store current data point
+            if len(self.forces) > 100:  # Keep only last 100 points in memory
+                self.forces = np.vstack([self.forces[1:], force])
+                self.torques = np.vstack([self.torques[1:], torque])
+            else:
+                if len(self.forces) == 0:
+                    self.forces = np.array([force])
+                    self.torques = np.array([torque])
+                else:
+                    self.forces = np.vstack([self.forces, force])
+                    self.torques = np.vstack([self.torques, torque])
+                    
+            self.current_data_index = len(self.forces) - 1
+            
+            # Update force visualization on bone
+            self.update_bone_forces(self.current_data_index)
+>>>>>>> 4b405d1b8a3e530b282113e28be32f36d8618bb5
 
     def update_femur_with_data(self, position, quaternion):
         # Get 4x4 transformation matrix
@@ -767,6 +1038,7 @@ class KneeFlexionExperiment(QMainWindow):
         self.tibia_mesh.setTransform(transform)
         
     def update_visualization_timer(self):
+<<<<<<< HEAD
         """Called by timer to update visualization"""
         if self.experiment_running and self.data_reader:
             # Check if the CSV file has been updated
@@ -847,6 +1119,89 @@ class KneeFlexionExperiment(QMainWindow):
                         ]
                         
                         self.current_recording_data.append(data_point)
+=======
+        
+        """Called by timer to update visualization"""
+        if self.experiment_running and self.data_reader and self.data_reader.total_frames > 0:
+            # Get bone positions and force/torque data
+            #bone_data = self.bone_data_generator.update(0.03)  # Update with small time step
+            # Get data from CSV reader instead of bone data generator
+            data = self.data_reader.next_frame()
+            
+            # Extract force/torque data
+            force = data['force']
+            torque = data['torque']
+            
+            # Store current data point for visualization
+            if len(self.forces) > 100:  # Keep only last 100 points in memory
+                self.forces = np.vstack([self.forces[1:], force])
+                self.torques = np.vstack([self.torques[1:], torque])
+            else:
+                if len(self.forces) == 0:
+                    self.forces = np.array([force])
+                    self.torques = np.array([torque])
+                else:
+                    self.forces = np.vstack([self.forces, force])
+                    self.torques = np.vstack([self.torques, torque])
+            
+            self.current_data_index = len(self.forces) - 1
+            
+            # Check which tab is currently active and update the relevant visualization
+            current_tab = self.tabs.currentIndex()
+            
+            if current_tab == 0:  # Current Data tab
+                self.update_current_visualization(force, torque)
+            elif current_tab == 1:  # History tab
+                # Add to history
+                self.force_history.append(force)
+                self.torque_history.append(torque)
+                
+                # Keep history to specified size
+                if len(self.force_history) > constants.HISTORY_SIZE:
+                    self.force_history.pop(0)
+                    self.torque_history.pop(0)
+                    
+                self.update_history_visualization()
+            elif current_tab == 2:  # Bone visualization tab
+                # Update bone positions and orientations
+                if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
+                    self.update_femur_with_data(
+                        data['femur_position'], 
+                        data['femur_quaternion']
+                    )
+                
+                if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
+                    self.update_tibia_with_data(
+                        data['tibia_position'], 
+                        data['tibia_quaternion']
+                    )
+                
+                self.update_bone_forces(self.current_data_index)
+
+            # Record data if recording is active
+            if self.recording:
+                current_time = time.time() - self.recording_start_time
+                
+                # Get bone data
+                femur_pos = data['femur_position']
+                femur_quat = data['femur_quaternion']
+                tibia_pos = data['tibia_position']
+                tibia_quat = data['tibia_quaternion']
+                
+                # Combine all data into one record
+                data_point = [
+                    current_time,
+                    force[0], force[1], force[2],
+                    torque[0], torque[1], torque[2],
+                    femur_pos[0], femur_pos[1], femur_pos[2],
+                    femur_quat[0], femur_quat[1], femur_quat[2], femur_quat[3],
+                    tibia_pos[0], tibia_pos[1], tibia_pos[2],
+                    tibia_quat[0], tibia_quat[1], tibia_quat[2], tibia_quat[3]
+                ]
+                
+                self.current_recording_data.append(data_point)
+                pass
+>>>>>>> 4b405d1b8a3e530b282113e28be32f36d8618bb5
         
     def update_visualization(self, data_index=0):
         """Update only the active visualization tab"""
@@ -1100,13 +1455,17 @@ class KneeFlexionExperiment(QMainWindow):
 
     def update_bone_forces(self, data_index=0):
         """Update the force/torque visualization in 3D bone view"""
+<<<<<<< HEAD
         
         
+=======
+>>>>>>> 4b405d1b8a3e530b282113e28be32f36d8618bb5
         # Skip if not on the bone visualization tab
         if self.tabs.currentIndex() != 2:
             return
             
         # Get current data point
+<<<<<<< HEAD
         if self.forces:
             idx = data_index % len(self.forces)
             force = self.forces[idx].copy()
@@ -1115,6 +1474,10 @@ class KneeFlexionExperiment(QMainWindow):
             print(data_index)
             print (self.forces)
             print(len(self.forces))
+=======
+        idx = data_index % len(self.forces)
+        force = self.forces[idx].copy()
+>>>>>>> 4b405d1b8a3e530b282113e28be32f36d8618bb5
         
         # Scale forces for better visualization
         scale_factor = 20.0
@@ -1159,6 +1522,7 @@ class KneeFlexionExperiment(QMainWindow):
     def get_tibia_center(self):
         """Get the current center of the tibia for attaching forces"""
         return self.bone_data_generator.tibia_position
+<<<<<<< HEAD
            
     def start_experiment(self):
         self.current_angle_index = 0
@@ -1532,3 +1896,30 @@ if __name__ == "__main__":
         print(f"Error starting application: {e}")
         import traceback
         traceback.print_exc()
+=======
+
+
+
+    def load_csv_data(self):
+        """Open a file dialog to select and load CSV data"""
+        from PyQt5.QtWidgets import QFileDialog
+                
+        options = QFileDialog.Options()
+        filename, _ = QFileDialog.getOpenFileName(
+            self, "Load CSV Data File", "", "CSV Files (*.csv);;Text Files (*.txt);;All Files (*)",
+            options=options
+        )
+                
+        if filename:
+             # Create a new CSV data reader
+            self.data_reader = CSVDataReader(filename)
+                    
+                    # If data was loaded successfully
+            if self.data_reader.total_frames > 0:
+                        # Update UI with first frame
+                self.update_from_csv_data()
+                        
+                        # Start the visualization timer if it's not already running
+                if not self.viz_timer.isActive():
+                    self.viz_timer.start()
+>>>>>>> 4b405d1b8a3e530b282113e28be32f36d8618bb5
