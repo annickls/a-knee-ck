@@ -1,4 +1,6 @@
 import sys
+import os
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -13,7 +15,9 @@ import matplotlib.cm as cm
 import pyqtgraph.opengl as gl
 from stl import mesh
 from pyqtgraph.Qt import QtGui
-import os
+
+
+
 import time
 import datetime
 from OpenGL.GL import glBegin, glEnd, glVertex3f, glColor4f, GL_LINES, GL_LINE_SMOOTH, glEnable, glHint, GL_LINE_SMOOTH_HINT, GL_NICEST
