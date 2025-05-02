@@ -7,7 +7,11 @@ FLEXION_ANGLES = [0, 30, 60, 90, 120]
 #FEMUR = "femur_simplified.stl"
 FEMUR = "simplify_Segmentation_1_femur.stl"
 #TIBIA = "tibia_simplified.stl"
-TIBIA = "simplify_Segmentation_1_tibia.stl"
+#TIBIA = "simplify_Segmentation_1_tibia.stl"
+TIBIA = "simplify_simplify_Segmentation_1_tibia.stl"
+PIVOT_POINT_FEMUR = [0, 100, 0]
+PIVOT_POINT_TIBA = [0, 1200, 0]
+DISTANCE_BONE_VIZ = 3000
 
 # plot settings
 AXIS_FACTOR = 0.5

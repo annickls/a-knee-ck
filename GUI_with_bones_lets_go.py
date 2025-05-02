@@ -24,141 +24,8 @@ import numpy as np
 import csv
 from pathlib import Path
 import logging
-
-
-def load_stl_as_mesh(filename):
-    """Load an STL file and return vertices and faces for PyQtGraph GLMeshItem"""
-    try:
-        stl_mesh = mesh.Mesh.from_file(filename) # Load the STL file
-        vertices = stl_mesh.vectors.reshape(-1, 3) # Get vertices (each face has 3 vertices)
-        faces = np.arange(len(vertices)).reshape(-1, 3) # Create faces array - each triplet of vertices forms a face
-        return vertices, faces
-    except Exception as e:
-        print(f"Error loading STL file {filename}: {e}")
-        # Return simple cube as fallback
-        vertices = np.array([
-            [0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
-            [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]
-        ])
-        faces = np.array([
-            [0, 1, 2], [0, 2, 3], [0, 1, 5], [0, 5, 4],
-            [1, 2, 6], [1, 6, 5], [2, 3, 7], [2, 7, 6],
-            [3, 0, 4], [3, 4, 7], [4, 5, 6], [4, 6, 7]
-        ])
-        return vertices, faces
-    
-def quaternion_to_transform_matrix(quaternion, position=None):
-    """
-    Convert a quaternion and position to a 4x4 transformation matrix.
-    Args:
-        quaternion: A numpy array or list with 4 elements representing the quaternion [w, x, y, z]
-        position: A numpy array or list with 3 elements representing the position [x, y, z]
-                 If None, no translation is applied.
-    Returns:
-        A 4x4 numpy array representing the transformation matrix
-    """
-    # Normalize quaternion
-    q = np.array(quaternion)
-    q = q / np.linalg.norm(q)
-    w, x, y, z = q
-    
-    # Create 4x4 transformation matrix with rotation from quaternion
-    T = np.array([
-        [1 - 2*y*y - 2*z*z, 2*x*y - 2*w*z, 2*x*z + 2*w*y, 0],
-        [2*x*y + 2*w*z, 1 - 2*x*x - 2*z*z, 2*y*z - 2*w*x, 0],
-        [2*x*z - 2*w*y, 2*y*z + 2*w*x, 1 - 2*x*x - 2*y*y, 0],
-        [0, 0, 0, 1]
-    ])
-    
-    # Apply translation if provided
-    if position is not None:
-        T[0:3, 3] = position
-    
-    return T
-class MplCanvas(FigureCanvas):
-    """Matplotlib canvas class for embedding plots in Qt that can display either current or historical force/torque data"""
-    def __init__(self, width=5, height=4, mode="current"):
-        self.fig = Figure(figsize=(width, height))
-        self.axes_force = self.fig.add_subplot(121, projection='3d')
-        self.axes_torque = self.fig.add_subplot(122, projection='3d')
-        self.mode = mode  # "current" or "history"
-        
-        # Set up axes once
-        force_max = constants.FORCE_MAX #if mode == "current" else 11
-        torque_max = constants.TORQUE_MAX
-        
-        # Force plot setup
-        self.axes_force.set_xlim([-force_max, force_max])
-        self.axes_force.set_ylim([-force_max, force_max])
-        self.axes_force.set_zlim([-force_max, force_max])
-        #self.axes_force.set_title('Current Force (N)' if mode == "current" else 'Force History (N)')
-        self.axes_force.grid(False)
-        self.axes_force.set_axis_off()
-        
-        # Torque plot setup
-        self.axes_torque.set_xlim([-torque_max, torque_max])
-        self.axes_torque.set_ylim([-torque_max, torque_max])
-        self.axes_torque.set_zlim([-torque_max, torque_max])
-        #self.axes_torque.set_title('Current Torque (Nm)' if mode == "current" else 'Torque History (Nm)')
-        self.axes_torque.grid(False)
-        self.axes_torque.set_axis_off()
-        
-        # Reference axes (drawn once)
-        self.ref_axes_force = [
-            self.axes_force.quiver(0, 0, 0, force_max*constants.AXIS_FACTOR, 0, 0, color='salmon', linewidth=constants.AXIS_LINEWIDTH, arrow_length_ratio=0.1),
-            self.axes_force.quiver(0, 0, 0, 0, force_max*constants.AXIS_FACTOR, 0, color='limegreen', linewidth=constants.AXIS_LINEWIDTH, arrow_length_ratio=0.1),
-            self.axes_force.quiver(0, 0, 0, 0, 0, force_max*constants.AXIS_FACTOR, color='deepskyblue', linewidth=constants.AXIS_LINEWIDTH, arrow_length_ratio=0.1)
-        ]
-        self.ref_axes_torque = [
-            self.axes_torque.quiver(0, 0, 0, torque_max*constants.AXIS_FACTOR, 0, 0, color='salmon', linewidth=constants.AXIS_LINEWIDTH, arrow_length_ratio=0.1),
-            self.axes_torque.quiver(0, 0, 0, 0, torque_max*constants.AXIS_FACTOR, 0, color='limegreen', linewidth=constants.AXIS_LINEWIDTH, arrow_length_ratio=0.1),
-            self.axes_torque.quiver(0, 0, 0, 0, 0, torque_max*constants.AXIS_FACTOR, color='deepskyblue', linewidth=constants.AXIS_LINEWIDTH, arrow_length_ratio=0.1)
-        ]
-        
-        # For history mode: maintain a list of arrows
-        if mode == "history":
-            self.force_arrows = []
-            self.torque_arrows = []
-        
-        # Text elements for magnitudes and components
-        self.force_mag_text = self.axes_force.text2D(0.32, 1.0, "", transform=self.axes_force.transAxes)
-        self.torque_mag_text = self.axes_torque.text2D(0.4, 1.0, "", transform=self.axes_torque.transAxes)
-        self.force_comp_text = self.axes_force.text2D(0.32, 0.95, "", transform=self.axes_force.transAxes, fontsize=8)
-        self.torque_comp_text = self.axes_torque.text2D(0.4, 0.95, "", transform=self.axes_torque.transAxes, fontsize=8)
-        
-        super(MplCanvas, self).__init__(self.fig)
-        self.fig.tight_layout()
-
-class ColoredGLAxisItem(gl.GLAxisItem):
-    def __init__(self, size=(1,1,1)):
-        gl.GLAxisItem.__init__(self)
-        self.setSize(*size)
-        
-    def paint(self):
-        self.setupGLState()
-        
-        if self.antialias:
-            glEnable(GL_LINE_SMOOTH)
-            glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
-            
-        glBegin(GL_LINES)
-
-        # X axis (red)
-        glColor4f(*constants.SALMON)
-        glVertex3f(0, 0, 0)
-        glVertex3f(self.size()[0], 0, 0)
-        
-        # Y axis (green)
-        glColor4f(*constants.LIMEGREEN) 
-        glVertex3f(0, 0, 0)
-        glVertex3f(0, self.size()[1], 0)
-        
-        # Z axis (blue)
-        glColor4f(*constants.DEEPSKYBLUE)  # deepskyblue
-        glVertex3f(0, 0, 0)
-        glVertex3f(0, 0, self.size()[2])
-        
-        glEnd()
+from plot_config import (MplCanvas, ColoredGLAxisItem)
+from mesh_utils import MeshUtils
 
 class KneeFlexionExperiment(QMainWindow):
     def __init__(self):
@@ -211,79 +78,7 @@ class KneeFlexionExperiment(QMainWindow):
         os.makedirs("recorded_data", exist_ok=True)
 
 
-    def create_arrow(self, start_point, end_point, color=(1,0,0,1), arrow_size=15.0, shaft_width=2.0):
-        """Create a 3D arrow from start_point to end_point"""
-        # If the points are too close, just return None
-        direction = end_point - start_point
-        length = np.linalg.norm(direction)
-        if length < 0.01:
-            return None, None
-            
-        # Normalize direction
-        direction = direction / length
-        
-        # Create shaft points (reduce length to leave room for arrowhead)
-        shaft_length = length * 0.85
-        shaft_end = start_point + direction * shaft_length
-        shaft_points = np.array([start_point, shaft_end])
-        
-        # Create shaft line
-        shaft = gl.GLLinePlotItem(pos=shaft_points, color=color, width=shaft_width, antialias=True)
-        
-        try:
-            # Create the cone for the arrowhead using the built-in function
-            md = gl.MeshData.cylinder(rows=10, cols=40, radius=[0, arrow_size], length=length*0.15)
-            
-            # Get vertices and faces
-            vertices = md.vertexes()
-            faces = md.faces()
-            
-            # Create a rotation matrix to orient the arrow along the direction vector
-            z_axis = np.array([0, 0, -1])
-            
-            # Handle special cases where cross product might fail
-            if np.allclose(direction, z_axis, rtol=1e-5, atol=1e-5):
-                # Direction is already aligned with z-axis
-                rotation_matrix = np.eye(3)
-            elif np.allclose(direction, -z_axis, rtol=1e-5, atol=1e-5):
-                # Direction is opposite to z-axis
-                rotation_matrix = np.array([
-                    [1, 0, 0],
-                    [0, -1, 0],
-                    [0, 0, -1]
-                ])
-            else:
-                # Normal case - calculate rotation axis and angle
-                rotation_axis = np.cross(z_axis, direction)
-                rotation_axis = rotation_axis / np.linalg.norm(rotation_axis)
-                
-                angle = np.arccos(np.clip(np.dot(z_axis, direction), -1.0, 1.0))
-                
-                # Rodrigues rotation formula for rotation matrix
-                K = np.array([
-                    [0, -rotation_axis[2], rotation_axis[1]],
-                    [rotation_axis[2], 0, -rotation_axis[0]],
-                    [-rotation_axis[1], rotation_axis[0], 0]
-                ])
-                rotation_matrix = np.eye(3) + np.sin(angle) * K + (1 - np.cos(angle)) * np.dot(K, K)
-            
-            # Transform vertices
-            transformed_vertices = np.dot(vertices, rotation_matrix.T)
-            transformed_vertices += shaft_end
-            
-            # Create mesh item with transformed vertices
-            head = gl.GLMeshItem(
-                vertexes=transformed_vertices, 
-                faces=faces, 
-                smooth=False, 
-                color=color, 
-                shader='balloon'
-            )
-            return shaft, head
-        except Exception as e:
-            print(f"Error creating arrow head: {e}")
-            # If arrow head creation fails, return only the shaft
-            return shaft, None
+    
 
     def toggle_monitoring(self):
         if not self.monitoring:
@@ -320,6 +115,7 @@ class KneeFlexionExperiment(QMainWindow):
             self.start_buttoncsv.setText("Start Recieving Data")
             print("--- Real-Time Data Recieving Stopped ---")
             self.experiment_running = False  # Disable updates when not monitoring
+
          
     def read_csv_data(self):
         csv_file = Path(self.csv_path)
@@ -409,10 +205,10 @@ class KneeFlexionExperiment(QMainWindow):
                     elif current_tab == 2:  # Bone visualization tab
                         # Update bone positions/orientations with real data
                         if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
-                            self.update_femur_with_data(femur_position, femur_quaternion)
+                            self.update_mesh_with_data(self.femur_mesh, np.array(constants.PIVOT_POINT_FEMUR), femur_position, femur_quaternion)
                         
                         if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
-                            self.update_tibia_with_data(tibia_position, tibia_quaternion)
+                            self.update_mesh_with_data(self.tibia_mesh, np.array(constants.PIVOT_POINT_TIBA), tibia_position, tibia_quaternion)
                         
                         # Update force visualization
                         self.update_bone_forces(self.current_data_index)
@@ -448,11 +244,11 @@ class KneeFlexionExperiment(QMainWindow):
         """Update bone positions and orientations using real data from CSV"""
         # Update femur if it's loaded
         if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
-            self.update_femur_with_data(femur_position, femur_quaternion)
+            self.update_mesh_with_data(self.femur_mesh, np.array(constants.PIVOT_POINT_FEMUR), femur_position, femur_quaternion)
         
         # Update tibia if it's loaded
         if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
-            self.update_tibia_with_data(tibia_position, tibia_quaternion)
+            self.update_mesh_with_data(self.tibia_mesh, np.array(constants.PIVOT_POINT_TIBA), tibia_position, tibia_quaternion)
     
 
     def start_recording(self, test_name):
@@ -569,7 +365,7 @@ class KneeFlexionExperiment(QMainWindow):
         tab3_layout = QVBoxLayout()
         # Create 3D GL View Widget for bone visualization
         self.gl_view = gl.GLViewWidget()
-        self.gl_view.setCameraPosition(distance=1000, elevation=30, azimuth=-55)
+        self.gl_view.setCameraPosition(distance = constants.DISTANCE_BONE_VIZ, elevation=30, azimuth=-55)
         self.gl_view.setMinimumHeight(400)
         # Add axes for reference
         self.axes = ColoredGLAxisItem(size=(100, 100, 100)) #defined colors
@@ -727,6 +523,8 @@ class KneeFlexionExperiment(QMainWindow):
         # Current test type
         self.current_test_type = 'none'
 
+    
+
     def update_bones(self):
         # This method should be simplified to only use real CSV data
         # Only update if the bone tab is active
@@ -736,35 +534,29 @@ class KneeFlexionExperiment(QMainWindow):
         # Use the stored bone positions/orientations from CSV
         if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
             # Update femur
-            self.update_femur_with_data(
-                self.last_femur_position, 
-                self.last_femur_quaternion
-            )
+            self.update_mesh_with_data(self.femur_mesh, np.array(constants.PIVOT_POINT_FEMUR), self.last_femur_position, self.last_femur_quaternion)
         
         if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
             # Update tibia
-            self.update_tibia_with_data(
-                self.last_tibia_position, 
-                self.last_tibia_quaternion
-            )
+            self.update_mesh_with_data(self.tibia_mesh, np.array(constants.PIVOT_POINT_TIBA), self.last_tibia_position, self.last_tibia_quaternion)
         
         # Update forces
         if self.experiment_running and len(self.forces) > 0:
             # Update force visualization on bone
             self.update_bone_forces(self.current_data_index)
 
-    def update_femur_with_data(self, position, quaternion):
-        # Get 4x4 transformation matrix
-        transform = quaternion_to_transform_matrix(quaternion, position)
-        
-        # Update the mesh transformation
-        self.femur_mesh.setTransform(transform)
-
-    def update_tibia_with_data(self, position, quaternion):
-        pivot_point = np.array([0, 0, 0])  # Define the specific pivot point relative to the tibia's local coordinates
-        
+    
+    def update_mesh_with_data(self, mesh, pivot_point, position, quaternion):
+        """
+        Update a mesh with position and rotation data around a specific pivot point.
+        Args:
+            mesh: The mesh to update
+            pivot_point: The pivot point for rotation (numpy array)
+            position: The final position (numpy array)
+            quaternion: The rotation quaternion
+        """
         # Get transformation matrix with rotation only, no translation
-        R_matrix = quaternion_to_transform_matrix(quaternion)
+        R_matrix = MeshUtils.quaternion_to_transform_matrix(quaternion)
         
         # Create translation matrices
         T_to_origin = np.eye(4)
@@ -779,9 +571,10 @@ class KneeFlexionExperiment(QMainWindow):
         # Apply combined transform: translate to origin, rotate, translate back, then to final position
         transform = np.dot(T_position, np.dot(T_from_origin, np.dot(R_matrix, T_to_origin)))
         
-        # Apply the transform to the mesh
-        self.tibia_mesh.setTransform(transform)
-        
+        # Update the mesh transformation
+        mesh.setTransform(transform)
+
+ 
     def update_visualization_timer(self):
         """Called by timer to update visualization"""
         if self.experiment_running and len(self.forces) > 0:
@@ -1106,7 +899,7 @@ class KneeFlexionExperiment(QMainWindow):
             self.gl_view.removeItem(self.force_arrow_head)
         
         # Create new arrows
-        self.force_arrow_shaft, self.force_arrow_head = self.create_arrow(
+        self.force_arrow_shaft, self.force_arrow_head = MeshUtils.create_arrow(
             tibia_pos, end_point, color=(1, 0, 0, 1), arrow_size=constants.ARROW_SIZE, shaft_width=constants.SHAFT_WIDTH
         )
         
@@ -1294,7 +1087,7 @@ class KneeFlexionExperiment(QMainWindow):
     def load_femur(self):
         try:
             # Load femur STL
-            femur_vertices, femur_faces = load_stl_as_mesh(constants.FEMUR)
+            femur_vertices, femur_faces = MeshUtils.load_stl_as_mesh(constants.FEMUR)
             self.femur_original_vertices = femur_vertices.copy()
             
             # Store vertices in a numpy array for faster operations
@@ -1338,7 +1131,7 @@ class KneeFlexionExperiment(QMainWindow):
     def load_tibia(self):
         try:
             # Load tibia STL
-            tibia_vertices, tibia_faces = load_stl_as_mesh(constants.TIBIA)
+            tibia_vertices, tibia_faces = MeshUtils.load_stl_as_mesh(constants.TIBIA)
             self.tibia_original_vertices = tibia_vertices.copy()
             
             # Store vertices in a numpy array for faster operations
