@@ -13,6 +13,7 @@ PIVOT_POINT_FEMUR = [0, 100, 0]
 PIVOT_POINT_TIBA = [0, 1200, 0]
 DISTANCE_BONE_VIZ = 3000
 
+
 # plot settings
 AXIS_FACTOR = 0.5
 AXIS_LINEWIDTH = 0.85
@@ -32,4 +33,4 @@ BUTTON_HEIGHT = 60
 
 # data 
 DATA_PREVIOUS_TEST = "print_data.F_sensor_temp_data_79.txt"
-DATA_CSV = "data.csv"
+DATA_CSV = "/home/annick/knee_eval_ws/data.csv"
