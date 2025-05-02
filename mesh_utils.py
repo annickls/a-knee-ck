@@ -139,3 +139,14 @@ class MeshUtils:
             print(f"Error creating arrow head: {e}")
             # If arrow head creation fails, return only the shaft
             return shaft, None
+    
+    def get_tibia_force_origin():
+        """Get the specific point on the tibia where the force arrow should originate"""
+        # platzhalter für später
+        base_position = np.array([0, 0, 100])
+        
+        # Define anatomical offset - these values should be adjusted to match your specific model
+        anatomical_offset = np.array([0, 0, 0])  # X, Y, Z offset in model coordinates
+        
+        # Return the origin point
+        return base_position + anatomical_offset

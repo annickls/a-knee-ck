@@ -2,10 +2,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import pyqtgraph.opengl as gl
 from OpenGL.GL import glBegin, glEnd, glVertex3f, glColor4f, GL_LINES, GL_LINE_SMOOTH, glEnable, glHint, GL_LINE_SMOOTH_HINT, GL_NICEST
-import pyqtgraph.opengl as gl
 import constants
-import numpy as np
-from plot_config import MplCanvas
 
 class MplCanvas(FigureCanvas):
     """Matplotlib canvas class for embedding plots in Qt that can display either current or historical force/torque data"""
@@ -58,7 +55,8 @@ class MplCanvas(FigureCanvas):
         self.force_comp_text = self.axes_force.text2D(0.32, 0.95, "", transform=self.axes_force.transAxes, fontsize=8)
         self.torque_comp_text = self.axes_torque.text2D(0.4, 0.95, "", transform=self.axes_torque.transAxes, fontsize=8)
         
-        super(MplCanvas, self).__init__(self.fig)
+        # Initialize the FigureCanvas
+        super().__init__(self.fig)
         self.fig.tight_layout()
 
 
