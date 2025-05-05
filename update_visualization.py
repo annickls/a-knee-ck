@@ -11,6 +11,8 @@ import constants
 import numpy as np
 from mesh_utils import MeshUtils
 from PyQt5.QtCore import Qt, QTimer
+from experiment_controller import ExperimentController
+
 class UpdateVisualization():
     def update_current_visualization(self, force, torque):
         """Update the force/torque visualization with only the current data."""
@@ -60,11 +62,11 @@ class UpdateVisualization():
     def update_history_visualization(self):
         """Update the force/torque visualization with history data."""
         # Check if we have data to visualize
-        if not self.force_history or not self.torque_history:
+        if not self.experiment_controller.force_history or not self.experiment_controller.torque_history:
             return
         
         # Determine how many arrows should be displayed (all entries in history)
-        history_length = len(self.force_history)
+        history_length = len(self.experiment_controller.force_history)
         
         # If we already have the maximum number of arrows displayed,
         # remove the oldest one to make room for the newest
@@ -84,7 +86,7 @@ class UpdateVisualization():
             cmap_torque = plt.get_cmap('PuRd')
             
             # Draw all arrows in history
-            for i, (hist_force, hist_torque) in enumerate(zip(self.force_history, self.torque_history)):
+            for i, (hist_force, hist_torque) in enumerate(zip(self.experiment_controller.force_history, self.experiment_controller.torque_history)):
                 # Calculate color and alpha based on position in history
                 alpha = 0.3 + 0.7 * (i / max(1, history_length - 1))
                 color_idx = i / max(1, history_length - 1)
@@ -134,8 +136,8 @@ class UpdateVisualization():
             cmap_torque = plt.get_cmap('PuRd')
             
             # Newest data point
-            newest_force = self.force_history[-1]
-            newest_torque = self.torque_history[-1]
+            newest_force = self.experiment_controller.force_history[-1]
+            newest_torque = self.experiment_controller.torque_history[-1]
             
             # Calculate color for newest arrow (full opacity)
             alpha = 1.0
@@ -203,8 +205,8 @@ class UpdateVisualization():
                 torque_arrow.set_color(color_torque)
         
         # Display magnitudes of the current force/torque
-        current_force = self.force_history[-1]
-        current_torque = self.torque_history[-1]
+        current_force = self.experiment_controller.force_history[-1]
+        current_torque = self.experiment_controller.torque_history[-1]
         force_mag = np.sqrt(np.sum(current_force**2))
         torque_mag = np.sqrt(np.sum(current_torque**2))
         
@@ -227,8 +229,8 @@ class UpdateVisualization():
             return
             
         # Get current data point
-        idx = data_index % len(self.forces)
-        force = self.forces[idx].copy()
+        idx = data_index % len(self.experiment_controller.forces)
+        force = self.experiment_controller.forces[idx].copy()
         
         # Scale forces for better visualization
         scale_factor = 20.0
@@ -260,11 +262,11 @@ class UpdateVisualization():
             self.gl_view.addItem(self.force_arrow_head)
    
     def update_display(self):
-        current_angle = constants.FLEXION_ANGLES[self.current_angle_index]
+        current_angle = constants.FLEXION_ANGLES[self.experiment_controller.current_angle_index]
         self.next_label.setText(f"Please flex knee to {current_angle} degrees")
         self.next_label.setAlignment(Qt.AlignCenter)
         # Update overall progress
-        self.overall_progress.setValue(self.current_angle_index)
+        self.overall_progress.setValue(self.experiment_controller.current_angle_index)
             
         # Load the appropriate image
         try:

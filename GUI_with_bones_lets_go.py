@@ -27,6 +27,7 @@ import logging
 from plot_config1 import MplCanvas, ColoredGLAxisItem
 from mesh_utils import MeshUtils
 from update_visualization import UpdateVisualization
+from experiment_controller import ExperimentController
 
 class KneeFlexionExperiment(QMainWindow):
     def __init__(self):
@@ -44,7 +45,6 @@ class KneeFlexionExperiment(QMainWindow):
         self.last_size = 0
         
         # Experiment parameters
-        self.current_angle_index = 0
         self.timer = QTimer()
         self.timer.timeout.connect(self.rotation_complete)
         self.seconds_timer = QTimer()
@@ -54,29 +54,136 @@ class KneeFlexionExperiment(QMainWindow):
         self.viz_timer = QTimer()
         self.viz_timer.timeout.connect(self.update_visualization_timer)
         self.viz_timer.setInterval(20)  # 20ms for smoother updates
-        
-        # History for visualization
-        self.force_history = []
-        self.torque_history = []
-        self.current_data_index = 0
-        
-        # Experiment is running flag
-        self.experiment_running = False
-        
-        # Initialize empty force/torque arrays
-        self.forces = np.zeros((0, 3))
-        self.torques = np.zeros((0, 3))
+
+        # Initialize the experiment controller
+        self.experiment_controller = ExperimentController(self)
         
         # Setup UI
         self.setup_ui()
         
-        self.recording = False
-        self.current_recording_data = []
-        self.recording_start_time = None
-        self.current_test_name = ""
-        
         # Ensure directory exists for data files
         os.makedirs("recorded_data", exist_ok=True)
+
+    def on_experiment_started(self):
+        """Called when the experiment starts"""
+        current_angle = self.experiment_controller.current_angle
+        
+        # Update UI elements
+        self.overall_progress.setValue(0)
+        self.next_label.setText(f"Please flex knee to {current_angle} degrees")
+        self.rotation_progress_label.show()
+        self.rotation_progress.show()
+        self.rotation_progress.setRange(0, constants.HOLD_TIME)
+        self.rotation_progress.setValue(constants.HOLD_TIME)
+        self.rotation_progress.setFormat("%v seconds remaining")
+        
+        # Load image
+        try:
+            pixmap = QPixmap(f"KW{current_angle}.jpg")
+            if pixmap.isNull():
+                self.image_label.setText(f"Image for {current_angle}° not found")
+            else:
+                pixmap = pixmap.scaled(self.image_frame.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                self.image_label.setPixmap(pixmap)
+        except Exception as e:
+            self.image_label.setText(f"Error loading image: {str(e)}")
+            
+        # Update button states
+        self.next_label.show()
+        self.start_button.setEnabled(False)
+        self.rotate_button.setEnabled(True)
+        
+        # Start visualization timer
+        if not self.viz_timer.isActive():
+            self.viz_timer.start()
+            
+        # Initialize visualizations
+        self.update_visualization(0)
+        UpdateVisualization.update_bone_forces(self, 0)
+    
+    def on_angle_changed(self):
+        """Called when the angle changes"""
+        UpdateVisualization.update_display(self)
+        self.next_button.setEnabled(False)
+        self.rotate_button.setEnabled(True)
+    
+    def on_test_phase_started(self, test_name, time_remaining):
+        """Called when a test phase starts"""
+        # Update progress bar
+        self.remaining_time = time_remaining
+        self.rotation_progress.setValue(self.remaining_time)
+        
+        # Start timer
+        self.seconds_timer.start(1000)
+        
+        # Update UI based on test type
+        if test_name == 'neutral':
+            self.rotate_button.setEnabled(False)
+            self.varus_button.setEnabled(True)
+        elif test_name == 'var':
+            self.varus_button.setEnabled(False)
+            self.valgus_button.setEnabled(True)
+        elif test_name == 'val':
+            self.valgus_button.setEnabled(False)
+            self.internal_rot_button.setEnabled(True)
+        elif test_name == 'int':
+            self.internal_rot_button.setEnabled(False)
+            self.external_rot_button.setEnabled(True)
+        elif test_name == 'ext':
+            self.external_rot_button.setEnabled(False)
+            # Check if this is the last angle
+            if self.experiment_controller.is_last_angle():
+                self.lachmann_button.setEnabled(True)
+                self.next_button.setEnabled(False)
+            else:
+                self.next_button.setEnabled(True)
+                self.lachmann_button.setEnabled(False)
+        elif test_name == 'lachmann':
+            self.lachmann_button.setEnabled(False)
+            self.image_label.clear()
+            self.next_label.hide()
+            self.rotation_progress_label.setText("Performing Lachmann Test")
+            self.rotation_progress_label.show()
+            self.rotation_progress.setRange(0, constants.LACHMANN_TIME)
+            self.rotation_progress.setFormat("%v seconds remaining")
+    
+    def on_timer_updated(self, time_remaining):
+        """Called when the timer updates"""
+        self.rotation_progress.setValue(time_remaining)
+    
+    def on_phase_completed(self, phase_name):
+        """Called when a test phase is completed"""
+        self.seconds_timer.stop()
+        self.rotation_progress.setValue(0)
+    
+    def on_experiment_completed(self):
+        """Called when the experiment is complete"""
+        self.overall_progress.setValue(len(constants.FLEXION_ANGLES))
+        self.image_label.clear()
+        self.start_button.setEnabled(True)
+        
+        # Hide instructions
+        self.next_label.hide()
+        self.rotation_progress_label.hide()
+        self.rotation_progress.hide()
+        
+        # Stop visualization timer
+        if self.viz_timer.isActive():
+            self.viz_timer.stop()
+    
+    def on_data_updated(self):
+        """Called when new data arrives and is processed"""
+        # Update the appropriate visualization based on current tab
+        current_tab = self.tabs.currentIndex()
+        
+        if current_tab == 0:  # Current Data tab
+            force = self.experiment_controller.forces[self.experiment_controller.current_data_index].copy()
+            torque = self.experiment_controller.torques[self.experiment_controller.current_data_index].copy()
+            UpdateVisualization.update_current_visualization(self, force, torque)
+        elif current_tab == 1:  # History tab
+            UpdateVisualization.update_history_visualization(self)
+        elif current_tab == 2:  # Bone visualization tab
+            UpdateVisualization.update_bone_forces(self, self.experiment_controller.current_data_index)
 
     def toggle_monitoring(self):
         if not self.monitoring:
@@ -97,7 +204,7 @@ class KneeFlexionExperiment(QMainWindow):
                 return
                 
             # Set experiment running flag to true to enable visualization updates
-            self.experiment_running = True
+            self.experiment_controller.experiment_running = True
                 
             # Start timer to check for changes (check every 20ms for more responsive updates)
             self.timercsv.start(20)
@@ -112,9 +219,10 @@ class KneeFlexionExperiment(QMainWindow):
             self.viz_timer.stop()
             self.start_buttoncsv.setText("Start Recieving Data")
             print("--- Real-Time Data Recieving Stopped ---")
-            self.experiment_running = False  # Disable updates when not monitoring
+            self.experiment_controller.experiment_running = False  # Disable updates when not monitoring
 
     def read_csv_data(self):
+        """Handle reading data from CSV"""
         csv_file = Path(self.csv_path)
         
         if not csv_file.exists():
@@ -142,7 +250,7 @@ class KneeFlexionExperiment(QMainWindow):
                     parts = last_line.split(',')
                     
                     # Check if we have enough data
-                    if len(parts) < 28:  # We need at least 28 elements based on your format
+                    if len(parts) < 28:
                         print(f"Warning: Incomplete data in CSV: {len(parts)} elements")
                         return
                     
@@ -153,79 +261,20 @@ class KneeFlexionExperiment(QMainWindow):
                     force = np.array([float(parts[1]), float(parts[2]), float(parts[3])])
                     torque = np.array([float(parts[4]), float(parts[5]), float(parts[6])])
                     
-                    # Tibia position and quaternion (x,y,z, qx,qy,qz,qw)
+                    # Tibia position and quaternion
                     tibia_position = np.array([float(parts[7]), float(parts[8]), float(parts[9])])
                     tibia_quaternion = np.array([float(parts[13]), float(parts[10]), float(parts[11]), float(parts[12])])
-                    # Note the order change: CSV has qx,qy,qz,qw but your system expects qw,qx,qy,qz
                     
                     # Femur position and quaternion
                     femur_position = np.array([float(parts[14]), float(parts[15]), float(parts[16])])
                     femur_quaternion = np.array([float(parts[20]), float(parts[17]), float(parts[18]), float(parts[19])])
-                    # Same reordering for quaternion components
                     
-                    # Store positions and quaternions for other methods to use
-                    self.last_femur_position = femur_position
-                    self.last_femur_quaternion = femur_quaternion
-                    self.last_tibia_position = tibia_position
-                    self.last_tibia_quaternion = tibia_quaternion
-                    
-                    # Store force/torque in arrays
-                    if len(self.forces) > 100:  # Keep only last 100 points
-                        self.forces = np.vstack([self.forces[1:], force])
-                        self.torques = np.vstack([self.torques[1:], torque])
-                    else:
-                        if len(self.forces) == 0:
-                            self.forces = np.array([force])
-                            self.torques = np.array([torque])
-                        else:
-                            self.forces = np.vstack([self.forces, force])
-                            self.torques = np.vstack([self.torques, torque])
-                    
-                    self.current_data_index = len(self.forces) - 1
-                    
-                    # Update visualization based on current tab
-                    current_tab = self.tabs.currentIndex()
-                    
-                    if current_tab == 0:  # Current Data tab
-                        UpdateVisualization.update_current_visualization(self, force, torque)
-                    elif current_tab == 1:  # History tab
-                        # Add to history
-                        self.force_history.append(force)
-                        self.torque_history.append(torque)
-                        
-                        # Keep history to specified size
-                        if len(self.force_history) > constants.HISTORY_SIZE:
-                            self.force_history.pop(0)
-                            self.torque_history.pop(0)
-                            
-                        UpdateVisualization.update_history_visualization(self)
-                    elif current_tab == 2:  # Bone visualization tab
-                        # Update bone positions/orientations with real data
-                        if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
-                            MeshUtils.update_mesh_with_data(self.femur_mesh, np.array(constants.PIVOT_POINT_FEMUR), femur_position, femur_quaternion)
-                        
-                        if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
-                            MeshUtils.update_mesh_with_data(self.tibia_mesh, np.array(constants.PIVOT_POINT_TIBA), tibia_position, tibia_quaternion)
-                        
-                        # Update force visualization
-                        UpdateVisualization.update_bone_forces(self, self.current_data_index)
-                    
-                    # If recording is active, record this data point
-                    if self.recording:
-                        current_time = time.time() - self.recording_start_time
-                        
-                        # Use real bone data from CSV
-                        data_point = [
-                            current_time,
-                            force[0], force[1], force[2],
-                            torque[0], torque[1], torque[2],
-                            femur_position[0], femur_position[1], femur_position[2],
-                            femur_quaternion[0], femur_quaternion[1], femur_quaternion[2], femur_quaternion[3],
-                            tibia_position[0], tibia_position[1], tibia_position[2],
-                            tibia_quaternion[0], tibia_quaternion[1], tibia_quaternion[2], tibia_quaternion[3]
-                        ]
-                        
-                        self.current_recording_data.append(data_point)
+                    # Process the data through the controller
+                    self.experiment_controller.process_new_data(
+                        force, torque, 
+                        femur_position, femur_quaternion,
+                        tibia_position, tibia_quaternion
+                    )
                 
                 # Update last modified time and size
                 self.last_modified_time = current_modified_time
@@ -235,46 +284,21 @@ class KneeFlexionExperiment(QMainWindow):
                 print(f"Error processing CSV data: {str(e)}")
                 import traceback
                 traceback.print_exc()
-    
-    def start_recording(self, test_name):
-        """Start recording data for the current test"""
-        self.recording = True
-        self.current_recording_data = []
-        self.recording_start_time = time.time()
-        self.current_test_name = test_name
-        print(f"Started recording data for {test_name}")
-
-    def stop_recording(self):
-        """Stop recording and save data to file"""
-        if not self.recording:
-            return
-        self.recording = False
-        
-        # Create a filename with timestamp, angle, and test type
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        angle = constants.FLEXION_ANGLES[self.current_angle_index]
-        filename = f"recorded_data/{timestamp}_{angle}deg_{self.current_test_name}.txt"
-        
-        # Write data to file
-        with open(filename, 'w') as f:
-            f.write("# Timestamp, Fx, Fy, Fz, Tx, Ty, Tz, FemurPosX, FemurPosY, FemurPosZ, FemurQuatW, FemurQuatX, FemurQuatY, FemurQuatZ, TibiaPosX, TibiaPosY, TibiaPosZ, TibiaQuatW, TibiaQuatX, TibiaQuatY, TibiaQuatZ\n")
-            for data_point in self.current_recording_data:
-                f.write(','.join(map(str, data_point)) + '\n')
-        
-        print(f"Saved {len(self.current_recording_data)} data points to {filename}")
-        self.current_recording_data = []
+                print(f"Error processing CSV data: {str(e)}")
+                import traceback
+                traceback.print_exc()
     
     def on_tab_changed(self, index):
         # Update the appropriate visualization for the new tab
-        if self.experiment_running and len(self.forces) > 0:
+        if self.experiment_controller.experiment_running and len(self.experiment_controller.forces) > 0:
             if index == 0:  # Current Data tab
-                force = self.forces[self.current_data_index].copy()
-                torque = self.torques[self.current_data_index].copy()
+                force = self.experiment_controller.forces[self.experiment_controller.current_data_index].copy()
+                torque = self.experiment_controller.torques[self.experiment_controller.current_data_index].copy()
                 UpdateVisualization.update_current_visualization(self, force, torque)
             elif index == 1:  # History tab
                 UpdateVisualization.update_history_visualization(self)
             elif index == 2:  # Bone visualization tab
-                UpdateVisualization.update_bone_forces(self, self.current_data_index)
+                UpdateVisualization.update_bone_forces(self, self.experiment_controller.current_data_index)
             print(f"Tab changed to {index}, visualization updated")
 
     def setup_ui(self):
@@ -521,37 +545,34 @@ class KneeFlexionExperiment(QMainWindow):
             MeshUtils.update_mesh_with_data(self.tibia_mesh, np.array(constants.PIVOT_POINT_TIBA), self.last_tibia_position, self.last_tibia_quaternion)
         
         # Update forces
-        if self.experiment_running and len(self.forces) > 0:
+        if self.experiment_controller.experiment_running and len(self.experiment_controller.forces) > 0:
             # Update force visualization on bone
-            UpdateVisualization.update_bone_forces(self, self.current_data_index)
+            UpdateVisualization.update_bone_forces(self, self.experiment_controller.current_data_index)
 
     def update_visualization_timer(self):
         """Called by timer to update visualization"""
-        if self.experiment_running and len(self.forces) > 0:
+        if self.experiment_controller.experiment_running and len(self.experiment_controller.forces) > 0:
             # Just update the appropriate visualization based on active tab
             current_tab = self.tabs.currentIndex()
             
             if current_tab == 0:  # Current Data tab
-                force = self.forces[self.current_data_index].copy()
-                torque = self.torques[self.current_data_index].copy()
+                force = self.experiment_controller.forces[self.experiment_controller.current_data_index].copy()
+                torque = self.experiment_controller.torques[self.experiment_controller.current_data_index].copy()
                 UpdateVisualization.update_current_visualization(self, force, torque)
             elif current_tab == 1:  # History tab
                 UpdateVisualization.update_history_visualization(self)
             elif current_tab == 2:  # Bone visualization tab
-                UpdateVisualization.update_bone_forces(self, self.current_data_index)
+                UpdateVisualization.update_bone_forces(self, self.experiment_controller.current_data_index)
             
             # Record data if recording is active
-            if self.recording:
-                current_time = time.time() - self.recording_start_time
+            if self.experiment_controller.recording:
+                current_time = time.time() - self.experiment_controller.recording_start_time
                 
                 # Use real CSV data for recording
-                force = self.forces[self.current_data_index].copy()
-                torque = self.torques[self.current_data_index].copy()
+                force = self.experiment_controller.forces[self.experiment_controller.current_data_index].copy()
+                torque = self.experiment_controller.torques[self.experiment_controller.current_data_index].copy()
                 
                 # The bone positions should be stored when reading the CSV
-                # Make sure you're extracting and storing these in read_csv_data
-                
-                # Make sure these variables are defined in your read_csv_data method
                 if hasattr(self, 'last_femur_position') and hasattr(self, 'last_femur_quaternion') and \
                 hasattr(self, 'last_tibia_position') and hasattr(self, 'last_tibia_quaternion'):
                     
@@ -568,23 +589,23 @@ class KneeFlexionExperiment(QMainWindow):
                         self.last_tibia_quaternion[2], self.last_tibia_quaternion[3]
                     ]
                     
-                    self.current_recording_data.append(data_point)
+                    self.experiment_controller.current_recording_data.append(data_point)
         
     def update_visualization(self, data_index=0):
         """Update only the active visualization tab"""
         current_tab = self.tabs.currentIndex()
         
-        if not self.experiment_running or len(self.forces) == 0:
+        if not self.experiment_controller.experiment_running or len(self.experiment_controller.forces) == 0:
             return
             
-        idx = data_index % len(self.forces)
-        force = self.forces[idx].copy()
-        torque = self.torques[idx].copy()
+        idx = data_index % len(self.experiment_controller.forces)
+        force = self.experiment_controller.forces[idx].copy()
+        torque = self.experiment_controller.torques[idx].copy()
         
         update_methods = {
             0: UpdateVisualization.update_current_visualization(self, force, torque),
             1: UpdateVisualization.update_history_visualization(self),
-            2: UpdateVisualization.update_bone_forces(self, self.current_data_index)
+            2: UpdateVisualization.update_bone_forces(self, self.experiment_controller.current_data_index)
         }
         
         if current_tab in update_methods:
@@ -594,132 +615,42 @@ class KneeFlexionExperiment(QMainWindow):
                 update_methods[current_tab](force, torque)
 
     def start_experiment(self):
-        self.current_angle_index = 0
-        self.current_angle = constants.FLEXION_ANGLES[self.current_angle_index]
-        self.overall_progress.setValue(0)
-        self.next_label.setText(f"Please flex knee to {self.current_angle} degrees")
-        self.rotation_progress_label.show()
-        self.rotation_progress.show()
-
-        # Reset progress bar range to match rotation time (5 seconds)
-        self.rotation_progress.setRange(0, constants.HOLD_TIME)
-        self.rotation_progress.setValue(constants.HOLD_TIME)
-        self.rotation_progress.setFormat("%v seconds remaining")
-    
-        # Reset current test type
-        self.current_test_type = 'none'
-        
-        # Reset visualization history
-        self.force_history = []
-        self.torque_history = []
-        self.current_data_index = 0
-        
-        try:
-            pixmap = QPixmap(f"KW{self.current_angle}.jpg")
-            
-            
-            if pixmap.isNull():
-                self.image_label.setText(f"Image for {self.current_angle}° not found")
-            else:
-                pixmap = pixmap.scaled(self.image_frame.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation) # Scale the image 
-                self.image_label.setPixmap(pixmap)
-        except Exception as e:
-            self.image_label.setText(f"Error loading image: {str(e)}")
-        
-        # Set experiment running flag
-        self.experiment_running = True
-        
-        # Enable only needed buttons
-        self.next_label.show()
-        self.start_button.setEnabled(False)
-        self.rotate_button.setEnabled(True)
-        
-        # Start visualization timer immediately and keep it running throughout the experiment
-        if not self.viz_timer.isActive():
-            self.viz_timer.start()
-
-        # Update visualization initially
-        self.update_visualization(0)
-        
-        # Also update bone forces explicitly
-        UpdateVisualization.update_bone_forces(self, 0)
+        """Handle start experiment button click"""
+        self.experiment_controller.start_experiment()
     
     def next_angle(self):
-        self.current_angle_index += 1
-        UpdateVisualization.update_display(self)
-        self.next_button.setEnabled(False)
-        self.rotate_button.setEnabled(True)
+        """Handle next angle button click"""
+        self.experiment_controller.next_angle()
 
     def start_rotation(self):
-        self.rotate_button.setEnabled(False) # Disable rotate button
-        self.varus_button.setEnabled(True) 
-        self.remaining_time = constants.HOLD_TIME
-        self.rotation_progress.setValue(self.remaining_time)
-        self.seconds_timer.start(1000)  # Update every second
-        self.next_button.setEnabled(False)
-        self.start_recording(f"neutral") # Start recording data
+        """Handle rotate button click"""
+        self.experiment_controller.start_test_phase('neutral')
         
     def start_varus(self):
-        self.varus_button.setEnabled(False) # Disable varus button
-        self.remaining_time = constants.HOLD_TIME
-        self.rotation_progress.setValue(self.remaining_time)
-        self.seconds_timer.start(1000)  
-        self.valgus_button.setEnabled(True)
-        self.start_recording(f"var") # Start recording data
+        """Handle varus button click"""
+        self.experiment_controller.start_test_phase('var')
 
     def start_valgus(self):
-        self.valgus_button.setEnabled(False) # Disable valgus button
-        self.remaining_time = constants.HOLD_TIME
-        self.rotation_progress.setValue(constants.HOLD_TIME)
-        self.seconds_timer.start(1000)  
-        self.internal_rot_button.setEnabled(True)
-        self.start_recording(f"val") # Start recording data
+        """Handle valgus button click"""
+        self.experiment_controller.start_test_phase('val')
 
     def start_internal_rot(self):
-        self.internal_rot_button.setEnabled(False) # Disable internal rotation button
-        self.remaining_time = constants.HOLD_TIME
-        self.rotation_progress.setValue(self.remaining_time)
-        self.seconds_timer.start(1000)  # Update every second
-        self.external_rot_button.setEnabled(True)
-        self.start_recording(f"int")# Start recording data
+        """Handle internal rotation button click"""
+        self.experiment_controller.start_test_phase('int')
 
     def start_external_rot(self):
-        self.external_rot_button.setEnabled(False) # Disable external rotation button
-        self.remaining_time = constants.HOLD_TIME
-        self.rotation_progress.setValue(self.remaining_time)
-        self.seconds_timer.start(1000)  # Update every second
-        self.start_recording(f"ext") # Start recording data
+        """Handle external rotation button click"""
+        self.experiment_controller.start_test_phase('ext')
 
-        # Enable appropriate next button based on where we are in the test
-        if self.current_angle_index >= (len(constants.FLEXION_ANGLES) - 1):
-            self.lachmann_button.setEnabled(True) # last angle, enable Lachmann test button
-            self.next_button.setEnabled(False)
-        else:
-            self.next_button.setEnabled(True) # not last angle: enable next button
-            self.lachmann_button.setEnabled(False)
-
-    def start_lachmann(self):  
-        self.lachmann_button.setEnabled(False)
-        self.image_label.clear()
-        self.next_label.hide()
-        
-        self.rotation_progress_label.setText("Performing Lachmann Test")
-        self.rotation_progress_label.show()
-        self.remaining_time = constants.LACHMANN_TIME # Set timer for Lachmann test
-        self.rotation_progress.setValue(self.remaining_time)
-        self.rotation_progress.setRange(0, constants.LACHMANN_TIME)
-        self.rotation_progress.setFormat("%v seconds remaining")
-        self.seconds_timer.start(1000)  # Start the timer and update every second
-        self.start_recording("lachmann") # Start recording data
-        self.current_test_type = 'lachmann' # Set flag to indicate we're in Lachmann test
+    def start_lachmann(self):
+        """Handle Lachmann test button click"""
+        self.experiment_controller.start_test_phase('lachmann')
     
     def update_seconds_progress(self):
-        self.remaining_time -= 1
-        self.rotation_progress.setValue(self.remaining_time)
-        
-        if self.remaining_time <= 0:
+        """Handle timer tick event"""
+        completed = self.experiment_controller.update_timer()
+        if completed:
             self.seconds_timer.stop()
-            self.rotation_complete()
     
     def rotation_complete(self):
         self.timer.stop()
@@ -727,7 +658,7 @@ class KneeFlexionExperiment(QMainWindow):
         self.rotation_progress.setValue(0)
 
         # Stop recording data if active
-        if self.recording:
+        if self.experiment_controller.recording:
             self.stop_recording()
 
         # Check if we just completed a Lachmann test
@@ -750,9 +681,9 @@ class KneeFlexionExperiment(QMainWindow):
                 self.viz_timer.stop()
         
             # Reset experiment running flag
-            self.experiment_running = False
+            self.experiment_controller.experiment_running = False
 
-        elif self.current_angle_index >= (len(constants.FLEXION_ANGLES) - 1) and self.external_rot_button.isEnabled() == False:
+        elif self.experiment_controller.current_angle_index >= (len(constants.FLEXION_ANGLES) - 1) and self.external_rot_button.isEnabled() == False:
             self.next_button.setEnabled(False) # End of regular experiment - enable Lachmann test
  
     def load_femur(self):

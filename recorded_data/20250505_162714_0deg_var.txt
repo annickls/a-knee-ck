@@ -1,0 +1,2 @@
+# Timestamp, Fx, Fy, Fz, Tx, Ty, Tz, FemurPosX, FemurPosY, FemurPosZ, FemurQuatW, FemurQuatX, FemurQuatY, FemurQuatZ, TibiaPosX, TibiaPosY, TibiaPosZ, TibiaQuatW, TibiaQuatX, TibiaQuatY, TibiaQuatZ
+3.6842706203460693,-5.56435,2.39503,-2.28793,-3.52986,3.67448,-0.0693525,-0.226984,0.700649,0.0468348,0.129063,0.981251,0.0205731,-0.185822,-0.00175438,0.557035,0.116478,0.73054,0.957277,-0.084774,0.250735
