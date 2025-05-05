@@ -114,7 +114,6 @@ class KneeFlexionExperiment(QMainWindow):
             print("--- Real-Time Data Recieving Stopped ---")
             self.experiment_running = False  # Disable updates when not monitoring
 
-         
     def read_csv_data(self):
         csv_file = Path(self.csv_path)
         
@@ -203,10 +202,10 @@ class KneeFlexionExperiment(QMainWindow):
                     elif current_tab == 2:  # Bone visualization tab
                         # Update bone positions/orientations with real data
                         if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
-                            self.update_mesh_with_data(self.femur_mesh, np.array(constants.PIVOT_POINT_FEMUR), femur_position, femur_quaternion)
+                            MeshUtils.update_mesh_with_data(self.femur_mesh, np.array(constants.PIVOT_POINT_FEMUR), femur_position, femur_quaternion)
                         
                         if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
-                            self.update_mesh_with_data(self.tibia_mesh, np.array(constants.PIVOT_POINT_TIBA), tibia_position, tibia_quaternion)
+                            MeshUtils.update_mesh_with_data(self.tibia_mesh, np.array(constants.PIVOT_POINT_TIBA), tibia_position, tibia_quaternion)
                         
                         # Update force visualization
                         UpdateVisualization.update_bone_forces(self, self.current_data_index)
@@ -236,19 +235,7 @@ class KneeFlexionExperiment(QMainWindow):
                 print(f"Error processing CSV data: {str(e)}")
                 import traceback
                 traceback.print_exc()
-
-
-    def update_bones_from_csv_data(self, femur_position, femur_quaternion, tibia_position, tibia_quaternion):
-        """Update bone positions and orientations using real data from CSV"""
-        # Update femur if it's loaded
-        if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
-            self.update_mesh_with_data(self.femur_mesh, np.array(constants.PIVOT_POINT_FEMUR), femur_position, femur_quaternion)
-        
-        # Update tibia if it's loaded
-        if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
-            self.update_mesh_with_data(self.tibia_mesh, np.array(constants.PIVOT_POINT_TIBA), tibia_position, tibia_quaternion)
     
-
     def start_recording(self, test_name):
         """Start recording data for the current test"""
         self.recording = True
@@ -395,7 +382,6 @@ class KneeFlexionExperiment(QMainWindow):
         self.left_widget.setLayout(left_layout)
         bottom_splitter.addWidget(self.left_widget)
         
-        
         # Right part: Control buttons and image
         right_widget = QWidget()
         right_layout = QGridLayout()
@@ -510,7 +496,6 @@ class KneeFlexionExperiment(QMainWindow):
         overall_progress_layout.addWidget(self.overall_progress)
         main_layout.addLayout(overall_progress_layout, 3, 0, 1, 2)
 
-
         # Set main layout
         main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
@@ -529,47 +514,17 @@ class KneeFlexionExperiment(QMainWindow):
         # Use the stored bone positions/orientations from CSV
         if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
             # Update femur
-            self.update_mesh_with_data(self.femur_mesh, np.array(constants.PIVOT_POINT_FEMUR), self.last_femur_position, self.last_femur_quaternion)
+            MeshUtils.update_mesh_with_data(self.femur_mesh, np.array(constants.PIVOT_POINT_FEMUR), self.last_femur_position, self.last_femur_quaternion)
         
         if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
             # Update tibia
-            self.update_mesh_with_data(self.tibia_mesh, np.array(constants.PIVOT_POINT_TIBA), self.last_tibia_position, self.last_tibia_quaternion)
+            MeshUtils.update_mesh_with_data(self.tibia_mesh, np.array(constants.PIVOT_POINT_TIBA), self.last_tibia_position, self.last_tibia_quaternion)
         
         # Update forces
         if self.experiment_running and len(self.forces) > 0:
             # Update force visualization on bone
             UpdateVisualization.update_bone_forces(self, self.current_data_index)
 
-    
-    def update_mesh_with_data(self, mesh, pivot_point, position, quaternion):
-        """
-        Update a mesh with position and rotation data around a specific pivot point.
-        Args:
-            mesh: The mesh to update
-            pivot_point: The pivot point for rotation (numpy array)
-            position: The final position (numpy array)
-            quaternion: The rotation quaternion
-        """
-        # Get transformation matrix with rotation only, no translation
-        R_matrix = MeshUtils.quaternion_to_transform_matrix(quaternion)
-        
-        # Create translation matrices
-        T_to_origin = np.eye(4)
-        T_to_origin[0:3, 3] = -pivot_point  # Move pivot point to origin 
-        
-        T_from_origin = np.eye(4)
-        T_from_origin[0:3, 3] = pivot_point  # Move back from origin
-        
-        T_position = np.eye(4)
-        T_position[0:3, 3] = position  # Final position
-        
-        # Apply combined transform: translate to origin, rotate, translate back, then to final position
-        transform = np.dot(T_position, np.dot(T_from_origin, np.dot(R_matrix, T_to_origin)))
-        
-        # Update the mesh transformation
-        mesh.setTransform(transform)
-
- 
     def update_visualization_timer(self):
         """Called by timer to update visualization"""
         if self.experiment_running and len(self.forces) > 0:
@@ -638,7 +593,6 @@ class KneeFlexionExperiment(QMainWindow):
             else:
                 update_methods[current_tab](force, torque)
 
-           
     def start_experiment(self):
         self.current_angle_index = 0
         self.current_angle = constants.FLEXION_ANGLES[self.current_angle_index]
@@ -800,7 +754,7 @@ class KneeFlexionExperiment(QMainWindow):
 
         elif self.current_angle_index >= (len(constants.FLEXION_ANGLES) - 1) and self.external_rot_button.isEnabled() == False:
             self.next_button.setEnabled(False) # End of regular experiment - enable Lachmann test
-
+ 
     def load_femur(self):
         try:
             # Load femur STL
@@ -815,20 +769,40 @@ class KneeFlexionExperiment(QMainWindow):
             # Replace NaN values with zeros
             femur_vertices = np.nan_to_num(femur_vertices)
             
-            # Create mesh item but don't apply any transformations yet
+            # Use tracker coordinates
+            femur_tracker = np.array(constants.TRACKER_FEMUR)
+            
+            from scipy.spatial.transform import Rotation
+            
+            # Define rotation angles in degrees, then convert to radians
+            angles_deg = [0, 0, 0]  # [x, y, z] rotations in degrees
+            rotation = Rotation.from_euler('xyz', angles_deg, degrees=True)
+            rotation_matrix = rotation.as_matrix()  # 3x3 rotation matrix
+            
+            # First translate to move the origin
+            femur_vertices_centered = femur_vertices - femur_tracker
+            
+            # Then rotate around the new origin
+            femur_vertices_transformed = np.dot(femur_vertices_centered, rotation_matrix)
+            
+            # Create mesh item with the repositioned and rotated vertices
             self.femur_mesh = gl.GLMeshItem(
-                vertexes=femur_vertices,
+                vertexes=femur_vertices_transformed,
                 faces=femur_faces,
                 smooth=True,
                 drawEdges=False,
                 color = QtGui.QColor(112, 128, 144),
-                computeNormals=True  # Force recomputation of normals
+                computeNormals=True
             )
             self.gl_view.addItem(self.femur_mesh)
             
             # Store for later use
-            self.femur_verts = femur_vertices
+            self.femur_verts = femur_vertices_transformed
             self.femur_faces = femur_faces
+            
+            # Store the transformations for later reference or inverse operations
+            self.femur_origin = femur_tracker
+            self.femur_rotation = rotation_matrix
             
             # Set up transform matrix (initialize once)
             self.femur_transform = np.identity(4, dtype=np.float32)
@@ -857,20 +831,42 @@ class KneeFlexionExperiment(QMainWindow):
             # Replace NaN values with zeros
             tibia_vertices = np.nan_to_num(tibia_vertices)
             
-            # Create mesh item but don't apply any transformations yet
+            # Use tracker coordinates
+            tibia_tracker = np.array(constants.TRACKER_TIBIA)
+            
+
+            from scipy.spatial.transform import Rotation
+            
+            # Define rotation angles in degrees, then convert to radians
+            angles_deg = [0, -90, 90]  # [x, y, z] rotations in degrees
+            rotation = Rotation.from_euler('xyz', angles_deg, degrees=True)
+            rotation_matrix = rotation.as_matrix()  # 3x3 rotation matrix
+            
+            # STEP 3: Apply the transformations
+            # First translate to move the origin
+            tibia_vertices_centered = tibia_vertices - tibia_tracker
+            
+            # Then rotate around the new origin
+            tibia_vertices_transformed = np.dot(tibia_vertices_centered, rotation_matrix)
+            
+            # Create mesh item with the repositioned and rotated vertices
             self.tibia_mesh = gl.GLMeshItem(
-                vertexes=tibia_vertices,
+                vertexes=tibia_vertices_transformed,
                 faces=tibia_faces,
                 smooth=True,
                 drawEdges=False,
                 color = QtGui.QColor(47, 79, 79),
-                computeNormals=True  # Force recomputation of normals
+                computeNormals=True
             )
             self.gl_view.addItem(self.tibia_mesh)
             
             # Store for later use
-            self.tibia_verts = tibia_vertices
+            self.tibia_verts = tibia_vertices_transformed
             self.tibia_faces = tibia_faces
+            
+            # Store the transformations for later reference or inverse operations
+            self.tibia_origin = tibia_tracker
+            self.tibia_rotation = rotation_matrix
             
             # Set up transform matrix (initialize once)
             self.tibia_transform = np.identity(4, dtype=np.float32)
@@ -884,7 +880,6 @@ class KneeFlexionExperiment(QMainWindow):
             import traceback
             traceback.print_exc()
             self.load_tibia_button.setText("Error")
-        
     
 
 if __name__ == "__main__":

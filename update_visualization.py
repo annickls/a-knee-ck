@@ -1,28 +1,16 @@
-import sys
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
-from mpl_toolkits.mplot3d import Axes3D
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QPushButton, 
-                            QVBoxLayout, QHBoxLayout, QWidget, QFrame, 
-                            QProgressBar, QGridLayout, QSplitter, QTabWidget, QSlider, QGroupBox, QTextEdit, QDialog, QDialogButtonBox)
 from PyQt5.QtGui import QPixmap, QFont
-from PyQt5.QtCore import Qt, QTimer
-import matplotlib.cm as cm
 import pyqtgraph.opengl as gl
-from stl import mesh
 from pyqtgraph.Qt import QtGui
-import os
-import time
-import datetime
 from OpenGL.GL import glBegin, glEnd, glVertex3f, glColor4f, GL_LINES, GL_LINE_SMOOTH, glEnable, glHint, GL_LINE_SMOOTH_HINT, GL_NICEST
 import pyqtgraph.opengl as gl
 import constants
-import pandas as pd
 import numpy as np
 from mesh_utils import MeshUtils
-
+from PyQt5.QtCore import Qt, QTimer
 class UpdateVisualization():
     def update_current_visualization(self, force, torque):
         """Update the force/torque visualization with only the current data."""
@@ -289,3 +277,4 @@ class UpdateVisualization():
                 self.image_label.setPixmap(pixmap)
         except Exception as e:
             self.image_label.setText(f"Error loading image: {str(e)}")
+

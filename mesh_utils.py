@@ -3,13 +3,11 @@ import numpy as np
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pyqtgraph.opengl as gl
 from stl import mesh
-
+from pyqtgraph.Qt import QtGui
 from OpenGL.GL import glBegin, glEnd, glVertex3f, glColor4f, GL_LINES, GL_LINE_SMOOTH, glEnable, glHint, GL_LINE_SMOOTH_HINT, GL_NICEST
 import pyqtgraph.opengl as gl
-
+import constants
 import numpy as np
-
-
 
 class MeshUtils:
     @staticmethod
@@ -150,3 +148,32 @@ class MeshUtils:
         
         # Return the origin point
         return base_position + anatomical_offset
+    
+    @staticmethod
+    def update_mesh_with_data(mesh, pivot_point, position, quaternion):
+        """
+        Update a mesh with position and rotation data around a specific pivot point.
+        Args:
+            mesh: The mesh to update
+            pivot_point: The pivot point for rotation (numpy array)
+            position: The final position (numpy array)
+            quaternion: The rotation quaternion
+        """
+        # Get transformation matrix with rotation only, no translation
+        R_matrix = MeshUtils.quaternion_to_transform_matrix(quaternion)
+        
+        # Create translation matrices
+        T_to_origin = np.eye(4)
+        T_to_origin[0:3, 3] = -pivot_point  # Move pivot point to origin 
+        
+        T_from_origin = np.eye(4)
+        T_from_origin[0:3, 3] = pivot_point  # Move back from origin
+        
+        T_position = np.eye(4)
+        T_position[0:3, 3] = position  # Final position
+        
+        # Apply combined transform: translate to origin, rotate, translate back, then to final position
+        transform = np.dot(T_position, np.dot(T_from_origin, np.dot(R_matrix, T_to_origin)))
+        
+        # Update the mesh transformation
+        mesh.setTransform(transform)

@@ -13,6 +13,8 @@ TIBIA = "/home/annick/GUI/data_for_gui/simplify_simplify_Segmentation_1_tibia.st
 PIVOT_POINT_FEMUR = [0, 100, 0]
 PIVOT_POINT_TIBA = [0, 1200, 0]
 DISTANCE_BONE_VIZ = 3000
+TRACKER_FEMUR = [-50.0, -200.0, 1220.0]
+TRACKER_TIBIA = [-100.0, -200.0, 1520.0]
 
 
 # plot settings
