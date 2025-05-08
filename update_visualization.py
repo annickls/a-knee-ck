@@ -253,6 +253,7 @@ class UpdateVisualization():
             tibia_pos, end_point, color=(1, 0, 0, 1), arrow_size=constants.ARROW_SIZE, shaft_width=constants.SHAFT_WIDTH
         )
         
+
         # Add new arrows to view
         if self.force_arrow_shaft is not None:
             self.gl_view.addItem(self.force_arrow_shaft)

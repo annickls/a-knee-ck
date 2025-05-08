@@ -77,6 +77,7 @@ class KneeFlexionExperiment(QMainWindow):
         
         # Ensure directory exists for data files
         os.makedirs("recorded_data", exist_ok=True)
+        
 
     def toggle_monitoring(self):
         if not self.monitoring:
@@ -278,6 +279,8 @@ class KneeFlexionExperiment(QMainWindow):
             print(f"Tab changed to {index}, visualization updated")
 
     def setup_ui(self):
+        
+        
         # Main widget and layout
         main_widget = QWidget()
         main_layout = QGridLayout()
@@ -838,7 +841,7 @@ class KneeFlexionExperiment(QMainWindow):
             from scipy.spatial.transform import Rotation
             
             # Define rotation angles in degrees, then convert to radians
-            angles_deg = [0, -90, 90]  # [x, y, z] rotations in degrees
+            angles_deg = [0, 0, 0]  # [x, y, z] rotations in degrees
             rotation = Rotation.from_euler('xyz', angles_deg, degrees=True)
             rotation_matrix = rotation.as_matrix()  # 3x3 rotation matrix
             
