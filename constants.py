@@ -21,6 +21,9 @@ TRACKER_FEMUR = [300.0, 0.0, 200.0]
 TRACKER_TIBIA = [0.0, 0.0, 0.0]
 
 
+#TRACKER_TIBIA = [-100.0, -200.0, 1520.0]
+TRACKER_FEMUR = [0.0, 0.0, 0.0]
+TRACKER_TIBIA = [0.0, 0.0, 0.0]
 
 # plot settings
 AXIS_FACTOR = 0.5
