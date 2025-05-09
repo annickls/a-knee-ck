@@ -1,5 +1,5 @@
 # experiment parameters
-HOLD_TIME = 5 #seconds to hold knee positions
+HOLD_TIME = 15 #seconds to hold knee positions
 LACHMANN_TIME = 8 # seconds for lachmann test
 FLEXION_ANGLES = [0, 30, 60, 90, 120]
 

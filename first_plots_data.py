@@ -20,16 +20,16 @@ import os
 print("Reading data from 20250430_141205_0deg_neutral.txt...")
 
 # Extract column names from the first line (comment line) of the file
-with open("20250508_162909_0deg_var.txt", 'r') as f:
+with open("20250509_121004_0deg_neutral.txt", 'r') as f:
     first_line = f.readline().strip()
     
 # Remove the # and split by comma
 if first_line.startswith('#'):
     column_names = first_line[1:].strip().split(', ')
-    data = pd.read_csv("20250508_162909_0deg_var.txt", skiprows=1, names=column_names)
+    data = pd.read_csv("20250509_121004_0deg_neutral.txt", skiprows=1, names=column_names)
 else:
     # If for some reason there's no header, use default pandas read_csv
-    data = pd.read_csv("20250508_162909_0deg_var.txt")
+    data = pd.read_csv("20250509_121004_0deg_neutral.txt")
 
 # Print the column names to verify
 print("Columns in the dataset:", data.columns.tolist())
@@ -315,7 +315,7 @@ force_vectors = []
 force_magnitudes = []
 
 for i in range(len(data)):
-    # Force components (columns 1, 2, 3 are Fx, Fy, Fz)
+    # force components (columns 1, 2, 3 are Fx, Fy, Fz), for torque: columns 4, 5, 6
     fx = data.iloc[i, 1]
     fy = data.iloc[i, 2]
     fz = data.iloc[i, 3]
@@ -467,11 +467,11 @@ for i, (vec, mag) in enumerate(zip(force_vectors, force_magnitudes)):
     color = cmap(norm(mag))
     
     # Draw arrow from origin to endpoint
-    ax5.quiver(0, 0, 0,
+    """ax5.quiver(0, 0, 0,
               endpoint[0], endpoint[1], endpoint[2],
               color=color, arrow_length_ratio=0.05,  # Smaller arrowhead
               linewidth=0.2,         # Thinner line
-              alpha=0.3)   
+              alpha=0.3)  """ 
     
     # Add a smaller sphere at the endpoint (reduced size for clarity when many points)
     ax5.scatter(endpoint[0], endpoint[1], endpoint[2],
