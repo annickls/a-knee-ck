@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.colors as colors
 from scipy.spatial.transform import Rotation as R
+from scipy.spatial import Delaunay
 import math
 from stl import mesh  # Import numpy-stl for STL file handling
 import os
@@ -102,27 +103,125 @@ plt.rcParams['font.size'] = 12
 # Create figure with 4 subplots (2 rows, 2 columns)
 fig = plt.figure(figsize=(18, 12))
 
-# PLOT 1: Angle vs Torque Components
-ax1 = fig.add_subplot(221)
+# Extract all force vectors from the dataset
+force_vectors = []
+force_magnitudes = []
 
-# Convert pandas Series to numpy arrays before plotting to avoid compatibility issues
-angle_array = data['Timestamp'].to_numpy()
-tx_array = data.iloc[:, 4].to_numpy()
-ty_array = data.iloc[:, 5].to_numpy()
-tz_array = data.iloc[:, 6].to_numpy()
-torque_mag_array = data['TorqueMagnitude'].to_numpy()
+for i in range(len(data)):
+    # force components (columns 1, 2, 3 are Fx, Fy, Fz)
+    fx = data.iloc[i, 1]
+    fy = data.iloc[i, 2]
+    fz = data.iloc[i, 3]
+    force_vec = np.array([fx, fy, fz])
+    
+    # Normalize the vector to get direction only
+    magnitude = np.linalg.norm(force_vec)
+    if magnitude > 0:
+        normalized_vec = force_vec / magnitude
+        force_vectors.append(normalized_vec)
+        force_magnitudes.append(magnitude)
 
-# Plot all torque components and magnitude against angle
-ax1.plot(angle_array, tx_array, 'r-', label='Tx', linewidth=2)
-ax1.plot(angle_array, ty_array, 'g-', label='Ty', linewidth=2)
-ax1.plot(angle_array, tz_array, 'b-', label='Tz', linewidth=2)
-ax1.plot(angle_array, torque_mag_array, 'k--', label='Total Magnitude', linewidth=1.5)
+# Find maximum magnitude for scaling
+max_magnitude = max(force_magnitudes)
 
-ax1.set_xlabel('Angle between Femur and Tibia (degrees)')
-ax1.set_ylabel('Torque Components (N·m)')
-ax1.set_title('Joint Angle vs. Torque Components')
-ax1.legend()
-ax1.grid(True)
+# Scale factor for better visualization
+magnitude_scale = 2.0 / max_magnitude  # Scale to 2.0 units for maximum magnitude
+
+# Create a colormap normalized to force magnitudes
+norm = colors.Normalize(vmin=min(force_magnitudes), vmax=max(force_magnitudes))
+cmap = plt.cm.plasma_r  # Reversed plasma colormap
+
+# Create endpoints for all force vectors
+endpoints = []
+endpoint_colors = []
+
+for vec, mag in zip(force_vectors, force_magnitudes):
+    # Normalize the direction vector
+    normalized_vec = vec / np.linalg.norm(vec)
+    
+    # Calculate endpoint based on magnitude
+    scaled_magnitude = 0.5 + (mag * magnitude_scale)
+    endpoint = normalized_vec * scaled_magnitude
+    endpoints.append(endpoint)
+    
+    # Get color from colormap
+    color = cmap(norm(mag))
+    endpoint_colors.append(color)
+
+# Convert endpoints to a numpy array
+endpoints = np.array(endpoints)
+
+# PLOT 1: Force Vector Mesh (NEW)
+ax1 = fig.add_subplot(221, projection='3d')
+
+# Create a mesh from the endpoints by triangulation
+# First, project points onto a unit sphere for better triangulation
+if len(endpoints) > 3:  # Need at least 4 points for 3D triangulation
+    try:
+        # Project points to unit sphere for triangulation
+        normalized_points = np.array([p/np.linalg.norm(p) for p in endpoints])
+        
+        # Try to create triangulation
+        tri = Delaunay(normalized_points)
+        
+        # Plot the triangulation as a mesh
+        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+        
+        # Create triangles
+        triangles = endpoints[tri.simplices]
+        
+        # Create a collection of triangles
+        triangle_collection = Poly3DCollection(triangles, alpha=0.6)
+        
+        # Set face colors based on average magnitude for each triangle
+        face_colors = []
+        for triangle in tri.simplices:
+            # Average the color values of the vertices
+            avg_color = np.mean([endpoint_colors[i] for i in triangle], axis=0)
+            face_colors.append(avg_color)
+        
+        triangle_collection.set_facecolor(face_colors)
+        triangle_collection.set_edgecolor('lightgray')
+        triangle_collection.set_linewidth(0.4)
+        
+        # Add the collection to the plot
+        ax1.add_collection3d(triangle_collection)
+        
+        # Also plot the original points
+        for point, color in zip(endpoints, endpoint_colors):
+            ax1.scatter(point[0], point[1], point[2], color=color, s=1, alpha=0.8)
+    
+    except Exception as e:
+        print(f"Error creating triangulation: {e}")
+        # Fallback to just plotting the points
+        for point, color in zip(endpoints, endpoint_colors):
+            ax1.scatter(point[0], point[1], point[2], color=color, s=1, alpha=0.8)
+else:
+    # If fewer than 4 points, just plot them
+    for point, color in zip(endpoints, endpoint_colors):
+        ax1.scatter(point[0], point[1], point[2], color=color, s=1, alpha=0.8)
+
+# Add a wireframe sphere for reference
+radius = 1.0
+sphere_x, sphere_y, sphere_z = create_sphere_mesh(radius=radius, resolution=20)
+ax1.plot_wireframe(sphere_x, sphere_y, sphere_z, color='gray', alpha=0.1, linewidth=0.5)
+
+# Set plot properties
+ax1.set_xlabel('X Direction')
+ax1.set_ylabel('Y Direction')
+ax1.set_zlabel('Z Direction')
+ax1.set_title('Force Vector Mesh Visualization')
+ax1.set_box_aspect([1, 1, 1])
+
+# Set plot limits with some margin
+margin = 0.5
+ax1.set_xlim([-radius - margin, radius + margin])
+ax1.set_ylim([-radius - margin, radius + margin])
+ax1.set_zlim([-radius - margin, radius + margin])
+
+# Add colorbar for force magnitude
+cbar1 = fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax1, pad=0.1)
+cbar1.set_label('Force Magnitude (N)')
 
 # PLOT 2: Tibia Position Path in 3D space
 ax2 = fig.add_subplot(222, projection='3d')
@@ -148,44 +247,145 @@ ax2.set_title('Tibia Position Path')
 cbar = fig.colorbar(scatter, ax=ax2, pad=0.1)  # Adjust pad to move colorbar to the side
 cbar.set_label('Time (s)')
 
-# PLOT 3: 3D Force Vectors
+# PLOT 3: Sphere with Force Direction Squares
 ax3 = fig.add_subplot(223, projection='3d')
 
-# Create normalized force magnitudes for color mapping
-norm = colors.Normalize(vmin=data['ForceMagnitude'].min(), vmax=data['ForceMagnitude'].max())
-cmap = plt.cm.plasma_r  # Reversed plasma colormap
+# Resolution for discretizing force directions
+azimuth_resolution = 20  # Horizontal/longitude resolution (around the equator)
+polar_resolution = 20    # Vertical/latitude resolution (from pole to pole)
 
-# Scale factor for visualization (adjust as needed)
-scale = 0.01
-
-# Draw force vectors as arrows
-for i in range(len(data)):
-    # Start at origin
-    x, y, z = 0, 0, 0
+# Function to discretize a direction vector to spherical coordinates grid cells
+def discretize_direction(direction, azimuth_res, polar_res):
+    # Convert to spherical coordinates
+    theta = np.arctan2(direction[1], direction[0])  # azimuth angle (-π to π)
+    phi = np.arccos(np.clip(direction[2], -1.0, 1.0))  # polar angle (0 to π)
     
-    # Force components (columns 1, 2, 3 are Fx, Fy, Fz)
-    #u, v, w = data.iloc[i, 1], data.iloc[i, 2], data.iloc[i, 3]
-
-    #Torque components
-    u, v, w = data.iloc[i, 4], data.iloc[i, 5], data.iloc[i, 6]
+    # Discretize angles
+    theta_bins = 2 * azimuth_res  # Full 360° for azimuth
+    phi_bins = polar_res          # 180° for polar angle
     
-    # Color based on magnitude
-    magnitude = data.iloc[i]['ForceMagnitude']
-    color = cmap(norm(magnitude))
+    theta_bin = int((theta + np.pi) / (2 * np.pi / theta_bins))
+    phi_bin = int(phi / (np.pi / phi_bins))
     
-    # Plot arrow
-    ax3.quiver(x, y, z, u*scale, v*scale, w*scale, color=color, arrow_length_ratio=0.1)
+    # Handle edge cases
+    if theta_bin == theta_bins:
+        theta_bin = 0
+    if phi_bin == phi_bins:
+        phi_bin = phi_bins - 1
+    
+    return (theta_bin, phi_bin)
 
-# Set equal aspect ratio for better visualization
+# Dictionary to store force magnitudes for each discretized direction
+direction_magnitudes = {}
+
+# Process all force vectors
+for i, (vec, mag) in enumerate(zip(force_vectors, force_magnitudes)):
+    # Discretize the direction
+    dir_key = discretize_direction(vec, azimuth_resolution, polar_resolution)
+    
+    # Add magnitude to this direction
+    if dir_key in direction_magnitudes:
+        direction_magnitudes[dir_key].append(mag)
+    else:
+        direction_magnitudes[dir_key] = [mag]
+
+# Function to create a square patch on the sphere surface
+def create_square_on_sphere(theta_bin, phi_bin, azimuth_res, polar_res, radius=1.0, scale=0.9):
+    # Calculate the angular ranges
+    theta_bins = 2 * azimuth_res
+    phi_bins = polar_res
+    
+    delta_theta = 2 * np.pi / theta_bins
+    delta_phi = np.pi / phi_bins
+    
+    # Calculate center angles
+    theta_center = (theta_bin + 0.5) * delta_theta - np.pi
+    phi_center = (phi_bin + 0.5) * delta_phi
+    
+    # Calculate the corners of the patch in spherical coordinates
+    # Scale factor creates gaps between patches
+    half_delta_theta = delta_theta * scale / 2
+    half_delta_phi = delta_phi * scale / 2
+    
+    theta_corners = [theta_center - half_delta_theta, theta_center + half_delta_theta, 
+                    theta_center + half_delta_theta, theta_center - half_delta_theta]
+    phi_corners = [phi_center - half_delta_phi, phi_center - half_delta_phi,
+                  phi_center + half_delta_phi, phi_center + half_delta_phi]
+    
+    # Convert corners to Cartesian coordinates
+    x_vals = []
+    y_vals = []
+    z_vals = []
+    
+    for t, p in zip(theta_corners, phi_corners):
+        x = radius * np.sin(p) * np.cos(t)
+        y = radius * np.sin(p) * np.sin(t)
+        z = radius * np.cos(p)
+        x_vals.append(x)
+        y_vals.append(y)
+        z_vals.append(z)
+    
+    # Add a 5th point that equals the first to close the polygon
+    x_vals.append(x_vals[0])
+    y_vals.append(y_vals[0])
+    z_vals.append(z_vals[0])
+    
+    return np.array([x_vals, y_vals, z_vals])
+
+# First draw a transparent wireframe sphere for reference
+radius = 1.0
+u = np.linspace(0, 2 * np.pi, 30)
+v = np.linspace(0, np.pi, 30)
+x = radius * np.outer(np.cos(u), np.sin(v))
+y = radius * np.outer(np.sin(u), np.sin(v))
+z = radius * np.outer(np.ones(np.size(u)), np.cos(v))
+ax3.plot_wireframe(x, y, z, color='gray', alpha=0.1, linewidth=0.5)
+
+# Plot squares at each discretized direction with color based on average force magnitude
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
+for dir_key, magnitudes in direction_magnitudes.items():
+    # Calculate average magnitude
+    avg_magnitude = np.mean(magnitudes)
+    
+    # Get color from colormap
+    color = cmap(norm(avg_magnitude))
+    
+    # Create square vertices on the sphere surface
+    theta_bin, phi_bin = dir_key
+    square_vertices = create_square_on_sphere(theta_bin, phi_bin, azimuth_resolution, polar_resolution)
+    
+    # Create vertices for the Poly3DCollection
+    x_vals, y_vals, z_vals = square_vertices
+    vertices = [[x_vals[i], y_vals[i], z_vals[i]] for i in range(4)]
+    
+    # Create a polygon collection for the square
+    poly = Poly3DCollection([vertices], alpha=0.9)
+    
+    # Set face color based on force magnitude
+    poly.set_facecolor(color)
+    poly.set_edgecolor(color)
+    poly.set_linewidth(0.5)
+    
+    # Add the polygon to the plot
+    ax3.add_collection3d(poly)
+
+# Set plot properties
+ax3.set_xlabel('X Direction')
+ax3.set_ylabel('Y Direction')
+ax3.set_zlabel('Z Direction')
+ax3.set_title('Force Direction with Colored Squares on Sphere')
 ax3.set_box_aspect([1, 1, 1])
-ax3.set_xlabel('X Force (N)')
-ax3.set_ylabel('Y Force (N)')
-ax3.set_zlabel('Z Force (N)')
-ax3.set_title('Force Vectors')
 
-# Add colorbar for force magnitude inside the plot
-cbar2 = fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax3, pad=0.1)
-cbar2.set_label('Force Magnitude (N)')
+# Set plot limits with some margin
+margin = 0.2
+ax3.set_xlim([-radius - margin, radius + margin])
+ax3.set_ylim([-radius - margin, radius + margin])
+ax3.set_zlim([-radius - margin, radius + margin])
+
+# Add colorbar for force magnitude
+cbar3 = fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax3, pad=0.1)
+cbar3.set_label('Average Force Magnitude (N)')
 
 # Function to load and transform an STL file
 def load_stl_for_plot(ax, stl_file_path, scale_factor, translation, rotation_deg, alpha=0.3, face_color=[0.8, 0.8, 0.9]):
@@ -281,156 +481,33 @@ def load_stl_for_plot(ax, stl_file_path, scale_factor, translation, rotation_deg
     
     return vertices, success
 
-# PLOT 4: Sphere with Force Direction Balls and STL Model
+# PLOT 4: Individual Force Vectors with Two STL Models
 ax4 = fig.add_subplot(224, projection='3d')
 
-# === STL MODEL POSITIONING CONTROLS FOR PLOT 4 ===
-stl_file_path = "model.stl"  # Change this to your STL file path
-stl_scale_factor = 4.9  # < 1.0: smaller model, > 1.0: larger model
-stl_translation = [0.0, 2.2, 0.0]  # [x, y, z] offsets
-stl_rotation_deg = [0, 180, -90]  # Default: no rotation
-
-# Load the first STL file for plot 4
-vertices, stl_loaded = load_stl_for_plot(ax4, stl_file_path, 
-                                         stl_scale_factor, 
-                                         stl_translation, 
-                                         stl_rotation_deg)
-
-# If STL loading failed, create a wireframe sphere instead
-if not stl_loaded:
-    sphere_x, sphere_y, sphere_z = create_sphere_mesh(radius=1.0, resolution=12)
-    ax4.plot_wireframe(sphere_x, sphere_y, sphere_z, color='gray', alpha=0.2, linewidth=0.5)
-
-# Create a dictionary to track which direction cubes we've already plotted
-plotted_directions = {}
-
-# Size of the cubes on the sphere
-cube_size = 0.1
-
-# Resolution for discretizing force directions
-direction_resolution = 15  # degrees
-
-# Extract all force vectors from the dataset
-force_vectors = []
-force_magnitudes = []
-
-for i in range(len(data)):
-    # force components (columns 1, 2, 3 are Fx, Fy, Fz), for torque: columns 4, 5, 6
-    fx = data.iloc[i, 1]
-    fy = data.iloc[i, 2]
-    fz = data.iloc[i, 3]
-    force_vec = np.array([fx, fy, fz])
-    
-    # Normalize the vector to get direction only
-    magnitude = np.linalg.norm(force_vec)
-    if magnitude > 0:
-        normalized_vec = force_vec / magnitude
-        force_vectors.append(normalized_vec)
-        force_magnitudes.append(magnitude)
-
-# Function to discretize a direction vector to a grid cell
-def discretize_direction(direction, resolution):
-    # Convert to spherical coordinates
-    theta = np.arctan2(direction[1], direction[0])  # azimuth angle
-    phi = np.arccos(direction[2])  # polar angle
-    
-    # Discretize angles
-    theta_bin = int((theta + np.pi) / (2 * np.pi / resolution))
-    phi_bin = int(phi / (np.pi / resolution))
-    
-    return (theta_bin, phi_bin)
-
-# Dictionary to store force magnitudes for each discretized direction
-direction_magnitudes = {}
-
-# Process all force vectors
-for i, (vec, mag) in enumerate(zip(force_vectors, force_magnitudes)):
-    # Discretize the direction
-    dir_key = discretize_direction(vec, direction_resolution)
-    
-    # Add magnitude to this direction
-    if dir_key in direction_magnitudes:
-        direction_magnitudes[dir_key].append(mag)
-    else:
-        direction_magnitudes[dir_key] = [mag]
-
-# Function to convert from discretized direction back to 3D coordinates
-def direction_to_coords(dir_key, resolution, radius=1.0):
-    theta_bin, phi_bin = dir_key
-    
-    # Convert back to continuous angles
-    theta = theta_bin * (2 * np.pi / resolution) - np.pi
-    phi = phi_bin * (np.pi / resolution)
-    
-    # Convert to Cartesian coordinates
-    x = radius * np.sin(phi) * np.cos(theta)
-    y = radius * np.sin(phi) * np.sin(theta)
-    z = radius * np.cos(phi)
-    
-    return x, y, z
-
-# Plot cubes at each discretized direction with color based on average force magnitude
-for dir_key, magnitudes in direction_magnitudes.items():
-    # Calculate average magnitude
-    avg_magnitude = np.mean(magnitudes)
-    
-    # Get color from colormap
-    color = cmap(norm(avg_magnitude))
-    
-    # Get coordinates on the unit sphere
-    x, y, z = direction_to_coords(dir_key, direction_resolution)
-    
-    # Create a small ball (sphere) at this location
-    # Using scatter with a circle marker ('o')
-    ax4.scatter([x], [y], [z], color=color, s=100, marker='o', edgecolors=color, alpha=0.9)
-    
-    # Add a line from origin to the cube to indicate direction
-    ax4.plot([0, x], [0, y], [0, z], color='gray', linestyle='--', alpha=0.3)
-
-# Set plot properties
-ax4.set_xlabel('X Direction')
-ax4.set_ylabel('Y Direction')
-ax4.set_zlabel('Z Direction')
-ax4.set_title('Force Direction with STL Model')
-ax4.set_box_aspect([1, 1, 1])
-
-# Set plot limits with some margin
-ax4.set_xlim([-1.5, 1.5])
-ax4.set_ylim([-1.5, 1.5])
-ax4.set_zlim([-1.5, 1.5])
-
-# Add colorbar for force magnitude
-cbar3 = fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax4, pad=0.1)
-cbar3.set_label('Average Force Magnitude (N)')
-
-# PLOT 5: Individual Force Vectors with Two STL Models
-ax5 = fig.add_subplot(235, projection='3d')  # Change to 2 rows, 3 columns layout
-
-# === STL MODEL POSITIONING CONTROLS FOR PLOT 5 (FIRST MODEL) ===
-# We can use the same model as in plot 4, but with potentially different parameters
-stl1_file_path = "model.stl"  # First STL file path (same as plot 4)
+# === STL MODEL POSITIONING CONTROLS FOR PLOT 4 (FIRST MODEL) ===
+stl1_file_path = "model.stl"  # First STL file path
 stl1_scale_factor = 4.9  # Scale factor for first model
 stl1_translation = [0.0, 2.2, 0.0]  # Translation for first model
 stl1_rotation_deg = [0, 180, -90]  # Rotation for first model
 stl1_face_color = [0.8, 0.8, 0.9]  # Light blue-gray
 
-# === STL MODEL POSITIONING CONTROLS FOR PLOT 5 (SECOND MODEL) ===
+# === STL MODEL POSITIONING CONTROLS FOR PLOT 4 (SECOND MODEL) ===
 stl2_file_path = "second_model.stl"  # Second STL file path
 stl2_scale_factor = 4.0  # Scale factor for second model
 stl2_translation = [0.2, -1.4, -1.7]  # Translation for second model
 stl2_rotation_deg = [180, -60, 90]  # Rotation for second model
 stl2_face_color = [0.9, 0.8, 0.8]  # Light red-gray for distinction
 
-# Load the first STL model for plot 5
-vertices1, stl1_loaded = load_stl_for_plot(ax5, stl1_file_path, 
+# Load the first STL model for plot 4
+vertices1, stl1_loaded = load_stl_for_plot(ax4, stl1_file_path, 
                                           stl1_scale_factor, 
                                           stl1_translation, 
                                           stl1_rotation_deg,
                                           alpha=0.3,
                                           face_color=stl1_face_color)
 
-# Load the second STL model for plot 5
-vertices2, stl2_loaded = load_stl_for_plot(ax5, stl2_file_path, 
+# Load the second STL model for plot 4
+vertices2, stl2_loaded = load_stl_for_plot(ax4, stl2_file_path, 
                                           stl2_scale_factor, 
                                           stl2_translation, 
                                           stl2_rotation_deg,
@@ -440,53 +517,40 @@ vertices2, stl2_loaded = load_stl_for_plot(ax5, stl2_file_path,
 # If neither STL was loaded, create a wireframe sphere as fallback
 if not (stl1_loaded or stl2_loaded):
     sphere_x, sphere_y, sphere_z = create_sphere_mesh(radius=1.0, resolution=12)
-    ax5.plot_wireframe(sphere_x, sphere_y, sphere_z, color='gray', alpha=0.2, linewidth=0.5)
+    ax4.plot_wireframe(sphere_x, sphere_y, sphere_z, color='gray', alpha=0.2, linewidth=0.5)
 
 # Set plot limits with larger margin to accommodate longer vectors
-lim = 2
-ax5.set_xlim([- lim, lim])
-ax5.set_ylim([- lim, lim])
-ax5.set_zlim([- lim, lim])
+lim = 1.5
+ax4.set_xlim([- lim, lim])
+ax4.set_ylim([- lim, lim])
+ax4.set_zlim([- lim, lim])
 
-# Find maximum magnitude for scaling
-max_magnitude = max(force_magnitudes)
-
-# Scale factor for better visualization (adjust based on your data)
-magnitude_scale = 2.0 / max_magnitude  # Scale to 2.0 units for maximum magnitude
-
-# Plot EACH individual force vector
+# Plot individual force vectors
 for i, (vec, mag) in enumerate(zip(force_vectors, force_magnitudes)):
     # Normalize the direction vector
     normalized_vec = vec / np.linalg.norm(vec)
     
     # Calculate endpoint based on magnitude
-    scaled_magnitude = 1 + (mag * magnitude_scale)
+    scaled_magnitude = 0.5 + (mag * magnitude_scale)
     endpoint = normalized_vec * scaled_magnitude
     
     # Get color from colormap
     color = cmap(norm(mag))
     
-    # Draw arrow from origin to endpoint
-    """ax5.quiver(0, 0, 0,
-              endpoint[0], endpoint[1], endpoint[2],
-              color=color, arrow_length_ratio=0.05,  # Smaller arrowhead
-              linewidth=0.2,         # Thinner line
-              alpha=0.3)  """ 
-    
     # Add a smaller sphere at the endpoint (reduced size for clarity when many points)
-    ax5.scatter(endpoint[0], endpoint[1], endpoint[2],
+    ax4.scatter(endpoint[0], endpoint[1], endpoint[2],
                 color=color, s=20, alpha=0.7)
 
 # Set plot properties
-ax5.set_xlabel('X Direction')
-ax5.set_ylabel('Y Direction')
-ax5.set_zlabel('Z Direction')
-ax5.set_title('Individual Force Vectors with Two STL Models')
-ax5.set_box_aspect([1, 1, 1])
+ax4.set_xlabel('X Direction')
+ax4.set_ylabel('Y Direction')
+ax4.set_zlabel('Z Direction')
+ax4.set_title('Individual Force Vectors with Two STL Models')
+ax4.set_box_aspect([1, 1, 1])
 
 # Add colorbar for force magnitude
-cbar5 = fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax5, pad=0.1)
-cbar5.set_label('Force Magnitude (N)')
+cbar4 = fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax4, pad=0.1)
+cbar4.set_label('Force Magnitude (N)')
 
 # Add legend for the two STL models
 from matplotlib.lines import Line2D
@@ -494,22 +558,22 @@ custom_lines = [
     Line2D([0], [0], marker='s', color='w', markerfacecolor=stl1_face_color, markersize=10),
     Line2D([0], [0], marker='s', color='w', markerfacecolor=stl2_face_color, markersize=10)
 ]
-ax5.legend(custom_lines, ['First STL Model', 'Second STL Model'], loc='upper right')
+ax4.legend(custom_lines, ['First STL Model', 'Second STL Model'], loc='upper right')
 
 # Set equal aspect ratio for 3D plots
-for ax in [ax2, ax3, ax4, ax5]:
+for ax in [ax1, ax2, ax3, ax4]:
     ax.set_box_aspect([1, 1, 1])
 
 # Update figure layout
 fig = plt.gcf()
-fig.set_size_inches(24, 12)  # Wider figure to accommodate 3 columns
+fig.set_size_inches(24, 12)
 
 # Update layout
 plt.tight_layout()
 plt.subplots_adjust(wspace=0.3, hspace=0.3)  # Adjust spacing between plots
 
 # Save figure with high resolution
-plt.savefig('biomechanical_analysis_enhanced_5plots.png', dpi=300, bbox_inches='tight')
+plt.savefig('biomechanical_analysis_with_mesh.png', dpi=300, bbox_inches='tight')
 
-print("Analysis complete. Enhanced visualizations created with force magnitude plot.")
+print("Analysis complete. Enhanced visualizations created with force vector mesh plot.")
 plt.show()
