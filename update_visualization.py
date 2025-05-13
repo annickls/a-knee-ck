@@ -236,7 +236,7 @@ class UpdateVisualization():
 
         # Set the position of the force arrow - attach to tibia at specific point
         tibia_pos = MeshUtils.get_tibia_force_origin(self.last_tibia_position)
-        print(tibia_pos)
+        #print(tibia_pos)
         #tibia_pos = [0, 0, 0]
         
         # Calculate end point for the arrow
@@ -259,6 +259,8 @@ class UpdateVisualization():
             self.gl_view.addItem(self.force_arrow_shaft)
         if self.force_arrow_head is not None:
             self.gl_view.addItem(self.force_arrow_head)
+
+        UpdateVisualization.update_bone_angles(self, data_index)
    
     def update_display(self):
         current_angle = constants.FLEXION_ANGLES[self.current_angle_index]
@@ -278,4 +280,116 @@ class UpdateVisualization():
                 self.image_label.setPixmap(pixmap)
         except Exception as e:
             self.image_label.setText(f"Error loading image: {str(e)}")
+
+    @staticmethod
+    def update_bone_angles(self, data_index=0):
+        """Update joint angles display based on current bone positions"""
+        # Check if we have necessary data and bone tab is active
+        if (not hasattr(self, 'last_femur_position') or 
+            not hasattr(self, 'last_tibia_position') or
+            self.tabs.currentIndex() != 2):
+            return
+            
+        # Initialize knee analyzer if needed
+        if not hasattr(self, 'knee_analyzer') or self.knee_analyzer is None:
+            # Check if both meshes are loaded
+            if hasattr(self, 'femur_original_vertices') and hasattr(self, 'tibia_original_vertices'):
+                try:
+                    # Initialize with default landmarks (you'll need to adjust these)
+                    femur_landmarks = {
+                        'proximal': self.femur_original_vertices[0].tolist(),
+                        'distal': self.femur_original_vertices[-1].tolist(),
+                        'lateral': self.femur_original_vertices[100].tolist(), 
+                        'medial': self.femur_original_vertices[200].tolist()
+                    }
+                    
+                    tibia_landmarks = {
+                        'proximal': self.tibia_original_vertices[0].tolist(),
+                        'distal': self.tibia_original_vertices[-1].tolist(),
+                        'lateral': self.tibia_original_vertices[100].tolist(),
+                        'medial': self.tibia_original_vertices[200].tolist()
+                    }
+                    
+                    # Import the KneeJointAnalyzer class if not already imported
+                    from test import KneeJointAnalyzer
+                    self.knee_analyzer = KneeJointAnalyzer(femur_landmarks, tibia_landmarks)
+                    
+                    # Create the text display if it doesn't exist
+                    if not hasattr(self, 'joint_angles_text'):
+                        self.joint_angles_text = QLabel("Joint Angles: Not calculated yet")
+                        self.joint_angles_text.setFont(QFont("Arial", 10))
+                        self.joint_angles_text.setAlignment(Qt.AlignCenter)
+                        self.tab3.layout().addWidget(self.joint_angles_text)
+                except Exception as e:
+                    print(f"Error initializing knee analyzer: {str(e)}")
+                    return
+        
+        # If we have an analyzer, calculate the angles
+        if hasattr(self, 'knee_analyzer') and self.knee_analyzer is not None:
+            try:
+                # Convert quaternions to landmarks
+                femur_current_markers = UpdateVisualization.quaternion_to_landmarks(
+                    self,
+                    self.last_femur_position, 
+                    self.last_femur_quaternion,
+                    'femur'
+                )
+                
+                tibia_current_markers = UpdateVisualization.quaternion_to_landmarks(
+                    self,
+                    self.last_tibia_position,
+                    self.last_tibia_quaternion,
+                    'tibia'
+                )
+                
+                # Calculate angles
+                angles = self.knee_analyzer.update_transformations(
+                    femur_current_markers, tibia_current_markers)
+                
+                # Update text display
+                self.joint_angles_text.setText(
+                    f"Joint Angles: Flexion: {angles['flexion']:.1f}°, "
+                    f"Varus/Valgus: {angles['varus_valgus']:.1f}°, "
+                    f"Rotation: {angles['rotation']:.1f}°"
+                )
+            except Exception as e:
+                print(f"Error calculating joint angles: {str(e)}")
+
+    @staticmethod
+    def quaternion_to_landmarks(self, position, quaternion, bone_type):
+        """Convert position and quaternion to landmarks for joint angle calculation"""
+        # This function needs to transform the original landmarks by the current position/rotation
+        
+        # Get original landmarks
+        if bone_type == 'femur':
+            original_landmarks = {
+                'proximal': self.femur_original_vertices[0].tolist(),
+                'distal': self.femur_original_vertices[-1].tolist(),
+                'lateral': self.femur_original_vertices[100].tolist(),
+                'medial': self.femur_original_vertices[200].tolist()
+            }
+        else:  # tibia
+            original_landmarks = {
+                'proximal': self.tibia_original_vertices[0].tolist(),
+                'distal': self.tibia_original_vertices[-1].tolist(),
+                'lateral': self.tibia_original_vertices[100].tolist(),
+                'medial': self.tibia_original_vertices[200].tolist()
+            }
+        
+        # Convert quaternion to rotation matrix
+        qw, qx, qy, qz = quaternion
+        rotation_matrix = np.array([
+            [1 - 2*qy*qy - 2*qz*qz, 2*qx*qy - 2*qz*qw, 2*qx*qz + 2*qy*qw],
+            [2*qx*qy + 2*qz*qw, 1 - 2*qx*qx - 2*qz*qz, 2*qy*qz - 2*qx*qw],
+            [2*qx*qz - 2*qy*qw, 2*qy*qz + 2*qx*qw, 1 - 2*qx*qx - 2*qy*qy]
+        ])
+        
+        # Transform each landmark and return new marker positions
+        transformed_landmarks = {}
+        for key, point in original_landmarks.items():
+            point_array = np.array(point)
+            transformed_point = rotation_matrix @ point_array + position
+            transformed_landmarks[key] = transformed_point.tolist()
+        
+        return transformed_landmarks
 
