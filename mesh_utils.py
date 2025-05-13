@@ -187,7 +187,7 @@ class MeshUtils:
             vt[-1, :] *= -1
             R = np.dot(vt.T, U.T)
 
-        t = centroid_q - np.dot(centroid_p, R.T)
+        t = centroid_q - centroid_p
 
         return t, R
     
@@ -217,5 +217,13 @@ class MeshUtils:
         # Apply combined transform: translate to origin, rotate, translate back, then to final position
         transform = np.dot(T_position, np.dot(T_from_origin, np.dot(R_matrix, T_to_origin)))
         
+        # -----------------------------
+        #    Alex macht zeugs
+        # -----------------------------
+
+        T_current = MeshUtils.quaternion_to_transform_matrix(quaternion, position*1000)
+        transform = T_current
+#        transform[:3, 3] = [200,0,0]
+        #print(position)
         # Update the mesh transformation
         mesh.setTransform(transform)
