@@ -139,13 +139,14 @@ class MeshUtils:
             # If arrow head creation fails, return only the shaft
             return shaft, None
     
-    def get_tibia_force_origin():
+    def get_tibia_force_origin(tibia_position):
         """Get the specific point on the tibia where the force arrow should originate"""
         # platzhalter für später
-        base_position = np.array([0, 0, 100])
+        #tibia_position = [0, 0, 0]
+        base_position = np.array(tibia_position)
         
         # Define anatomical offset - these values should be adjusted to match your specific model
-        anatomical_offset = np.array([0, 0, 0])  # X, Y, Z offset in model coordinates
+        anatomical_offset = np.array([0, 0, 100])  # X, Y, Z offset in model coordinates
         
         # Return the origin point
         return base_position + anatomical_offset
@@ -192,30 +193,21 @@ class MeshUtils:
         return t, R
     
     @staticmethod
-    def update_mesh_with_data(mesh, pivot_point, position, quaternion):
+    def update_mesh_with_data(mesh, position, quaternion):
         """
-        Update a mesh with position and rotation data around a specific pivot point.
+        Update a mesh with position and rotation data.
+        
         Args:
             mesh: The mesh to update
-            pivot_point: The pivot point for rotation (numpy array)
             position: The final position (numpy array)
             quaternion: The rotation quaternion
         """
-        # Get transformation matrix with rotation only, no translation
+        # Get transformation matrix from quaternion
         R_matrix = MeshUtils.quaternion_to_transform_matrix(quaternion)
         
-        # Create translation matrices
-        T_to_origin = np.eye(4)
-        T_to_origin[0:3, 3] = -pivot_point  # Move pivot point to origin 
-        
-        T_from_origin = np.eye(4)
-        T_from_origin[0:3, 3] = pivot_point  # Move back from origin
-        
-        T_position = np.eye(4)
-        T_position[0:3, 3] = position  # Final position
-        
-        # Apply combined transform: translate to origin, rotate, translate back, then to final position
-        transform = np.dot(T_position, np.dot(T_from_origin, np.dot(R_matrix, T_to_origin)))
+        # Add position to the transform matrix
+        transform = R_matrix.copy()
+        transform[0:3, 3] = position
         
         # -----------------------------
         #    Alex macht zeugs

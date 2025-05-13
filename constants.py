@@ -11,11 +11,11 @@ current_folder = os.path.dirname(os.path.abspath(__file__))
 # Bone STLs
 TIBIA = os.path.join(current_folder, "data_for_gui/more_simple_tibia.stl")
 #FEMUR = "simplify_Segmentation_1_femur.stl"
-#FEMUR = "/home/annick/GUI/data_for_gui/simplify_Segmentation_1_femur.stl"
+FEMUR = "/home/annick/GUI/data_for_gui/simplify_Segmentation_1_femur.stl"
 
 FEMUR = os.path.join(current_folder, "data_for_gui/more_simple_femur.stl")
 #TIBIA = "simplify_Segmentation_1_tibia.stl"
-#TIBIA = "/home/annick/GUI/data_for_gui/simplify_simplify_Segmentation_1_tibia.stl"
+TIBIA = "/home/annick/GUI/data_for_gui/simplify_simplify_Segmentation_1_tibia.stl"
 
 PIVOT_POINT_FEMUR = [0, 0, 0]
 PIVOT_POINT_TIBA = [0, 0, 0]
@@ -51,4 +51,4 @@ BUTTON_HEIGHT = 60
 #DATA_PREVIOUS_TEST = "print_data.F_sensor_temp_data_79.txt"
 DATA_PREVIOUS_TEST = "/home/annick/GUI/data_for_gui/print_data.F_sensor_temp_data_7.txt"
 DATA_CSV = "/home/alex/knee_eval_ws/data.csv"
-#DATA_CSV = "data.csv"
+DATA_CSV = "data.csv"

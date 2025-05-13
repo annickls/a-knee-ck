@@ -235,9 +235,9 @@ class UpdateVisualization():
         force_scaled = force * scale_factor
 
         # Set the position of the force arrow - attach to tibia at specific point
-        tibia_pos = MeshUtils.get_tibia_force_origin()
-        tibia_pos[0] -= 20
-        tibia_pos[2] -= 40
+        tibia_pos = MeshUtils.get_tibia_force_origin(self.last_tibia_position)
+        print(tibia_pos)
+        #tibia_pos = [0, 0, 0]
         
         # Calculate end point for the arrow
         end_point = tibia_pos + force_scaled
