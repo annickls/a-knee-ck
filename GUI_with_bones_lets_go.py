@@ -203,10 +203,10 @@ class KneeFlexionExperiment(QMainWindow):
                     elif current_tab == 2:  # Bone visualization tab
                         # Update bone positions/orientations with real data
                         if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
-                            MeshUtils.update_mesh_with_data(self.femur_mesh, np.array(constants.PIVOT_POINT_FEMUR), femur_position, femur_quaternion)
+                            MeshUtils.update_mesh_with_data(self.femur_mesh, femur_position, femur_quaternion)
                         
                         if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
-                            MeshUtils.update_mesh_with_data(self.tibia_mesh, np.array(constants.PIVOT_POINT_TIBA), tibia_position, tibia_quaternion)
+                            MeshUtils.update_mesh_with_data(self.tibia_mesh, tibia_position, tibia_quaternion)
                         
                         # Update force visualization
                         UpdateVisualization.update_bone_forces(self, self.current_data_index)
@@ -517,11 +517,11 @@ class KneeFlexionExperiment(QMainWindow):
         # Use the stored bone positions/orientations from CSV
         if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
             # Update femur
-            MeshUtils.update_mesh_with_data(self.femur_mesh, np.array(constants.PIVOT_POINT_FEMUR), self.last_femur_position, self.last_femur_quaternion)
+            MeshUtils.update_mesh_with_data(self.femur_mesh, self.last_femur_position, self.last_femur_quaternion)
         
         if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
             # Update tibia
-            MeshUtils.update_mesh_with_data(self.tibia_mesh, np.array(constants.PIVOT_POINT_TIBA), self.last_tibia_position, self.last_tibia_quaternion)
+            MeshUtils.update_mesh_with_data(self.tibia_mesh, self.last_tibia_position, self.last_tibia_quaternion)
         
         # Update forces
         if self.experiment_running and len(self.forces) > 0:
@@ -773,24 +773,27 @@ class KneeFlexionExperiment(QMainWindow):
             femur_vertices = np.nan_to_num(femur_vertices)
             
             # Use tracker coordinates
-            femur_tracker = np.array(constants.TRACKER_FEMUR)
+            #femur_tracker = np.array(constants.TRACKER_FEMUR)
             
-            from scipy.spatial.transform import Rotation
+            #from scipy.spatial.transform import Rotation
             
             # Define rotation angles in degrees, then convert to radians
-            angles_deg = [0, 0, 0]  # [x, y, z] rotations in degrees
-            rotation = Rotation.from_euler('xyz', angles_deg, degrees=True)
-            rotation_matrix = rotation.as_matrix()  # 3x3 rotation matrix
+            #angles_deg = [0, 0, 0]  # [x, y, z] rotations in degrees
+            #rotation = Rotation.from_euler('xyz', angles_deg, degrees=True)
+            #rotation_matrix = rotation.as_matrix()  # 3x3 rotation matrix
             
             # First translate to move the origin
-            femur_vertices_centered = femur_vertices - femur_tracker
+            #femur_vertices_centered = femur_vertices - femur_tracker
+        
             
             # Then rotate around the new origin
-            femur_vertices_transformed = np.dot(femur_vertices_centered, rotation_matrix)
+            #femur_vertices_transformed = np.dot(femur_vertices_centered, rotation_matrix)
+
             
             # Create mesh item with the repositioned and rotated vertices
             self.femur_mesh = gl.GLMeshItem(
-                vertexes=femur_vertices_transformed,
+                #vertexes=femur_vertices_transformed,
+                vertexes=femur_vertices,
                 faces=femur_faces,
                 smooth=True,
                 drawEdges=False,
@@ -800,12 +803,12 @@ class KneeFlexionExperiment(QMainWindow):
             self.gl_view.addItem(self.femur_mesh)
             
             # Store for later use
-            self.femur_verts = femur_vertices_transformed
-            self.femur_faces = femur_faces
+            #self.femur_verts = femur_vertices_transformed
+            #self.femur_faces = femur_faces
             
             # Store the transformations for later reference or inverse operations
-            self.femur_origin = femur_tracker
-            self.femur_rotation = rotation_matrix
+            #self.femur_origin = femur_tracker
+            #self.femur_rotation = rotation_matrix
             
             # Set up transform matrix (initialize once)
             self.femur_transform = np.identity(4, dtype=np.float32)

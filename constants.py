@@ -4,13 +4,13 @@ LACHMANN_TIME = 8 # seconds for lachmann test
 FLEXION_ANGLES = [0, 30, 60, 90, 120]
 
 # Bone STLs
-TIBIA= "/home/annick/a-knee-ck/data_for_gui/femur_simplified.stl"
+#TIBIA= "/home/annick/a-knee-ck/data_for_gui/femur_simplified.stl"
 #FEMUR = "simplify_Segmentation_1_femur.stl"
-#FEMUR = "/home/annick/GUI/data_for_gui/simplify_Segmentation_1_femur.stl"
+FEMUR = "/home/annick/GUI/data_for_gui/simplify_Segmentation_1_femur.stl"
 
-FEMUR = "/home/annick/a-knee-ck/data_for_gui/tibia_simplified.stl"
+#FEMUR = "/home/annick/a-knee-ck/data_for_gui/tibia_simplified.stl"
 #TIBIA = "simplify_Segmentation_1_tibia.stl"
-#TIBIA = "/home/annick/GUI/data_for_gui/simplify_simplify_Segmentation_1_tibia.stl"
+TIBIA = "/home/annick/GUI/data_for_gui/simplify_simplify_Segmentation_1_tibia.stl"
 
 PIVOT_POINT_FEMUR = [0, 0, 0]
 PIVOT_POINT_TIBA = [0, 0, 0]
@@ -45,5 +45,5 @@ BUTTON_HEIGHT = 60
 # data 
 #DATA_PREVIOUS_TEST = "print_data.F_sensor_temp_data_79.txt"
 DATA_PREVIOUS_TEST = "/home/annick/GUI/data_for_gui/print_data.F_sensor_temp_data_7.txt"
-DATA_CSV = "/home/annick/knee_eval_ws/data.csv"
-#DATA_CSV = "data.csv"
+#DATA_CSV = "/home/annick/knee_eval_ws/data.csv"
+DATA_CSV = "data.csv"
