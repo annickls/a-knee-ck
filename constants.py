@@ -1,14 +1,19 @@
+import os
+
 # experiment parameters
 HOLD_TIME = 15 #seconds to hold knee positions
 LACHMANN_TIME = 8 # seconds for lachmann test
 FLEXION_ANGLES = [0, 30, 60, 90, 120]
 
+# current folder
+current_folder = os.path.dirname(os.path.abspath(__file__))
+
 # Bone STLs
-#TIBIA= "/home/annick/a-knee-ck/data_for_gui/femur_simplified.stl"
+TIBIA = os.path.join(current_folder, "data_for_gui/more_simple_tibia.stl")
 #FEMUR = "simplify_Segmentation_1_femur.stl"
 FEMUR = "/home/annick/GUI/data_for_gui/simplify_Segmentation_1_femur.stl"
 
-#FEMUR = "/home/annick/a-knee-ck/data_for_gui/tibia_simplified.stl"
+FEMUR = os.path.join(current_folder, "data_for_gui/more_simple_femur.stl")
 #TIBIA = "simplify_Segmentation_1_tibia.stl"
 TIBIA = "/home/annick/GUI/data_for_gui/simplify_simplify_Segmentation_1_tibia.stl"
 
@@ -45,5 +50,5 @@ BUTTON_HEIGHT = 60
 # data 
 #DATA_PREVIOUS_TEST = "print_data.F_sensor_temp_data_79.txt"
 DATA_PREVIOUS_TEST = "/home/annick/GUI/data_for_gui/print_data.F_sensor_temp_data_7.txt"
-#DATA_CSV = "/home/annick/knee_eval_ws/data.csv"
+DATA_CSV = "/home/alex/knee_eval_ws/data.csv"
 DATA_CSV = "data.csv"
