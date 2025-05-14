@@ -363,17 +363,17 @@ class UpdateVisualization():
         # Get original landmarks
         if bone_type == 'femur':
             original_landmarks = {
-                'proximal': self.femur_original_vertices[0].tolist(),
-                'distal': self.femur_original_vertices[-1].tolist(),
-                'lateral': self.femur_original_vertices[100].tolist(),
-                'medial': self.femur_original_vertices[200].tolist()
+                'proximal': [77.49647521972656, -127.54686737060547, 911.6983032226562],
+                'distal': [65.46070098876953, -113.15875244140625, 1384.9970703125],
+                'lateral': [67.22425079345703, -157.83193969726562, 1399.614990234375],
+                'medial': [83.37752532958984, -106.33291625976562, 1398.119384765625]
             }
         else:  # tibia
             original_landmarks = {
-                'proximal': self.tibia_original_vertices[0].tolist(),
-                'distal': self.tibia_original_vertices[-1].tolist(),
-                'lateral': self.tibia_original_vertices[100].tolist(),
-                'medial': self.tibia_original_vertices[200].tolist()
+                'proximal': [89.87777709960938, -127.63327026367188, 1402.123779296875],
+                'distal': [53.35368728637695, -96.90910339355469, 1782.2177734375],
+                'lateral': [58.212806701660156, -146.54855346679688, 1406.6055908203125],
+                'medial': [100.51856994628906, -102.90194702148438, 1403.58154296875]
             }
         
         # Convert quaternion to rotation matrix

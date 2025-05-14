@@ -1,16 +1,16 @@
 # experiment parameters
-HOLD_TIME = 15 #seconds to hold knee positions
+HOLD_TIME = 5 #seconds to hold knee positions
 LACHMANN_TIME = 8 # seconds for lachmann test
 FLEXION_ANGLES = [0, 30, 60, 90, 120]
 
 # Bone STLs
 #TIBIA= "/home/annick/a-knee-ck/data_for_gui/femur_simplified.stl"
 #FEMUR = "simplify_Segmentation_1_femur.stl"
-FEMUR = "/home/annick/GUI/data_for_gui/simplify_Segmentation_1_femur.stl"
+FEMUR = "/home/annick/GUI/data_for_gui/femur_new.stl"
 
 #FEMUR = "/home/annick/a-knee-ck/data_for_gui/tibia_simplified.stl"
 #TIBIA = "simplify_Segmentation_1_tibia.stl"
-TIBIA = "/home/annick/GUI/data_for_gui/simplify_simplify_Segmentation_1_tibia.stl"
+TIBIA = "/home/annick/GUI/data_for_gui/tibia_new.stl"
 
 PIVOT_POINT_FEMUR = [0, 0, 0]
 PIVOT_POINT_TIBA = [0, 0, 0]

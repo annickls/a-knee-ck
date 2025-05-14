@@ -28,6 +28,7 @@ from plot_config1 import MplCanvas, ColoredGLAxisItem
 from mesh_utils import MeshUtils
 from update_visualization import UpdateVisualization
 from knee_angles import KneeJointAnalyzer
+import warnings
 
 class KneeFlexionExperiment(QMainWindow):
     def __init__(self):
@@ -387,10 +388,10 @@ class KneeFlexionExperiment(QMainWindow):
         tab3_layout.addWidget(self.gl_view)
         tab3_layout.addLayout(bone_load_layout)
         self.tab3.setLayout(tab3_layout)
-        # Timer for bone animation updates
+        """# Timer for bone animation updates
         self.bone_timer = QTimer()
         self.bone_timer.timeout.connect(self.update_bones)
-        self.bone_timer.setInterval(20)  # 25ms for 40 fps
+        self.bone_timer.setInterval(20)  # 25ms for 40 fps"""
 
         left_layout.addWidget(self.tabs)
         self.left_widget.setLayout(left_layout)
@@ -558,7 +559,7 @@ class KneeFlexionExperiment(QMainWindow):
         
         return transformed_landmarks
 
-    def update_bones(self):
+    """def update_bones(self):
         
             # Only update if the bone tab is active
         if self.tabs.currentIndex() != 2 or not hasattr(self, 'last_femur_position'):
@@ -608,7 +609,7 @@ class KneeFlexionExperiment(QMainWindow):
                 f"Joint Angles: Flexion: {angles['flexion']:.1f}°, "
                 f"Varus/Valgus: {angles['varus_valgus']:.1f}°, "
                 f"Rotation: {angles['rotation']:.1f}°"
-            )
+            )"""
 
     def update_visualization_timer(self):
         """Called by timer to update visualization"""
@@ -633,8 +634,6 @@ class KneeFlexionExperiment(QMainWindow):
                 force = self.forces[self.current_data_index].copy()
                 torque = self.torques[self.current_data_index].copy()
                 
-                # The bone positions should be stored when reading the CSV
-                # Make sure you're extracting and storing these in read_csv_data
                 
                 # Make sure these variables are defined in your read_csv_data method
                 if hasattr(self, 'last_femur_position') and hasattr(self, 'last_femur_quaternion') and \
@@ -801,7 +800,7 @@ class KneeFlexionExperiment(QMainWindow):
     def update_seconds_progress(self):
         self.remaining_time -= 1
         self.rotation_progress.setValue(self.remaining_time)
-        
+
         if self.remaining_time <= 0:
             self.seconds_timer.stop()
             self.rotation_complete()
@@ -844,6 +843,7 @@ class KneeFlexionExperiment(QMainWindow):
         try:
             # Load femur STL
             femur_vertices, femur_faces = MeshUtils.load_stl_as_mesh(constants.FEMUR)
+            warnings.filterwarnings("ignore", message="invalid value encountered in divide", category=RuntimeWarning)
             self.femur_original_vertices = femur_vertices.copy()
             
             # Store vertices in a numpy array for faster operations
@@ -853,23 +853,6 @@ class KneeFlexionExperiment(QMainWindow):
             # Check for and fix invalid vertices
             # Replace NaN values with zeros
             femur_vertices = np.nan_to_num(femur_vertices)
-            
-            # Use tracker coordinates
-            #femur_tracker = np.array(constants.TRACKER_FEMUR)
-            
-            #from scipy.spatial.transform import Rotation
-            
-            # Define rotation angles in degrees, then convert to radians
-            #angles_deg = [0, 0, 0]  # [x, y, z] rotations in degrees
-            #rotation = Rotation.from_euler('xyz', angles_deg, degrees=True)
-            #rotation_matrix = rotation.as_matrix()  # 3x3 rotation matrix
-            
-            # First translate to move the origin
-            #femur_vertices_centered = femur_vertices - femur_tracker
-        
-            
-            # Then rotate around the new origin
-            #femur_vertices_transformed = np.dot(femur_vertices_centered, rotation_matrix)
 
             
             # Create mesh item with the repositioned and rotated vertices
@@ -884,21 +867,13 @@ class KneeFlexionExperiment(QMainWindow):
             )
             self.gl_view.addItem(self.femur_mesh)
             
-            # Store for later use
-            #self.femur_verts = femur_vertices_transformed
-            #self.femur_faces = femur_faces
-            
-            # Store the transformations for later reference or inverse operations
-            #self.femur_origin = femur_tracker
-            #self.femur_rotation = rotation_matrix
-            
             # Set up transform matrix (initialize once)
             self.femur_transform = np.identity(4, dtype=np.float32)
             
             # Disable load button
             self.load_femur_button.setEnabled(False)
             self.load_femur_button.setText("Femur Loaded")
-            print("Femur loaded successfully")
+            #print("Femur loaded successfully")
         except Exception as e:
             print(f"Error loading femur: {e}")
             import traceback
@@ -909,6 +884,7 @@ class KneeFlexionExperiment(QMainWindow):
         try:
             # Load tibia STL
             tibia_vertices, tibia_faces = MeshUtils.load_stl_as_mesh(constants.TIBIA)
+            warnings.filterwarnings("ignore", message="invalid value encountered in divide", category=RuntimeWarning)
             self.tibia_original_vertices = tibia_vertices.copy()
             
             # Store vertices in a numpy array for faster operations
@@ -962,7 +938,7 @@ class KneeFlexionExperiment(QMainWindow):
             # Disable load button
             self.load_tibia_button.setEnabled(False)
             self.load_tibia_button.setText("Tibia Loaded")
-            print("Tibia loaded successfully")
+            #print("Tibia loaded successfully")
         except Exception as e:
             print(f"Error loading tibia: {e}")
             import traceback
