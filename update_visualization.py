@@ -290,7 +290,7 @@ class UpdateVisualization():
             self.tabs.currentIndex() != 2):
             return
             
-        # Initialize knee analyzer if needed
+        """# Initialize knee analyzer if needed
         if not hasattr(self, 'knee_analyzer') or self.knee_analyzer is None:
             # Check if both meshes are loaded
             if hasattr(self, 'femur_original_vertices') and hasattr(self, 'tibia_original_vertices'):
@@ -322,7 +322,7 @@ class UpdateVisualization():
                         self.tab3.layout().addWidget(self.joint_angles_text)
                 except Exception as e:
                     print(f"Error initializing knee analyzer: {str(e)}")
-                    return
+                    return"""
         
         # If we have an analyzer, calculate the angles
         if hasattr(self, 'knee_analyzer') and self.knee_analyzer is not None:
