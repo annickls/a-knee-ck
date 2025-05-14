@@ -1,7 +1,12 @@
+import os
+
 # experiment parameters
 HOLD_TIME = 5 #seconds to hold knee positions
 LACHMANN_TIME = 8 # seconds for lachmann test
 FLEXION_ANGLES = [0, 30, 60, 90, 120]
+
+# current folder
+current_folder = os.path.dirname(os.path.abspath(__file__))
 
 # Bone STLs
 FEMUR= "/home/annick/a-knee-ck/data_for_gui/femur_new.stl"

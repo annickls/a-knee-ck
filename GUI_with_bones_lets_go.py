@@ -857,6 +857,16 @@ class KneeFlexionExperiment(QMainWindow):
             femur_vertices = np.nan_to_num(femur_vertices)
 
             
+            #--------------------------------------
+            #          Kabsch
+            #--------------------------------------
+
+            # Run kabsch algorithm
+            current_folder = os.path.dirname(os.path.abspath(__file__))
+            yaml_path = os.path.join(current_folder, "data_for_gui/marker_coordinates.yaml")
+            translation, rotation = MeshUtils.kabsch(yaml_path, "femur")
+            femur_vertices_centered = femur_vertices + translation
+            femur_vertices_transformed = np.dot(femur_vertices_centered, rotation)
             # Create mesh item with the repositioned and rotated vertices
             self.femur_mesh = gl.GLMeshItem(
                 #vertexes=femur_vertices_transformed,
@@ -915,6 +925,17 @@ class KneeFlexionExperiment(QMainWindow):
             # Then rotate around the new origin
             tibia_vertices_transformed = np.dot(tibia_vertices_centered, rotation_matrix)
             
+            #--------------------------------------
+            #          Kabsch
+            #--------------------------------------
+
+            # Run kabsch algorithm
+            current_folder = os.path.dirname(os.path.abspath(__file__))
+            yaml_path = os.path.join(current_folder, "data_for_gui/marker_coordinates.yaml")
+            translation, rotation = MeshUtils.kabsch(yaml_path, "tibia")
+            tibia_vertices_centered = tibia_vertices + translation
+            tibia_vertices_transformed = np.dot(tibia_vertices_centered, rotation)
+
             # Create mesh item with the repositioned and rotated vertices
             self.tibia_mesh = gl.GLMeshItem(
                 vertexes=tibia_vertices_transformed,
