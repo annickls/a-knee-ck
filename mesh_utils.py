@@ -9,6 +9,7 @@ import pyqtgraph.opengl as gl
 import yaml
 import constants
 import numpy as np
+import warnings
 
 class MeshUtils:
     @staticmethod
@@ -21,17 +22,6 @@ class MeshUtils:
             return vertices, faces
         except Exception as e:
             print(f"Error loading STL file {filename}: {e}")
-            # Return simple cube as fallback
-            vertices = np.array([
-                [0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
-                [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]
-            ])
-            faces = np.array([
-                [0, 1, 2], [0, 2, 3], [0, 1, 5], [0, 5, 4],
-                [1, 2, 6], [1, 6, 5], [2, 3, 7], [2, 7, 6],
-                [3, 0, 4], [3, 4, 7], [4, 5, 6], [4, 6, 7]
-            ])
-            return vertices, faces
     
     @staticmethod
     def quaternion_to_transform_matrix(quaternion, position=None):

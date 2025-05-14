@@ -27,6 +27,8 @@ import logging
 from plot_config1 import MplCanvas, ColoredGLAxisItem
 from mesh_utils import MeshUtils
 from update_visualization import UpdateVisualization
+from knee_angles import KneeJointAnalyzer
+import warnings
 
 class KneeFlexionExperiment(QMainWindow):
     def __init__(self):
@@ -74,6 +76,9 @@ class KneeFlexionExperiment(QMainWindow):
         self.current_recording_data = []
         self.recording_start_time = None
         self.current_test_name = ""
+
+        # Initialize knee joint analyzer (will be properly set up when bones are loaded)
+        self.knee_analyzer = None
         
         # Ensure directory exists for data files
         os.makedirs("recorded_data", exist_ok=True)
@@ -371,15 +376,22 @@ class KneeFlexionExperiment(QMainWindow):
          # Add force visualization objects
         self.force_arrow_shaft = None
         self.force_arrow_head = None
+
+        # Add text display for joint angles
+        self.joint_angles_text = QLabel("Joint Angles: Not calculated yet")
+        self.joint_angles_text.setFont(QFont("Arial", 10))
+        self.joint_angles_text.setAlignment(Qt.AlignCenter)
+        tab3_layout.addWidget(self.joint_angles_text)
+
         # Connect tab change signal
         self.tabs.currentChanged.connect(self.on_tab_changed)
         tab3_layout.addWidget(self.gl_view)
         tab3_layout.addLayout(bone_load_layout)
         self.tab3.setLayout(tab3_layout)
-        # Timer for bone animation updates
+        """# Timer for bone animation updates
         self.bone_timer = QTimer()
         self.bone_timer.timeout.connect(self.update_bones)
-        self.bone_timer.setInterval(20)  # 25ms for 40 fps
+        self.bone_timer.setInterval(20)  # 25ms for 40 fps"""
 
         left_layout.addWidget(self.tabs)
         self.left_widget.setLayout(left_layout)
@@ -509,8 +521,47 @@ class KneeFlexionExperiment(QMainWindow):
         # Current test type
         self.current_test_type = 'none'
 
-    def update_bones(self):
-        # Only update if the bone tab is active
+    def quaternion_to_landmarks(self, position, quaternion, bone_type):
+        """Convert position and quaternion to landmarks for joint angle calculation"""
+        # This function needs to transform the original landmarks by the current position/rotation
+        
+        # Get original landmarks
+        if bone_type == 'femur':
+            original_landmarks = {
+                'proximal': self.femur_original_vertices[0].tolist(),  # Replace with actual landmarks
+                'distal': self.femur_original_vertices[-1].tolist(),
+                'lateral': self.femur_original_vertices[100].tolist(),
+                'medial': self.femur_original_vertices[200].tolist()
+            }
+        else:  # tibia
+            original_landmarks = {
+                'proximal': self.tibia_original_vertices[0].tolist(),
+                'distal': self.tibia_original_vertices[-1].tolist(),
+                'lateral': self.tibia_original_vertices[100].tolist(),
+                'medial': self.tibia_original_vertices[200].tolist()
+            }
+        
+        # Convert quaternion to rotation matrix
+        # Assuming quaternion is [w, x, y, z]
+        qw, qx, qy, qz = quaternion
+        rotation_matrix = np.array([
+            [1 - 2*qy*qy - 2*qz*qz, 2*qx*qy - 2*qz*qw, 2*qx*qz + 2*qy*qw],
+            [2*qx*qy + 2*qz*qw, 1 - 2*qx*qx - 2*qz*qz, 2*qy*qz - 2*qx*qw],
+            [2*qx*qz - 2*qy*qw, 2*qy*qz + 2*qx*qw, 1 - 2*qx*qx - 2*qy*qy]
+        ])
+        
+        # Transform each landmark and return new marker positions
+        transformed_landmarks = {}
+        for key, point in original_landmarks.items():
+            point_array = np.array(point)
+            transformed_point = rotation_matrix @ point_array + position
+            transformed_landmarks[key] = transformed_point.tolist()
+        
+        return transformed_landmarks
+
+    """def update_bones(self):
+        
+            # Only update if the bone tab is active
         if self.tabs.currentIndex() != 2 or not hasattr(self, 'last_femur_position'):
             return
             
@@ -527,6 +578,38 @@ class KneeFlexionExperiment(QMainWindow):
         if self.experiment_running and len(self.forces) > 0:
             # Update force visualization on bone
             UpdateVisualization.update_bone_forces(self, self.current_data_index)
+        
+        # Calculate and update joint angles if analyzer is initialized
+        if self.knee_analyzer is not None:
+            # Create current marker positions based on transformed bones
+            # This is a simplified example - you'll need to extract the actual landmarks
+            # from your transformed meshes or calculate them from the quaternions
+            
+            # Convert quaternions to landmarks
+            femur_current_markers = self.quaternion_to_landmarks(
+                self.last_femur_position, 
+                self.last_femur_quaternion,
+                'femur'
+            )
+            
+            tibia_current_markers = self.quaternion_to_landmarks(
+                self.last_tibia_position,
+                self.last_tibia_quaternion,
+                'tibia'
+            )
+            
+            # Calculate angles
+            angles = self.knee_analyzer.update_transformations(
+                femur_current_markers, tibia_current_markers)
+            
+            
+            
+            # Update text display
+            self.joint_angles_text.setText(
+                f"Joint Angles: Flexion: {angles['flexion']:.1f}°, "
+                f"Varus/Valgus: {angles['varus_valgus']:.1f}°, "
+                f"Rotation: {angles['rotation']:.1f}°"
+            )"""
 
     def update_visualization_timer(self):
         """Called by timer to update visualization"""
@@ -551,8 +634,6 @@ class KneeFlexionExperiment(QMainWindow):
                 force = self.forces[self.current_data_index].copy()
                 torque = self.torques[self.current_data_index].copy()
                 
-                # The bone positions should be stored when reading the CSV
-                # Make sure you're extracting and storing these in read_csv_data
                 
                 # Make sure these variables are defined in your read_csv_data method
                 if hasattr(self, 'last_femur_position') and hasattr(self, 'last_femur_quaternion') and \
@@ -719,7 +800,7 @@ class KneeFlexionExperiment(QMainWindow):
     def update_seconds_progress(self):
         self.remaining_time -= 1
         self.rotation_progress.setValue(self.remaining_time)
-        
+
         if self.remaining_time <= 0:
             self.seconds_timer.stop()
             self.rotation_complete()
@@ -762,6 +843,7 @@ class KneeFlexionExperiment(QMainWindow):
         try:
             # Load femur STL
             femur_vertices, femur_faces = MeshUtils.load_stl_as_mesh(constants.FEMUR)
+            warnings.filterwarnings("ignore", message="invalid value encountered in divide", category=RuntimeWarning)
             self.femur_original_vertices = femur_vertices.copy()
             
             # Store vertices in a numpy array for faster operations
@@ -771,23 +853,6 @@ class KneeFlexionExperiment(QMainWindow):
             # Check for and fix invalid vertices
             # Replace NaN values with zeros
             femur_vertices = np.nan_to_num(femur_vertices)
-            
-            # Use tracker coordinates
-            #femur_tracker = np.array(constants.TRACKER_FEMUR)
-            
-            #from scipy.spatial.transform import Rotation
-            
-            # Define rotation angles in degrees, then convert to radians
-            #angles_deg = [0, 0, 0]  # [x, y, z] rotations in degrees
-            #rotation = Rotation.from_euler('xyz', angles_deg, degrees=True)
-            #rotation_matrix = rotation.as_matrix()  # 3x3 rotation matrix
-            
-            # First translate to move the origin
-            #femur_vertices_centered = femur_vertices - femur_tracker
-        
-            
-            # Then rotate around the new origin
-            #femur_vertices_transformed = np.dot(femur_vertices_centered, rotation_matrix)
 
             
             #--------------------------------------
@@ -812,21 +877,13 @@ class KneeFlexionExperiment(QMainWindow):
             )
             self.gl_view.addItem(self.femur_mesh)
             
-            # Store for later use
-            #self.femur_verts = femur_vertices_transformed
-            #self.femur_faces = femur_faces
-            
-            # Store the transformations for later reference or inverse operations
-            #self.femur_origin = femur_tracker
-            #self.femur_rotation = rotation_matrix
-            
             # Set up transform matrix (initialize once)
             self.femur_transform = np.identity(4, dtype=np.float32)
             
             # Disable load button
             self.load_femur_button.setEnabled(False)
             self.load_femur_button.setText("Femur Loaded")
-            print("Femur loaded successfully")
+            #print("Femur loaded successfully")
         except Exception as e:
             print(f"Error loading femur: {e}")
             import traceback
@@ -837,6 +894,7 @@ class KneeFlexionExperiment(QMainWindow):
         try:
             # Load tibia STL
             tibia_vertices, tibia_faces = MeshUtils.load_stl_as_mesh(constants.TIBIA)
+            warnings.filterwarnings("ignore", message="invalid value encountered in divide", category=RuntimeWarning)
             self.tibia_original_vertices = tibia_vertices.copy()
             
             # Store vertices in a numpy array for faster operations
@@ -901,12 +959,32 @@ class KneeFlexionExperiment(QMainWindow):
             # Disable load button
             self.load_tibia_button.setEnabled(False)
             self.load_tibia_button.setText("Tibia Loaded")
-            print("Tibia loaded successfully")
+            #print("Tibia loaded successfully")
         except Exception as e:
             print(f"Error loading tibia: {e}")
             import traceback
             traceback.print_exc()
             self.load_tibia_button.setText("Error")
+
+        # Check if both meshes are loaded
+        if hasattr(self, 'femur_original_vertices') and hasattr(self, 'tibia_original_vertices'):
+            # Extract landmarks from the bone models (this is a simplified example)
+            femur_landmarks = {
+                'proximal': [77.49647521972656, -127.54686737060547, 911.6983032226562],
+                'distal': [65.46070098876953, -113.15875244140625, 1384.9970703125],
+                'lateral': [67.22425079345703, -157.83193969726562, 1399.614990234375],
+                'medial': [83.37752532958984, -106.33291625976562, 1398.119384765625]
+            }
+            
+            tibia_landmarks = {
+                'proximal': [89.87777709960938, -127.63327026367188, 1402.123779296875],
+                'distal': [53.35368728637695, -96.90910339355469, 1782.2177734375],
+                'lateral': [58.212806701660156, -146.54855346679688, 1406.6055908203125],
+                'medial': [100.51856994628906, -102.90194702148438, 1403.58154296875]
+            }
+            
+            # Initialize the joint analyzer
+            self.knee_analyzer = KneeJointAnalyzer(femur_landmarks, tibia_landmarks)
     
 
 if __name__ == "__main__":

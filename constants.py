@@ -1,7 +1,7 @@
 import os
 
 # experiment parameters
-HOLD_TIME = 15 #seconds to hold knee positions
+HOLD_TIME = 5 #seconds to hold knee positions
 LACHMANN_TIME = 8 # seconds for lachmann test
 FLEXION_ANGLES = [0, 30, 60, 90, 120]
 
@@ -11,11 +11,11 @@ current_folder = os.path.dirname(os.path.abspath(__file__))
 # Bone STLs
 TIBIA = os.path.join(current_folder, "data_for_gui/more_simple_tibia.stl")
 #FEMUR = "simplify_Segmentation_1_femur.stl"
-FEMUR = "/home/annick/GUI/data_for_gui/simplify_Segmentation_1_femur.stl"
+FEMUR = "/home/annick/GUI/data_for_gui/femur_new.stl"
 
 FEMUR = os.path.join(current_folder, "data_for_gui/more_simple_femur.stl")
 #TIBIA = "simplify_Segmentation_1_tibia.stl"
-TIBIA = "/home/annick/GUI/data_for_gui/simplify_simplify_Segmentation_1_tibia.stl"
+TIBIA = "/home/annick/GUI/data_for_gui/tibia_new.stl"
 
 PIVOT_POINT_FEMUR = [0, 0, 0]
 PIVOT_POINT_TIBA = [0, 0, 0]

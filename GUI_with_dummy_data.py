@@ -410,7 +410,7 @@ class KneeFlexionExperiment(QMainWindow):
                     current_tab = self.tabs.currentIndex()
                     
                     if current_tab == 0:  # Current Data tab
-                        self.update_current_visualization(force, torque)
+                        self.update_current_visualization(force, torque, flex)
                     elif current_tab == 1:  # History tab
                         # Add to history
                         self.force_history.append(force)
