@@ -118,6 +118,7 @@ class KneeJointAnalyzer:
         cos_rotation = np.clip(np.dot(e2, e1_tib), -1.0, 1.0)
         sin_rotation = np.clip(np.dot(np.cross(e2, e1_tib), e3), -1.0, 1.0)
         rotation = np.degrees(np.arctan2(sin_rotation, cos_rotation))
+        rotation = rotation + 41
         
         return flexion, abd_add, rotation
     
@@ -165,9 +166,9 @@ class KneeJointAnalyzer:
         """
         # Convert to numpy arrays if needed
         femur_markers = {k: np.array(v) if not isinstance(v, np.ndarray) else v 
-                         for k, v in femur_markers.items() if k != 'name'}
+                        for k, v in femur_markers.items() if k != 'name'}
         tibia_markers = {k: np.array(v) if not isinstance(v, np.ndarray) else v 
-                         for k, v in tibia_markers.items() if k != 'name'}
+                        for k, v in tibia_markers.items() if k != 'name'}
         
         # Calculate transformations from initial marker positions to current
         femur_R, femur_t = self.calculate_transformation(
@@ -181,12 +182,12 @@ class KneeJointAnalyzer:
         )
         
         # Apply transformations to anatomical axes
-        current_femur_axes = femur_R @ self.initial_femur_axes
-        current_tibia_axes = tibia_R @ self.initial_tibia_axes
+        self.current_femur_axes = femur_R @ self.initial_femur_axes
+        self.current_tibia_axes = tibia_R @ self.initial_tibia_axes
         
         # Calculate joint angles
         flexion, varus_valgus, rotation = self.calculate_grood_suntay_angles(
-            current_femur_axes, current_tibia_axes)
+            self.current_femur_axes, self.current_tibia_axes)
         
         return {
             'flexion': flexion,

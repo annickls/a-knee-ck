@@ -225,7 +225,7 @@ class UpdateVisualization():
         # Skip if not on the bone visualization tab
         if self.tabs.currentIndex() != 2:
             return
-            
+                
         # Get current data point
         idx = data_index % len(self.forces)
         force = self.forces[idx].copy()
@@ -236,8 +236,6 @@ class UpdateVisualization():
 
         # Set the position of the force arrow - attach to tibia at specific point
         tibia_pos = MeshUtils.get_tibia_force_origin(self.last_tibia_position)
-        #print(tibia_pos)
-        #tibia_pos = [0, 0, 0]
         
         # Calculate end point for the arrow
         end_point = tibia_pos + force_scaled
@@ -253,14 +251,19 @@ class UpdateVisualization():
             tibia_pos, end_point, color=(1, 0, 0, 1), arrow_size=constants.ARROW_SIZE, shaft_width=constants.SHAFT_WIDTH
         )
         
-
         # Add new arrows to view
         if self.force_arrow_shaft is not None:
             self.gl_view.addItem(self.force_arrow_shaft)
         if self.force_arrow_head is not None:
             self.gl_view.addItem(self.force_arrow_head)
 
+        # Update bone angles
         UpdateVisualization.update_bone_angles(self, data_index)
+        
+        # Update anatomical axes visualization
+        UpdateVisualization.update_axes_visualization(self, data_index)
+
+        UpdateVisualization.update_landmark_visualization(self, data_index)  
    
     def update_display(self):
         current_angle = constants.FLEXION_ANGLES[self.current_angle_index]
@@ -290,39 +293,6 @@ class UpdateVisualization():
             self.tabs.currentIndex() != 2):
             return
             
-        """# Initialize knee analyzer if needed
-        if not hasattr(self, 'knee_analyzer') or self.knee_analyzer is None:
-            # Check if both meshes are loaded
-            if hasattr(self, 'femur_original_vertices') and hasattr(self, 'tibia_original_vertices'):
-                try:
-                    # Initialize with default landmarks (you'll need to adjust these)
-                    femur_landmarks = {
-                        'proximal': [77.49647521972656, -127.54686737060547, 911.6983032226562],
-                        'distal': [65.46070098876953, -113.15875244140625, 1384.9970703125],
-                        'lateral': [67.22425079345703, -157.83193969726562, 1399.614990234375],
-                        'medial': [83.37752532958984, -106.33291625976562, 1398.119384765625]
-                    }
-                    
-                    tibia_landmarks = {
-                        'proximal': [89.87777709960938, -127.63327026367188, 1402.123779296875],
-                        'distal': [53.35368728637695, -96.90910339355469, 1782.2177734375],
-                        'lateral': [58.212806701660156, -146.54855346679688, 1406.6055908203125],
-                        'medial': [100.51856994628906, -102.90194702148438, 1403.58154296875]
-                    }
-                            
-                    # Import the KneeJointAnalyzer class if not already imported
-                    from test import KneeJointAnalyzer
-                    self.knee_analyzer = KneeJointAnalyzer(femur_landmarks, tibia_landmarks)
-                    
-                    # Create the text display if it doesn't exist
-                    if not hasattr(self, 'joint_angles_text'):
-                        self.joint_angles_text = QLabel("Joint Angles: Not calculated yet")
-                        self.joint_angles_text.setFont(QFont("Arial", 10))
-                        self.joint_angles_text.setAlignment(Qt.AlignCenter)
-                        self.tab3.layout().addWidget(self.joint_angles_text)
-                except Exception as e:
-                    print(f"Error initializing knee analyzer: {str(e)}")
-                    return"""
         
         # If we have an analyzer, calculate the angles
         if hasattr(self, 'knee_analyzer') and self.knee_analyzer is not None:
@@ -363,17 +333,17 @@ class UpdateVisualization():
         # Get original landmarks
         if bone_type == 'femur':
             original_landmarks = {
-                'proximal': [77.49647521972656, -127.54686737060547, 911.6983032226562],
-                'distal': [65.46070098876953, -113.15875244140625, 1384.9970703125],
-                'lateral': [67.22425079345703, -157.83193969726562, 1399.614990234375],
-                'medial': [83.37752532958984, -106.33291625976562, 1398.119384765625]
+                'proximal': [77.49647521972656+15.419721603393555, -127.54686737060547+153.50636291503906, 911.6983032226562-1636.604736328125],
+                'distal': [65.46070098876953+15.41972160339355, -113.15875244140625+153.50636291503906, 1384.9970703125-1636.604736328125],
+                'lateral': [67.22425079345703+15.41972160339355, -157.83193969726562+153.50636291503906, 1399.614990234375-1636.604736328125],
+                'medial': [83.37752532958984+15.41972160339355, -106.33291625976562+153.50636291503906, 1398.119384765625-1636.604736328125]
             }
-        else:  # tibia
+        else:
             original_landmarks = {
-                'proximal': [89.87777709960938, -127.63327026367188, 1402.123779296875],
-                'distal': [53.35368728637695, -96.90910339355469, 1782.2177734375],
-                'lateral': [58.212806701660156, -146.54855346679688, 1406.6055908203125],
-                'medial': [100.51856994628906, -102.90194702148438, 1403.58154296875]
+                'proximal': [89.87777709960938+15.419721603393555, -127.63327026367188+153.50636291503906, 1402.123779296875-1636.604736328125],
+                'distal': [53.35368728637695+15.419721603393555, -96.90910339355469+153.50636291503906, 1782.2177734375-1636.604736328125],
+                'lateral': [58.212806701660156+15.419721603393555, -146.54855346679688+153.50636291503906, 1406.6055908203125-1636.604736328125],
+                'medial': [100.51856994628906+15.419721603393555, -102.90194702148438+153.50636291503906, 1403.58154296875-1636.604736328125]
             }
         
         # Convert quaternion to rotation matrix
@@ -393,3 +363,356 @@ class UpdateVisualization():
         
         return transformed_landmarks
 
+    @staticmethod
+    def visualize_anatomical_axes(self):
+        """Create and store the anatomical axes visualization objects"""
+        # Create objects for femur axes
+        self.femur_axis_visuals = {
+            'x': None,  # AP axis (anteroposterior)
+            'y': None,  # PD axis (proximodistal)
+            'z': None,  # ML axis (mediolateral)
+            'origin': None  # Origin point
+        }
+        
+        # Create objects for tibia axes
+        self.tibia_axis_visuals = {
+            'x': None,  # AP axis
+            'y': None,  # PD axis
+            'z': None,  # ML axis
+            'origin': None  # Origin point
+        }
+
+    @staticmethod
+    def update_axes_visualization(self, data_index=0):
+        """Update the anatomical axes visualization in 3D bone view"""
+        # Skip if not on the bone visualization tab
+        if self.tabs.currentIndex() != 2:
+            return
+        
+        # Skip if we don't have bone positions
+        if not hasattr(self, 'last_femur_position') or not hasattr(self, 'last_tibia_position'):
+            return
+        
+        # Skip if knee_analyzer is not initialized
+        if not hasattr(self, 'knee_analyzer') or self.knee_analyzer is None:
+            print("Warning: knee_analyzer is not initialized, skipping axes visualization update")
+            return
+        
+        # Create axes visualization objects if they don't exist yet
+        if not hasattr(self, 'femur_axis_visuals'):
+            UpdateVisualization.visualize_anatomical_axes(self)
+        
+        # Get transformed landmarks
+        femur_landmarks = UpdateVisualization.quaternion_to_landmarks(
+            self,
+            self.last_femur_position,
+            self.last_femur_quaternion,
+            'femur'
+        )
+        
+        tibia_landmarks = UpdateVisualization.quaternion_to_landmarks(
+            self,
+            self.last_tibia_position,
+            self.last_tibia_quaternion,
+            'tibia'
+        )
+        
+        # Use KneeJointAnalyzer to get the current anatomical axes
+        try:
+            angles = self.knee_analyzer.update_transformations(femur_landmarks, tibia_landmarks)
+            
+            # Get the current axes from the analyzer
+            femur_axes = self.knee_analyzer.current_femur_axes
+            tibia_axes = self.knee_analyzer.current_tibia_axes
+            
+            # Get origins
+            femur_origin = femur_landmarks['distal']
+            tibia_origin = tibia_landmarks['proximal']
+            
+            # Define axis lengths (scale as needed)
+            axis_length = 50.0
+            
+            # Update femur axes visualization
+            UpdateVisualization._update_axis_visual(
+                self,
+                self.femur_axis_visuals, 'x', 
+                np.array(femur_origin), 
+                np.array(femur_origin) + femur_axes[:, 0] * axis_length,
+                color=(1, 0, 0, 1)  # Red for AP
+            )
+            UpdateVisualization._update_axis_visual(
+                self,
+                self.femur_axis_visuals, 'y', 
+                np.array(femur_origin), 
+                np.array(femur_origin) + femur_axes[:, 1] * axis_length,
+                color=(0, 1, 0, 1)  # Green for PD
+            )
+            UpdateVisualization._update_axis_visual(
+                self,
+                self.femur_axis_visuals, 'z', 
+                np.array(femur_origin), 
+                np.array(femur_origin) + femur_axes[:, 2] * axis_length,
+                color=(0, 0, 1, 1)  # Blue for ML
+            )
+            
+            # Update tibia axes visualization
+            UpdateVisualization._update_axis_visual(
+                self,
+                self.tibia_axis_visuals, 'x', 
+                np.array(tibia_origin), 
+                np.array(tibia_origin) + tibia_axes[:, 0] * axis_length,
+                color=(1, 0, 0, 1)  # Red for AP
+            )
+            UpdateVisualization._update_axis_visual(
+                self,
+                self.tibia_axis_visuals, 'y', 
+                np.array(tibia_origin), 
+                np.array(tibia_origin) + tibia_axes[:, 1] * axis_length,
+                color=(0, 1, 0, 1)  # Green for PD
+            )
+            UpdateVisualization._update_axis_visual(
+                self,
+                self.tibia_axis_visuals, 'z', 
+                np.array(tibia_origin), 
+                np.array(tibia_origin) + tibia_axes[:, 2] * axis_length,
+                color=(0, 0, 1, 1)  # Blue for ML
+            )
+            
+            # Update origin points
+            UpdateVisualization._update_origin_visual(self, self.femur_axis_visuals, np.array(femur_origin), color=(1, 1, 1, 1))
+            UpdateVisualization._update_origin_visual(self, self.tibia_axis_visuals, np.array(tibia_origin), color=(1, 1, 1, 1))
+        except Exception as e:
+            print(f"Error updating anatomical axes: {str(e)}")
+
+
+    @staticmethod
+    def _update_axis_visual(self, axes_dict, axis_name, start_point, end_point, color):
+        """Helper to update a single axis line visual"""
+        # Remove existing item if it exists
+        if axes_dict[axis_name] is not None:
+            self.gl_view.removeItem(axes_dict[axis_name])
+        
+        # Create the new axis line
+        axis_line = gl.GLLinePlotItem(
+            pos=np.array([start_point, end_point]),
+            color=color,
+            width=constants.SHAFT_WIDTH,
+            antialias=True
+        )
+        
+        # Add to view and store reference
+        self.gl_view.addItem(axis_line)
+        axes_dict[axis_name] = axis_line
+
+    @staticmethod
+    def _update_origin_visual(self, axes_dict, position, color, size=5.0):
+        """Helper to update the origin point visualization"""
+        # Remove existing item if it exists
+        if axes_dict['origin'] is not None:
+            self.gl_view.removeItem(axes_dict['origin'])
+        
+        # Create a small sphere to represent the origin
+        md = gl.MeshData.sphere(rows=10, cols=10, radius=size)
+        origin_point = gl.GLMeshItem(
+            meshdata=md,
+            smooth=True,
+            color=color,
+            shader='shaded',
+            glOptions='translucent'
+        )
+        origin_point.setGLOptions('opaque')
+        origin_point.translate(position[0], position[1], position[2])
+        
+        # Add to view and store reference
+        self.gl_view.addItem(origin_point)
+        axes_dict['origin'] = origin_point
+
+    @staticmethod
+    def toggle_anatomical_axes(self, visible=True):
+        """Toggle the visibility of anatomical axes"""
+        if not hasattr(self, 'femur_axis_visuals') or not hasattr(self, 'tibia_axis_visuals'):
+            # Axes haven't been created yet
+            return
+        
+        # Toggle femur axes
+        for key, item in self.femur_axis_visuals.items():
+            if item is not None:
+                if visible:
+                    self.gl_view.addItem(item)
+                else:
+                    self.gl_view.removeItem(item)
+        
+        # Toggle tibia axes
+        for key, item in self.tibia_axis_visuals.items():
+            if item is not None:
+                if visible:
+                    self.gl_view.addItem(item)
+                else:
+                    self.gl_view.removeItem(item)
+
+    @staticmethod
+    def visualize_landmarks(self):
+        """
+        Create visual markers for femur and tibia landmarks in the 3D view
+        """
+        # Define color scheme for landmark types
+        landmark_colors = {
+            'proximal': (1, 0.5, 0, 1),  # Orange
+            'distal': (1, 1, 0, 1),      # Yellow
+            'lateral': (0, 1, 1, 1),     # Cyan
+            'medial': (1, 0, 1, 1)       # Magenta
+        }
+        
+        # Landmark size
+        landmark_size = 6.0
+        
+        # Store landmark visual objects for future reference/updates
+        if not hasattr(self, 'landmark_visuals'):
+            self.landmark_visuals = {
+                'femur': {},
+                'tibia': {}
+            }
+        
+        # Get landmark positions
+        femur_landmarks = UpdateVisualization.quaternion_to_landmarks(
+            self,
+            self.last_femur_position,
+            self.last_femur_quaternion,
+            'femur'
+        )
+        
+        tibia_landmarks = UpdateVisualization.quaternion_to_landmarks(
+            self,
+            self.last_tibia_position,
+            self.last_tibia_quaternion,
+            'tibia'
+        )
+        
+        # Create or update femur landmark visualizations
+        for landmark_name, position in femur_landmarks.items():
+            # Remove existing landmark if it exists
+            if landmark_name in self.landmark_visuals['femur'] and self.landmark_visuals['femur'][landmark_name] is not None:
+                self.gl_view.removeItem(self.landmark_visuals['femur'][landmark_name])
+            
+            # Create a sphere to represent the landmark
+            md = gl.MeshData.sphere(rows=10, cols=10, radius=landmark_size)
+            landmark_sphere = gl.GLMeshItem(
+                meshdata=md,
+                smooth=True,
+                color=landmark_colors[landmark_name],
+                shader='shaded',
+                glOptions='translucent'
+            )
+            
+            # Position the sphere at landmark coordinates
+            position_array = np.array(position)
+            landmark_sphere.translate(position_array[0], position_array[1], position_array[2])
+            
+            # Add to view and store reference
+            self.gl_view.addItem(landmark_sphere)
+            self.landmark_visuals['femur'][landmark_name] = landmark_sphere
+        
+        # Create or update tibia landmark visualizations
+        for landmark_name, position in tibia_landmarks.items():
+            # Remove existing landmark if it exists
+            if landmark_name in self.landmark_visuals['tibia'] and self.landmark_visuals['tibia'][landmark_name] is not None:
+                self.gl_view.removeItem(self.landmark_visuals['tibia'][landmark_name])
+            
+            # Create a sphere to represent the landmark
+            md = gl.MeshData.sphere(rows=10, cols=10, radius=landmark_size)
+            landmark_sphere = gl.GLMeshItem(
+                meshdata=md,
+                smooth=True,
+                color=landmark_colors[landmark_name],
+                shader='shaded',
+                glOptions='translucent'
+            )
+            
+            # Position the sphere at landmark coordinates
+            position_array = np.array(position)
+            landmark_sphere.translate(position_array[0], position_array[1], position_array[2])
+            
+            # Add to view and store reference
+            self.gl_view.addItem(landmark_sphere)
+            self.landmark_visuals['tibia'][landmark_name] = landmark_sphere
+        
+        # Add a legend to help identify landmarks (optional)
+        if not hasattr(self, 'landmark_legend_created') or not self.landmark_legend_created:
+            # You could implement a legend here using Qt widgets
+            # This is just a placeholder for where you might add a legend implementation
+            self.landmark_legend_created = True
+
+    def update_landmark_visualization(self, data_index=0):
+        """Update landmark positions based on current bone positions"""
+        # Skip if not on the bone visualization tab
+        if self.tabs.currentIndex() != 2:
+            return
+        
+        # Skip if we don't have bone positions
+        if not hasattr(self, 'last_femur_position') or not hasattr(self, 'last_tibia_position'):
+            return
+        
+        # Check if landmark visuals have been created
+        if not hasattr(self, 'landmark_visuals'):
+            # First time - create the visualizations
+            self.visualize_landmarks()
+            return
+        
+        # Get updated landmark positions
+        femur_landmarks = UpdateVisualization.quaternion_to_landmarks(
+            self,
+            self.last_femur_position,
+            self.last_femur_quaternion,
+            'femur'
+        )
+        
+        tibia_landmarks = UpdateVisualization.quaternion_to_landmarks(
+            self,
+            self.last_tibia_position,
+            self.last_tibia_quaternion,
+            'tibia'
+        )
+        
+        # Update femur landmark positions
+        for landmark_name, position in femur_landmarks.items():
+            if landmark_name in self.landmark_visuals['femur'] and self.landmark_visuals['femur'][landmark_name] is not None:
+                # Reset position
+                self.landmark_visuals['femur'][landmark_name].resetTransform()
+                # Set new position
+                position_array = np.array(position)
+                self.landmark_visuals['femur'][landmark_name].translate(
+                    position_array[0], position_array[1], position_array[2]
+                )
+        
+        # Update tibia landmark positions
+        for landmark_name, position in tibia_landmarks.items():
+            if landmark_name in self.landmark_visuals['tibia'] and self.landmark_visuals['tibia'][landmark_name] is not None:
+                # Reset position
+                self.landmark_visuals['tibia'][landmark_name].resetTransform()
+                # Set new position
+                position_array = np.array(position)
+                self.landmark_visuals['tibia'][landmark_name].translate(
+                    position_array[0], position_array[1], position_array[2]
+                )
+
+    def toggle_landmarks(self, visible=True):
+        """Toggle the visibility of landmark visualizations"""
+        if not hasattr(self, 'landmark_visuals'):
+            # Landmarks haven't been created yet
+            return
+        
+        # Toggle femur landmarks
+        for landmark_name, visual in self.landmark_visuals['femur'].items():
+            if visual is not None:
+                if visible:
+                    self.gl_view.addItem(visual)
+                else:
+                    self.gl_view.removeItem(visual)
+        
+        # Toggle tibia landmarks
+        for landmark_name, visual in self.landmark_visuals['tibia'].items():
+            if visual is not None:
+                if visible:
+                    self.gl_view.addItem(visual)
+                else:
+                    self.gl_view.removeItem(visual)

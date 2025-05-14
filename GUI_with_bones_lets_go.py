@@ -869,8 +869,8 @@ class KneeFlexionExperiment(QMainWindow):
             femur_vertices_transformed = np.dot(femur_vertices_centered, rotation)
             # Create mesh item with the repositioned and rotated vertices
             self.femur_mesh = gl.GLMeshItem(
-                #vertexes=femur_vertices_transformed,
-                vertexes=femur_vertices,
+                vertexes=femur_vertices_transformed,
+                #vertexes=femur_vertices,
                 faces=femur_faces,
                 smooth=True,
                 drawEdges=False,
@@ -972,22 +972,120 @@ class KneeFlexionExperiment(QMainWindow):
         if hasattr(self, 'femur_original_vertices') and hasattr(self, 'tibia_original_vertices'):
             # Extract landmarks from the bone models (this is a simplified example)
             femur_landmarks = {
-                'proximal': [77.49647521972656, -127.54686737060547, 911.6983032226562],
-                'distal': [65.46070098876953, -113.15875244140625, 1384.9970703125],
-                'lateral': [67.22425079345703, -157.83193969726562, 1399.614990234375],
-                'medial': [83.37752532958984, -106.33291625976562, 1398.119384765625]
+                'proximal': [77.49647521972656+15.419721603393555, -127.54686737060547+153.50636291503906, 911.6983032226562-1636.604736328125],
+                'distal': [65.46070098876953+15.41972160339355, -113.15875244140625+153.50636291503906, 1384.9970703125-1636.604736328125],
+                'lateral': [67.22425079345703+15.41972160339355, -157.83193969726562+153.50636291503906, 1399.614990234375-1636.604736328125],
+                'medial': [83.37752532958984+15.41972160339355, -106.33291625976562+153.50636291503906, 1398.119384765625-1636.604736328125]
             }
+
             
             tibia_landmarks = {
-                'proximal': [89.87777709960938, -127.63327026367188, 1402.123779296875],
-                'distal': [53.35368728637695, -96.90910339355469, 1782.2177734375],
-                'lateral': [58.212806701660156, -146.54855346679688, 1406.6055908203125],
-                'medial': [100.51856994628906, -102.90194702148438, 1403.58154296875]
+                'proximal': [89.87777709960938+15.419721603393555, -127.63327026367188+153.50636291503906, 1402.123779296875-1636.604736328125],
+                'distal': [53.35368728637695+15.419721603393555, -96.90910339355469+153.50636291503906, 1782.2177734375-1636.604736328125],
+                'lateral': [58.212806701660156+15.419721603393555, -146.54855346679688+153.50636291503906, 1406.6055908203125-1636.604736328125],
+                'medial': [100.51856994628906+15.419721603393555, -102.90194702148438+153.50636291503906, 1403.58154296875-1636.604736328125]
             }
-            
+
             # Initialize the joint analyzer
             self.knee_analyzer = KneeJointAnalyzer(femur_landmarks, tibia_landmarks)
-    
+            # After loading both meshes, initialize landmark visualization
+
+            # Initialize landmarks visualization
+            #KneeJointAnalyzer.visualize_landmarks()
+
+    def visualize_landmarks(self):
+        """
+        Create visual markers for femur and tibia landmarks in the 3D view
+        """
+        # Define color scheme for landmark types
+        landmark_colors = {
+            'proximal': (1, 0.5, 0, 1),  # Orange
+            'distal': (1, 1, 0, 1),      # Yellow
+            'lateral': (0, 1, 1, 1),     # Cyan
+            'medial': (1, 0, 1, 1)       # Magenta
+        }
+        
+        # Landmark size
+        landmark_size = 6.0
+        
+        # Store landmark visual objects for future reference/updates
+        if not hasattr(self, 'landmark_visuals'):
+            self.landmark_visuals = {
+                'femur': {},
+                'tibia': {}
+            }
+        
+        # Get landmark positions
+        femur_landmarks = UpdateVisualization.quaternion_to_landmarks(
+            self,
+            self.last_femur_position,
+            self.last_femur_quaternion,
+            'femur'
+        )
+        
+        tibia_landmarks = UpdateVisualization.quaternion_to_landmarks(
+            self,
+            self.last_tibia_position,
+            self.last_tibia_quaternion,
+            'tibia'
+        )
+        
+        # Create or update femur landmark visualizations
+        for landmark_name, position in femur_landmarks.items():
+            # Remove existing landmark if it exists
+            if landmark_name in self.landmark_visuals['femur'] and self.landmark_visuals['femur'][landmark_name] is not None:
+                self.gl_view.removeItem(self.landmark_visuals['femur'][landmark_name])
+            
+            # Create a sphere to represent the landmark
+            md = gl.MeshData.sphere(rows=10, cols=10, radius=landmark_size)
+            landmark_sphere = gl.GLMeshItem(
+                meshdata=md,
+                smooth=True,
+                color=landmark_colors[landmark_name],
+                shader='shaded',
+                glOptions='translucent'
+            )
+            
+            # Position the sphere at landmark coordinates
+            position_array = np.array(position)
+            landmark_sphere.translate(position_array[0], position_array[1], position_array[2])
+            
+            # Add to view and store reference
+            self.gl_view.addItem(landmark_sphere)
+            self.landmark_visuals['femur'][landmark_name] = landmark_sphere
+        
+        # Create or update tibia landmark visualizations
+        for landmark_name, position in tibia_landmarks.items():
+            # Remove existing landmark if it exists
+            if landmark_name in self.landmark_visuals['tibia'] and self.landmark_visuals['tibia'][landmark_name] is not None:
+                self.gl_view.removeItem(self.landmark_visuals['tibia'][landmark_name])
+            
+            # Create a sphere to represent the landmark
+            md = gl.MeshData.sphere(rows=10, cols=10, radius=landmark_size)
+            landmark_sphere = gl.GLMeshItem(
+                meshdata=md,
+                smooth=True,
+                color=landmark_colors[landmark_name],
+                shader='shaded',
+                glOptions='translucent'
+            )
+            
+            # Position the sphere at landmark coordinates
+            position_array = np.array(position)
+            landmark_sphere.translate(position_array[0], position_array[1], position_array[2])
+            
+            # Add to view and store reference
+            self.gl_view.addItem(landmark_sphere)
+            self.landmark_visuals['tibia'][landmark_name] = landmark_sphere
+        
+        # Add a legend to help identify landmarks (optional)
+        if not hasattr(self, 'landmark_legend_created') or not self.landmark_legend_created:
+            # You could implement a legend here using Qt widgets
+            # This is just a placeholder for where you might add a legend implementation
+            self.landmark_legend_created = True
+                
+
+
 
 if __name__ == "__main__":
     try:  
