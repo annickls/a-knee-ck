@@ -868,16 +868,34 @@ class KneeFlexionExperiment(QMainWindow):
             femur_vertices_centered = femur_vertices + translation
             femur_vertices_transformed = np.dot(femur_vertices_centered, rotation)
             # Create mesh item with the repositioned and rotated vertices
+            # Set up the mesh with proper shading
             self.femur_mesh = gl.GLMeshItem(
                 vertexes=femur_vertices_transformed,
-                #vertexes=femur_vertices,
                 faces=femur_faces,
                 smooth=True,
                 drawEdges=False,
-                color = QtGui.QColor(112, 128, 144),
-                computeNormals=True
+                color=(112, 128, 144, 255),
+                computeNormals=True,
+                shader='shaded',
+                glOptions='opaque'
             )
+
+            # Add the mesh to your GLViewWidget
             self.gl_view.addItem(self.femur_mesh)
+
+            # Configure the main camera view
+            self.gl_view.setCameraPosition(distance=40, elevation=30, azimuth=45)
+
+            # Configure lighting direction - this is the key part
+            # This positions the light coming from the opposite side
+            # (Negative values place the light on the opposite axis)
+            self.gl_view.opts['lightPosition'] = np.array([-10, -10, -500])  # x, y, z coordinates
+
+            # You can also adjust these lighting parameters for better contrast
+            self.gl_view.opts['ambient'] = 0.3     # Amount of ambient light (0-1)
+            self.gl_view.opts['diffuse'] = 0.8     # Amount of diffuse light (0-1)
+            self.gl_view.opts['specular'] = 0.2    # Amount of specular light (0-1)
+            self.gl_view.opts['shininess'] = 50    # Controls the sharpness of specular highlights
             
             # Set up transform matrix (initialize once)
             self.femur_transform = np.identity(4, dtype=np.float32)
@@ -907,23 +925,6 @@ class KneeFlexionExperiment(QMainWindow):
             # Replace NaN values with zeros
             tibia_vertices = np.nan_to_num(tibia_vertices)
             
-            # Use tracker coordinates
-            tibia_tracker = np.array(constants.TRACKER_TIBIA)
-            
-
-            from scipy.spatial.transform import Rotation
-            
-            # Define rotation angles in degrees, then convert to radians
-            angles_deg = [0, 0, 0]  # [x, y, z] rotations in degrees
-            rotation = Rotation.from_euler('xyz', angles_deg, degrees=True)
-            rotation_matrix = rotation.as_matrix()  # 3x3 rotation matrix
-            
-            # STEP 3: Apply the transformations
-            # First translate to move the origin
-            tibia_vertices_centered = tibia_vertices - tibia_tracker
-            
-            # Then rotate around the new origin
-            tibia_vertices_transformed = np.dot(tibia_vertices_centered, rotation_matrix)
             
             #--------------------------------------
             #          Kabsch
@@ -943,17 +944,23 @@ class KneeFlexionExperiment(QMainWindow):
                 smooth=True,
                 drawEdges=False,
                 color = QtGui.QColor(47, 79, 79),
-                computeNormals=True
+                computeNormals=True,
+                shader='shaded',
+                glOptions='opaque'
             )
+
+            self.gl_view.opts['lightPosition'] = np.array([-10, -10, -500])  # x, y, z coordinates
+
+            # You can also adjust these lighting parameters for better contrast
+            self.gl_view.opts['ambient'] = 0.3     # Amount of ambient light (0-1)
+            self.gl_view.opts['diffuse'] = 0.8     # Amount of diffuse light (0-1)
+            self.gl_view.opts['specular'] = 0.2    # Amount of specular light (0-1)
+            self.gl_view.opts['shininess'] = 50    # Controls the sharpness of specular highlights
             self.gl_view.addItem(self.tibia_mesh)
             
             # Store for later use
             self.tibia_verts = tibia_vertices_transformed
             self.tibia_faces = tibia_faces
-            
-            # Store the transformations for later reference or inverse operations
-            self.tibia_origin = tibia_tracker
-            self.tibia_rotation = rotation_matrix
             
             # Set up transform matrix (initialize once)
             self.tibia_transform = np.identity(4, dtype=np.float32)
@@ -989,101 +996,7 @@ class KneeFlexionExperiment(QMainWindow):
             # Initialize the joint analyzer
             self.knee_analyzer = KneeJointAnalyzer(femur_landmarks, tibia_landmarks)
             # After loading both meshes, initialize landmark visualization
-
-            # Initialize landmarks visualization
-            #KneeJointAnalyzer.visualize_landmarks()
-
-    def visualize_landmarks(self):
-        """
-        Create visual markers for femur and tibia landmarks in the 3D view
-        """
-        # Define color scheme for landmark types
-        landmark_colors = {
-            'proximal': (1, 0.5, 0, 1),  # Orange
-            'distal': (1, 1, 0, 1),      # Yellow
-            'lateral': (0, 1, 1, 1),     # Cyan
-            'medial': (1, 0, 1, 1)       # Magenta
-        }
-        
-        # Landmark size
-        landmark_size = 6.0
-        
-        # Store landmark visual objects for future reference/updates
-        if not hasattr(self, 'landmark_visuals'):
-            self.landmark_visuals = {
-                'femur': {},
-                'tibia': {}
-            }
-        
-        # Get landmark positions
-        femur_landmarks = UpdateVisualization.quaternion_to_landmarks(
-            self,
-            self.last_femur_position,
-            self.last_femur_quaternion,
-            'femur'
-        )
-        
-        tibia_landmarks = UpdateVisualization.quaternion_to_landmarks(
-            self,
-            self.last_tibia_position,
-            self.last_tibia_quaternion,
-            'tibia'
-        )
-        
-        # Create or update femur landmark visualizations
-        for landmark_name, position in femur_landmarks.items():
-            # Remove existing landmark if it exists
-            if landmark_name in self.landmark_visuals['femur'] and self.landmark_visuals['femur'][landmark_name] is not None:
-                self.gl_view.removeItem(self.landmark_visuals['femur'][landmark_name])
             
-            # Create a sphere to represent the landmark
-            md = gl.MeshData.sphere(rows=10, cols=10, radius=landmark_size)
-            landmark_sphere = gl.GLMeshItem(
-                meshdata=md,
-                smooth=True,
-                color=landmark_colors[landmark_name],
-                shader='shaded',
-                glOptions='translucent'
-            )
-            
-            # Position the sphere at landmark coordinates
-            position_array = np.array(position)
-            landmark_sphere.translate(position_array[0], position_array[1], position_array[2])
-            
-            # Add to view and store reference
-            self.gl_view.addItem(landmark_sphere)
-            self.landmark_visuals['femur'][landmark_name] = landmark_sphere
-        
-        # Create or update tibia landmark visualizations
-        for landmark_name, position in tibia_landmarks.items():
-            # Remove existing landmark if it exists
-            if landmark_name in self.landmark_visuals['tibia'] and self.landmark_visuals['tibia'][landmark_name] is not None:
-                self.gl_view.removeItem(self.landmark_visuals['tibia'][landmark_name])
-            
-            # Create a sphere to represent the landmark
-            md = gl.MeshData.sphere(rows=10, cols=10, radius=landmark_size)
-            landmark_sphere = gl.GLMeshItem(
-                meshdata=md,
-                smooth=True,
-                color=landmark_colors[landmark_name],
-                shader='shaded',
-                glOptions='translucent'
-            )
-            
-            # Position the sphere at landmark coordinates
-            position_array = np.array(position)
-            landmark_sphere.translate(position_array[0], position_array[1], position_array[2])
-            
-            # Add to view and store reference
-            self.gl_view.addItem(landmark_sphere)
-            self.landmark_visuals['tibia'][landmark_name] = landmark_sphere
-        
-        # Add a legend to help identify landmarks (optional)
-        if not hasattr(self, 'landmark_legend_created') or not self.landmark_legend_created:
-            # You could implement a legend here using Qt widgets
-            # This is just a placeholder for where you might add a legend implementation
-            self.landmark_legend_created = True
-                
 
 
 
