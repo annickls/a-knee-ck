@@ -208,9 +208,11 @@ class KneeFlexionExperiment(QMainWindow):
                         # Update bone positions/orientations with real data
                         if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
                             MeshUtils.update_mesh_with_data(self.femur_mesh, femur_position, femur_quaternion)
+                            UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_kontakt")
                         
                         if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
                             MeshUtils.update_mesh_with_data(self.tibia_mesh, tibia_position, tibia_quaternion)
+                            UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_kontakt")
                         
                         # Update force visualization
                         UpdateVisualization.update_bone_forces(self, self.current_data_index)
@@ -844,7 +846,7 @@ class KneeFlexionExperiment(QMainWindow):
         try:
             # Load femur STL
             femur_vertices, femur_faces = MeshUtils.load_stl_as_mesh(constants.FEMUR)
-            warnings.filterwarnings("ignore", message="invalid value encountered in divide", category=RuntimeWarning)
+            # warnings.filterwarnings("ignore", message="invalid value encountered in divide", category=RuntimeWarning)
             self.femur_original_vertices = femur_vertices.copy()
             
             # Store vertices in a numpy array for faster operations
@@ -869,7 +871,6 @@ class KneeFlexionExperiment(QMainWindow):
             # Create mesh item with the repositioned and rotated vertices
             self.femur_mesh = gl.GLMeshItem(
                 vertexes=femur_vertices_transformed,
-                #vertexes=femur_vertices,
                 faces=femur_faces,
                 smooth=True,
                 drawEdges=False,
@@ -885,6 +886,22 @@ class KneeFlexionExperiment(QMainWindow):
             self.load_femur_button.setEnabled(False)
             self.load_femur_button.setText("Femur Loaded")
             #print("Femur loaded successfully")
+
+            # -------------------------
+            #    Add landmark to femur
+            # -------------------------
+
+            femur_kontakt = np.array([76.27677559858019,-105.80262508762264,1395.5233240191535])
+            femur_kontakt_rot = rotation@(femur_kontakt+translation)
+            UpdateVisualization.add_landmark(self, femur_kontakt_rot, "femur_kontakt")
+
+            # ---------------------------
+            # -     Add CoSy to tibia   - 
+            # ---------------------------
+            femur_ursprung = np.array([-125.37961147396625,-90.4217324187824,1277.6917913483626])
+            femur_ursprung_rot = rotation@(femur_ursprung+translation)
+            UpdateVisualization.add_coordinate_axes(self, femur_ursprung_rot, rotation, "femur_ursprung")
+
         except Exception as e:
             print(f"Error loading femur: {e}")
             import traceback
@@ -895,7 +912,7 @@ class KneeFlexionExperiment(QMainWindow):
         try:
             # Load tibia STL
             tibia_vertices, tibia_faces = MeshUtils.load_stl_as_mesh(constants.TIBIA)
-            warnings.filterwarnings("ignore", message="invalid value encountered in divide", category=RuntimeWarning)
+            # warnings.filterwarnings("ignore", message="invalid value encountered in divide", category=RuntimeWarning)
             self.tibia_original_vertices = tibia_vertices.copy()
             
             # Store vertices in a numpy array for faster operations
@@ -905,24 +922,6 @@ class KneeFlexionExperiment(QMainWindow):
             # Check for and fix invalid vertices
             # Replace NaN values with zeros
             tibia_vertices = np.nan_to_num(tibia_vertices)
-            
-            # Use tracker coordinates
-            tibia_tracker = np.array(constants.TRACKER_TIBIA)
-            
-
-            from scipy.spatial.transform import Rotation
-            
-            # Define rotation angles in degrees, then convert to radians
-            angles_deg = [0, 0, 0]  # [x, y, z] rotations in degrees
-            rotation = Rotation.from_euler('xyz', angles_deg, degrees=True)
-            rotation_matrix = rotation.as_matrix()  # 3x3 rotation matrix
-            
-            # STEP 3: Apply the transformations
-            # First translate to move the origin
-            tibia_vertices_centered = tibia_vertices - tibia_tracker
-            
-            # Then rotate around the new origin
-            tibia_vertices_transformed = np.dot(tibia_vertices_centered, rotation_matrix)
             
             #--------------------------------------
             #          Kabsch
@@ -946,14 +945,6 @@ class KneeFlexionExperiment(QMainWindow):
             )
             self.gl_view.addItem(self.tibia_mesh)
             
-            # Store for later use
-            self.tibia_verts = tibia_vertices_transformed
-            self.tibia_faces = tibia_faces
-            
-            # Store the transformations for later reference or inverse operations
-            self.tibia_origin = tibia_tracker
-            self.tibia_rotation = rotation_matrix
-            
             # Set up transform matrix (initialize once)
             self.tibia_transform = np.identity(4, dtype=np.float32)
             
@@ -961,6 +952,21 @@ class KneeFlexionExperiment(QMainWindow):
             self.load_tibia_button.setEnabled(False)
             self.load_tibia_button.setText("Tibia Loaded")
             #print("Tibia loaded successfully")
+
+            # ---------------------------
+            # -   Add landmark to tibia -
+            # ---------------------------
+            tibia_kontakt = np.array([75.72417768963511,-105.71990981913535,1403.4341806040643])
+            tibia_kontakt_rot = rotation@(tibia_kontakt+translation)
+            UpdateVisualization.add_landmark(self, tibia_kontakt_rot, "tibia_kontakt")
+
+            # ---------------------------
+            # -     Add CoSy to tibia   - 
+            # ---------------------------
+            tibia_ursprung = np.array([-108.3848216194612,-90.25476224637612,1557.4634567569026])
+            tibia_ursprung_rot = rotation@(tibia_ursprung+translation)
+            UpdateVisualization.add_coordinate_axes(self, tibia_ursprung_rot, rotation, "tibia_ursprung")
+
         except Exception as e:
             print(f"Error loading tibia: {e}")
             import traceback
