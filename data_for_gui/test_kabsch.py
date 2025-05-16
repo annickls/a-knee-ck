@@ -48,7 +48,21 @@ def kabsch(filePath, bone):
 
 if __name__ == "__main__":
 
+    femur_ursprung = np.array([-125.37961147396625,-90.4217324187824,1277.6917913483626])
+    tibia_ursprung = np.array([-108.3848216194612,-90.25476224637612,1557.4634567569026])
+    femur_kontakt = np.array([76.27677559858019,-105.80262508762264,1395.5233240191535])
+    tibia_kontakt = np.array([75.72417768963511,-105.71990981913535,1403.4341806040643])
+    distanz_femur = femur_kontakt-femur_ursprung
+    distanz_tibia = tibia_kontakt-tibia_ursprung
+
     filePath = "data_for_gui/marker_coordinates.yaml"
     bone = "femur"
     translation, rotation = kabsch(filePath, bone)
-    print(f"Translation: \n{translation}\nRotation: \n{rotation}")
+    distanz_femur_rot = rotation@distanz_femur
+
+    bone = "tibia"
+    translation, rotation = kabsch(filePath, bone)
+    distanz_tibia_rot = rotation@distanz_tibia
+    
+    print(f"Distanz von Femur Tracker zu kontaktpunkt: {np.round(distanz_femur_rot, 3)}")
+    print(f"Distanz von Tibia Tracker zu kontaktpunkt: {np.round(distanz_tibia_rot, 3)}")
