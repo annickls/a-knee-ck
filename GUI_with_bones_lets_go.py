@@ -134,15 +134,14 @@ class KneeFlexionExperiment(QMainWindow):
         if current_modified_time > self.last_modified_time or current_size != self.last_size:
             try:
                 # Read the latest line from the CSV file
-                with open(self.csv_path, 'r') as f:
-                    # Read all lines and get the last non-empty one
-                    lines = f.readlines()
-                    if not lines:
-                        return
-                        
-                    last_line = lines[-1].strip()
-                    if not last_line:
-                        return
+                with open(self.csv_path, 'rb') as f:
+                    try:  # catch OSError in case of a one line file 
+                        f.seek(-2, os.SEEK_END)
+                        while f.read(1) != b'\n':
+                            f.seek(-2, os.SEEK_CUR)
+                    except OSError:
+                        f.seek(0)
+                    last_line = f.readline().decode().strip()
                         
                     # Parse CSV data
                     parts = last_line.split(',')
@@ -938,12 +937,11 @@ class KneeFlexionExperiment(QMainWindow):
 
             
             tibia_landmarks = {
-                'proximal': [89.87777709960938+15.419721603393555, -127.63327026367188+153.50636291503906, 1402.123779296875-1636.604736328125],
-                'distal': [53.35368728637695+15.419721603393555, -96.90910339355469+153.50636291503906, 1782.2177734375-1636.604736328125],
-                'lateral': [58.212806701660156+15.419721603393555, -146.54855346679688+153.50636291503906, 1406.6055908203125-1636.604736328125],
-                'medial': [100.51856994628906+15.419721603393555, -102.90194702148438+153.50636291503906, 1403.58154296875-1636.604736328125]
+                'proximal': [66.52336883544922+15.419721603393555, -121.91870880126953+153.50636291503906, 1399.853271484375-1636.604736328125],
+                'distal': [65.01982879638672+15.419721603393555, -115.64944458007812+153.50636291503906, 1804.212646484375-1636.604736328125],
+                'lateral': [63.146968841552734+15.419721603393555, -147.86354064941406+153.50636291503906, 1407.7625732421875-1636.604736328125],
+                'medial': [66.68541717529297+15.419721603393555, -103.38368225097656+153.50636291503906, 1400.172119140625-1636.604736328125]
             }
-
             # Initialize the joint analyzer
             self.knee_analyzer = KneeJointAnalyzer(femur_landmarks, tibia_landmarks)
             # After loading both meshes, initialize landmark visualization
