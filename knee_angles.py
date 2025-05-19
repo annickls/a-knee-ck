@@ -28,6 +28,10 @@ class KneeJointAnalyzer:
         self.initial_femur_axes = np.copy(self.femur_axes)
         self.initial_tibia_axes = np.copy(self.tibia_axes)
         
+        # Store current axes (will be updated)
+        self.current_femur_axes = np.copy(self.femur_axes)
+        self.current_tibia_axes = np.copy(self.tibia_axes)
+        
         # Initialize coordinate frames for visualization
         self.coordinate_frames = []
 
@@ -35,8 +39,8 @@ class KneeJointAnalyzer:
     def normalize(v):
         """Normalize a vector to unit length"""
         norm = np.linalg.norm(v)
-        if norm == 0:
-            return v
+        if norm < 1e-10:  # Avoid division by zero with a small threshold
+            return np.zeros_like(v)
         return v / norm
 
     def create_anatomical_axes(self, points):
@@ -118,7 +122,10 @@ class KneeJointAnalyzer:
         cos_rotation = np.clip(np.dot(e2, e1_tib), -1.0, 1.0)
         sin_rotation = np.clip(np.dot(np.cross(e2, e1_tib), e3), -1.0, 1.0)
         rotation = np.degrees(np.arctan2(sin_rotation, cos_rotation))
-        rotation = rotation + 41
+        
+        # Apply calibration offset to rotation if needed
+        # Remove the hardcoded +41 offset and use either a constant in constants.py or a calibration value
+        # rotation = rotation + constants.ROTATION_OFFSET  # Define this in constants.py
         
         return flexion, abd_add, rotation
     
@@ -127,6 +134,10 @@ class KneeJointAnalyzer:
         Calculate rigid transformation from source to target points
         using the Kabsch algorithm
         """
+        # Convert inputs to numpy arrays if they aren't already
+        source_points = np.array(source_points)
+        target_points = np.array(target_points)
+        
         # Center the point sets
         source_centroid = np.mean(source_points, axis=0)
         target_centroid = np.mean(target_points, axis=0)
@@ -164,22 +175,22 @@ class KneeJointAnalyzer:
         Returns:
         - Dictionary of joint angles
         """
-        # Convert to numpy arrays if needed
+        # Convert to numpy arrays
         femur_markers = {k: np.array(v) if not isinstance(v, np.ndarray) else v 
-                        for k, v in femur_markers.items() if k != 'name'}
+                       for k, v in femur_markers.items() if k != 'name'}
         tibia_markers = {k: np.array(v) if not isinstance(v, np.ndarray) else v 
-                        for k, v in tibia_markers.items() if k != 'name'}
+                       for k, v in tibia_markers.items() if k != 'name'}
+        
+        # Stack landmarks into arrays for Kabsch algorithm
+        femur_source = np.vstack([self.femur_landmarks[k] for k in ['proximal', 'distal', 'lateral', 'medial']])
+        femur_target = np.vstack([femur_markers[k] for k in ['proximal', 'distal', 'lateral', 'medial']])
+        
+        tibia_source = np.vstack([self.tibia_landmarks[k] for k in ['proximal', 'distal', 'lateral', 'medial']])
+        tibia_target = np.vstack([tibia_markers[k] for k in ['proximal', 'distal', 'lateral', 'medial']])
         
         # Calculate transformations from initial marker positions to current
-        femur_R, femur_t = self.calculate_transformation(
-            np.vstack([self.femur_landmarks[k] for k in ['proximal', 'distal', 'lateral', 'medial']]),
-            np.vstack([femur_markers[k] for k in ['proximal', 'distal', 'lateral', 'medial']])
-        )
-        
-        tibia_R, tibia_t = self.calculate_transformation(
-            np.vstack([self.tibia_landmarks[k] for k in ['proximal', 'distal', 'lateral', 'medial']]),
-            np.vstack([tibia_markers[k] for k in ['proximal', 'distal', 'lateral', 'medial']])
-        )
+        femur_R, femur_t = self.calculate_transformation(femur_source, femur_target)
+        tibia_R, tibia_t = self.calculate_transformation(tibia_source, tibia_target)
         
         # Apply transformations to anatomical axes
         self.current_femur_axes = femur_R @ self.initial_femur_axes

@@ -292,7 +292,6 @@ class UpdateVisualization():
             self.tabs.currentIndex() != 2):
             return
             
-        
         # If we have an analyzer, calculate the angles
         if hasattr(self, 'knee_analyzer') and self.knee_analyzer is not None:
             try:
@@ -311,9 +310,15 @@ class UpdateVisualization():
                     'tibia'
                 )
                 
+                # Convert any numpy arrays to lists for the knee analyzer
+                femur_markers_dict = {k: v.tolist() if isinstance(v, np.ndarray) else v 
+                                    for k, v in femur_current_markers.items()}
+                tibia_markers_dict = {k: v.tolist() if isinstance(v, np.ndarray) else v 
+                                    for k, v in tibia_current_markers.items()}
+                
                 # Calculate angles
                 angles = self.knee_analyzer.update_transformations(
-                    femur_current_markers, tibia_current_markers)
+                    femur_markers_dict, tibia_markers_dict)
                 
                 # Update text display
                 self.joint_angles_text.setText(
@@ -323,29 +328,35 @@ class UpdateVisualization():
                 )
             except Exception as e:
                 print(f"Error calculating joint angles: {str(e)}")
+                import traceback
+                traceback.print_exc()
 
     @staticmethod
     def quaternion_to_landmarks(self, position, quaternion, bone_type):
         """Convert position and quaternion to landmarks for joint angle calculation"""
-        # This function needs to transform the original landmarks by the current position/rotation
-        
-        # Get original landmarks
+        # Define the original landmarks without any offsets
         if bone_type == 'femur':
             original_landmarks = {
-                'proximal': [77.49647521972656+15.419721603393555, -127.54686737060547+153.50636291503906, 911.6983032226562-1636.604736328125],
-                'distal': [65.46070098876953+15.41972160339355, -113.15875244140625+153.50636291503906, 1384.9970703125-1636.604736328125],
-                'lateral': [67.22425079345703+15.41972160339355, -157.83193969726562+153.50636291503906, 1399.614990234375-1636.604736328125],
-                'medial': [83.37752532958984+15.41972160339355, -106.33291625976562+153.50636291503906, 1398.119384765625-1636.604736328125]
+                'proximal': np.array([77.49647521972656, -127.54686737060547, 911.6983032226562]),
+                'distal': np.array([65.46070098876953, -113.15875244140625, 1384.9970703125]),
+                'lateral': np.array([67.22425079345703, -157.83193969726562, 1399.614990234375]),
+                'medial': np.array([83.37752532958984, -106.33291625976562, 1398.119384765625])
             }
-        else:
+        else:  # tibia
             original_landmarks = {
-                'proximal': [89.87777709960938+15.419721603393555, -127.63327026367188+153.50636291503906, 1402.123779296875-1636.604736328125],
-                'distal': [53.35368728637695+15.419721603393555, -96.90910339355469+153.50636291503906, 1782.2177734375-1636.604736328125],
-                'lateral': [58.212806701660156+15.419721603393555, -146.54855346679688+153.50636291503906, 1406.6055908203125-1636.604736328125],
-                'medial': [100.51856994628906+15.419721603393555, -102.90194702148438+153.50636291503906, 1403.58154296875-1636.604736328125]
+                'proximal': np.array([89.87777709960938, -127.63327026367188, 1402.123779296875]),
+                'distal': np.array([53.35368728637695, -96.90910339355469, 1782.2177734375]),
+                'lateral': np.array([58.212806701660156, -146.54855346679688, 1406.6055908203125]),
+                'medial': np.array([100.51856994628906, -102.90194702148438, 1403.58154296875])
             }
         
-        # Convert quaternion to rotation matrix
+        # Apply consistent translation offset to all landmarks to align with reference frame
+        # This should match the translation used in the Kabsch algorithm in load_femur and load_tibia
+        offset = np.array([15.419721603393555, 153.50636291503906, -1636.604736328125])
+        for key in original_landmarks:
+            original_landmarks[key] = original_landmarks[key] + offset
+        
+        # Convert quaternion to rotation matrix (assuming quaternion = [w, x, y, z])
         qw, qx, qy, qz = quaternion
         rotation_matrix = np.array([
             [1 - 2*qy*qy - 2*qz*qz, 2*qx*qy - 2*qz*qw, 2*qx*qz + 2*qy*qw],
@@ -353,12 +364,11 @@ class UpdateVisualization():
             [2*qx*qz - 2*qy*qw, 2*qy*qz + 2*qx*qw, 1 - 2*qx*qx - 2*qy*qy]
         ])
         
-        # Transform each landmark and return new marker positions
+        # Transform each landmark by first applying rotation then translation
         transformed_landmarks = {}
         for key, point in original_landmarks.items():
-            point_array = np.array(point)
-            transformed_point = rotation_matrix @ point_array + position
-            transformed_landmarks[key] = transformed_point.tolist()
+            transformed_point = rotation_matrix @ point + position
+            transformed_landmarks[key] = transformed_point
         
         return transformed_landmarks
 
@@ -401,7 +411,7 @@ class UpdateVisualization():
         if not hasattr(self, 'femur_axis_visuals'):
             UpdateVisualization.visualize_anatomical_axes(self)
         
-        # Get transformed landmarks
+        # Get transformed landmarks - use the improved quaternion_to_landmarks function
         femur_landmarks = UpdateVisualization.quaternion_to_landmarks(
             self,
             self.last_femur_position,
@@ -418,13 +428,20 @@ class UpdateVisualization():
         
         # Use KneeJointAnalyzer to get the current anatomical axes
         try:
-            angles = self.knee_analyzer.update_transformations(femur_landmarks, tibia_landmarks)
+            # Convert any numpy arrays to lists for the knee analyzer
+            femur_landmarks_dict = {k: v.tolist() if isinstance(v, np.ndarray) else v 
+                                for k, v in femur_landmarks.items()}
+            tibia_landmarks_dict = {k: v.tolist() if isinstance(v, np.ndarray) else v 
+                                for k, v in tibia_landmarks.items()}
+            
+            # Update the transformations
+            angles = self.knee_analyzer.update_transformations(femur_landmarks_dict, tibia_landmarks_dict)
             
             # Get the current axes from the analyzer
             femur_axes = self.knee_analyzer.current_femur_axes
             tibia_axes = self.knee_analyzer.current_tibia_axes
             
-            # Get origins
+            # Get origins - using distal femur and proximal tibia as joint center points
             femur_origin = femur_landmarks['distal']
             tibia_origin = tibia_landmarks['proximal']
             
@@ -435,22 +452,22 @@ class UpdateVisualization():
             UpdateVisualization._update_axis_visual(
                 self,
                 self.femur_axis_visuals, 'x', 
-                np.array(femur_origin), 
-                np.array(femur_origin) + femur_axes[:, 0] * axis_length,
+                femur_origin, 
+                femur_origin + femur_axes[:, 0] * axis_length,
                 color=(1, 0, 0, 1)  # Red for AP
             )
             UpdateVisualization._update_axis_visual(
                 self,
                 self.femur_axis_visuals, 'y', 
-                np.array(femur_origin), 
-                np.array(femur_origin) + femur_axes[:, 1] * axis_length,
+                femur_origin, 
+                femur_origin + femur_axes[:, 1] * axis_length,
                 color=(0, 1, 0, 1)  # Green for PD
             )
             UpdateVisualization._update_axis_visual(
                 self,
                 self.femur_axis_visuals, 'z', 
-                np.array(femur_origin), 
-                np.array(femur_origin) + femur_axes[:, 2] * axis_length,
+                femur_origin, 
+                femur_origin + femur_axes[:, 2] * axis_length,
                 color=(0, 0, 1, 1)  # Blue for ML
             )
             
@@ -458,30 +475,39 @@ class UpdateVisualization():
             UpdateVisualization._update_axis_visual(
                 self,
                 self.tibia_axis_visuals, 'x', 
-                np.array(tibia_origin), 
-                np.array(tibia_origin) + tibia_axes[:, 0] * axis_length,
+                tibia_origin, 
+                tibia_origin + tibia_axes[:, 0] * axis_length,
                 color=(1, 0, 0, 1)  # Red for AP
             )
             UpdateVisualization._update_axis_visual(
                 self,
                 self.tibia_axis_visuals, 'y', 
-                np.array(tibia_origin), 
-                np.array(tibia_origin) + tibia_axes[:, 1] * axis_length,
+                tibia_origin, 
+                tibia_origin + tibia_axes[:, 1] * axis_length,
                 color=(0, 1, 0, 1)  # Green for PD
             )
             UpdateVisualization._update_axis_visual(
                 self,
                 self.tibia_axis_visuals, 'z', 
-                np.array(tibia_origin), 
-                np.array(tibia_origin) + tibia_axes[:, 2] * axis_length,
+                tibia_origin, 
+                tibia_origin + tibia_axes[:, 2] * axis_length,
                 color=(0, 0, 1, 1)  # Blue for ML
             )
             
             # Update origin points
-            UpdateVisualization._update_origin_visual(self, self.femur_axis_visuals, np.array(femur_origin), color=(1, 1, 1, 1))
-            UpdateVisualization._update_origin_visual(self, self.tibia_axis_visuals, np.array(tibia_origin), color=(1, 1, 1, 1))
+            UpdateVisualization._update_origin_visual(self, self.femur_axis_visuals, femur_origin, color=(1, 1, 1, 1))
+            UpdateVisualization._update_origin_visual(self, self.tibia_axis_visuals, tibia_origin, color=(1, 1, 1, 1))
+            
+            # Update angle display
+            self.joint_angles_text.setText(
+                f"Joint Angles: Flexion: {angles['flexion']:.1f}°, " +
+                f"Varus/Valgus: {angles['varus_valgus']:.1f}°, " +
+                f"Rotation: {angles['rotation']:.1f}°"
+            )
         except Exception as e:
             print(f"Error updating anatomical axes: {str(e)}")
+            import traceback
+            traceback.print_exc()
 
 
     @staticmethod

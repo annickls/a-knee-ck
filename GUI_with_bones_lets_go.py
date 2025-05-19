@@ -521,97 +521,6 @@ class KneeFlexionExperiment(QMainWindow):
         # Current test type
         self.current_test_type = 'none'
 
-    def quaternion_to_landmarks(self, position, quaternion, bone_type):
-        """Convert position and quaternion to landmarks for joint angle calculation"""
-        # This function needs to transform the original landmarks by the current position/rotation
-        
-        # Get original landmarks
-        if bone_type == 'femur':
-            original_landmarks = {
-                'proximal': [77.49647521972656, -127.54686737060547, 911.6983032226562],
-                'distal': [65.46070098876953, -113.15875244140625, 1384.9970703125],
-                'lateral': [67.22425079345703, -157.83193969726562, 1399.614990234375],
-                'medial': [83.37752532958984, -106.33291625976562, 1398.119384765625]
-            }
-        else:  # tibia
-            original_landmarks = {
-                'proximal': [89.87777709960938, -127.63327026367188, 1402.123779296875],
-                'distal': [53.35368728637695, -96.90910339355469, 1782.2177734375],
-                'lateral': [58.212806701660156, -146.54855346679688, 1406.6055908203125],
-                'medial': [100.51856994628906, -102.90194702148438, 1403.58154296875]
-            }
-
-
-        
-        # Convert quaternion to rotation matrix
-        # Assuming quaternion is [w, x, y, z]
-        qw, qx, qy, qz = quaternion
-        rotation_matrix = np.array([
-            [1 - 2*qy*qy - 2*qz*qz, 2*qx*qy - 2*qz*qw, 2*qx*qz + 2*qy*qw],
-            [2*qx*qy + 2*qz*qw, 1 - 2*qx*qx - 2*qz*qz, 2*qy*qz - 2*qx*qw],
-            [2*qx*qz - 2*qy*qw, 2*qy*qz + 2*qx*qw, 1 - 2*qx*qx - 2*qy*qy]
-        ])
-        
-        # Transform each landmark and return new marker positions
-        transformed_landmarks = {}
-        for key, point in original_landmarks.items():
-            point_array = np.array(point)
-            transformed_point = rotation_matrix @ point_array + position
-            transformed_landmarks[key] = transformed_point.tolist()
-        
-        return transformed_landmarks
-
-    """def update_bones(self):
-        
-            # Only update if the bone tab is active
-        if self.tabs.currentIndex() != 2 or not hasattr(self, 'last_femur_position'):
-            return
-            
-        # Use the stored bone positions/orientations from CSV
-        if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
-            # Update femur
-            MeshUtils.update_mesh_with_data(self.femur_mesh, self.last_femur_position, self.last_femur_quaternion)
-        
-        if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
-            # Update tibia
-            MeshUtils.update_mesh_with_data(self.tibia_mesh, self.last_tibia_position, self.last_tibia_quaternion)
-        
-        # Update forces
-        if self.experiment_running and len(self.forces) > 0:
-            # Update force visualization on bone
-            UpdateVisualization.update_bone_forces(self, self.current_data_index)
-        
-        # Calculate and update joint angles if analyzer is initialized
-        if self.knee_analyzer is not None:
-            # Create current marker positions based on transformed bones
-            # This is a simplified example - you'll need to extract the actual landmarks
-            # from your transformed meshes or calculate them from the quaternions
-            
-            # Convert quaternions to landmarks
-            femur_current_markers = self.quaternion_to_landmarks(
-                self.last_femur_position, 
-                self.last_femur_quaternion,
-                'femur'
-            )
-            
-            tibia_current_markers = self.quaternion_to_landmarks(
-                self.last_tibia_position,
-                self.last_tibia_quaternion,
-                'tibia'
-            )
-            
-            # Calculate angles
-            angles = self.knee_analyzer.update_transformations(
-                femur_current_markers, tibia_current_markers)
-            
-            
-            
-            # Update text display
-            self.joint_angles_text.setText(
-                f"Joint Angles: Flexion: {angles['flexion']:.1f}°, "
-                f"Varus/Valgus: {angles['varus_valgus']:.1f}°, "
-                f"Rotation: {angles['rotation']:.1f}°"
-            )"""
 
     def update_visualization_timer(self):
         """Called by timer to update visualization"""
@@ -840,6 +749,48 @@ class KneeFlexionExperiment(QMainWindow):
 
         elif self.current_angle_index >= (len(constants.FLEXION_ANGLES) - 1) and self.external_rot_button.isEnabled() == False:
             self.next_button.setEnabled(False) # End of regular experiment - enable Lachmann test
+
+
+    @staticmethod
+    def quaternion_to_landmarks(self, position, quaternion, bone_type):
+        """Convert position and quaternion to landmarks for joint angle calculation"""
+        # Define the original landmarks without any offsets
+        if bone_type == 'femur':
+            original_landmarks = {
+                'proximal': np.array([77.49647521972656, -127.54686737060547, 911.6983032226562]),
+                'distal': np.array([65.46070098876953, -113.15875244140625, 1384.9970703125]),
+                'lateral': np.array([67.22425079345703, -157.83193969726562, 1399.614990234375]),
+                'medial': np.array([83.37752532958984, -106.33291625976562, 1398.119384765625])
+            }
+        else:  # tibia
+            original_landmarks = {
+                'proximal': np.array([89.87777709960938, -127.63327026367188, 1402.123779296875]),
+                'distal': np.array([53.35368728637695, -96.90910339355469, 1782.2177734375]),
+                'lateral': np.array([58.212806701660156, -146.54855346679688, 1406.6055908203125]),
+                'medial': np.array([100.51856994628906, -102.90194702148438, 1403.58154296875])
+            }
+        
+        # Apply consistent translation offset to all landmarks to align with reference frame
+        # This should match the translation used in the Kabsch algorithm in load_femur and load_tibia
+        offset = np.array([15.419721603393555, 153.50636291503906, -1636.604736328125])
+        for key in original_landmarks:
+            original_landmarks[key] = original_landmarks[key] + offset
+        
+        # Convert quaternion to rotation matrix (assuming quaternion = [w, x, y, z])
+        qw, qx, qy, qz = quaternion
+        rotation_matrix = np.array([
+            [1 - 2*qy*qy - 2*qz*qz, 2*qx*qy - 2*qz*qw, 2*qx*qz + 2*qy*qw],
+            [2*qx*qy + 2*qz*qw, 1 - 2*qx*qx - 2*qz*qz, 2*qy*qz - 2*qx*qw],
+            [2*qx*qz - 2*qy*qw, 2*qy*qz + 2*qx*qw, 1 - 2*qx*qx - 2*qy*qy]
+        ])
+        
+        # Transform each landmark by first applying rotation then translation
+        transformed_landmarks = {}
+        for key, point in original_landmarks.items():
+            transformed_point = rotation_matrix @ point + position
+            transformed_landmarks[key] = transformed_point
+        
+        return transformed_landmarks
  
     def load_femur(self):
         try:
