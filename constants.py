@@ -16,7 +16,7 @@ FEMUR = os.path.join(current_folder, "data_for_gui", femur_fileName)
 
 #TIBIA = "/home/annick/a-knee-ck/data_for_gui/tibia_new.stl"
 #TIBIA = "simplify_Segmentation_1_tibia.stl"
-tibia_fileName = "tibia_new.stl"
+tibia_fileName = "tibia_test2.stl"
 TIBIA = os.path.join(current_folder, "data_for_gui", tibia_fileName)
 
 PIVOT_POINT_FEMUR = [0, 0, 0]

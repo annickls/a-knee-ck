@@ -576,3 +576,97 @@ class UpdateVisualization():
                 else:
                     self.gl_view.removeItem(item)
 
+    def add_landmark(self, position, name):
+        """
+        Create a landmark in a fixed position
+        """
+        if not hasattr(self, "landmarks"):
+            self.landmarks = {}
+            self.landmarks_origin = {}
+
+        landmark_size = 5
+        # Create a sphere to represent the landmark
+        md = gl.MeshData.sphere(rows=10, cols=10, radius=landmark_size)
+        landmark_sphere = gl.GLMeshItem(
+            meshdata=md,
+            smooth=True,
+            color=(1, 0.5, 0, 1),
+            shader='shaded',
+            glOptions='translucent'
+        )
+        self.gl_view.addItem(landmark_sphere)
+        landmark_sphere.translate(position[0], position[1], position[2])
+        
+        # Add Sphere to class to update it later on
+        self.landmarks[name] = landmark_sphere
+        self.landmarks_origin[name] = position
+
+    def update_landmark_alex(self, position, quaternion, name):
+        """
+        Update landmarks position
+        """
+        # Reset transformation cause setting a new translation does not replace the old transformation
+        self.landmarks[name].resetTransform()
+
+        # Calculating new landmark position
+        transform_mesh = MeshUtils.quaternion_to_transform_matrix(quaternion, position)
+        origin = self.landmarks_origin[name]
+        transform = transform_mesh[:3,:3]@origin + transform_mesh[:3,3]
+        self.landmarks[name].translate(transform[0], transform[1], transform[2])
+
+    def add_coordinate_axes(self, position, rotation, name, axis_length=50.0):
+        """
+        Draws a 3D coordinate system at the given position and orientation.
+        Args:
+            position (array-like): The origin of the coordinate system (x, y, z).
+            quaternion (array-like): The orientation as (qw, qx, qy, qz).
+            axis_length (float): Length of each axis.
+        Returns:
+            dict: Dictionary with keys 'x', 'y', 'z' and their GLLinePlotItem objects.
+        """
+
+        if not hasattr(self, "CoSy"):
+            self.CoSy = {}
+            self.Cosy_origin = {}
+
+        # Check if quaternion is a 4-element array (assume [qw, qx, qy, qz]), else treat as rotation matrix
+        rotation = np.array(rotation)
+        if rotation.shape == (4,):
+            qw, qx, qy, qz = rotation
+            rotation_matrix = np.array([
+                [1 - 2*qy*qy - 2*qz*qz, 2*qx*qy - 2*qz*qw, 2*qx*qz + 2*qy*qw],
+                [2*qx*qy + 2*qz*qw, 1 - 2*qx*qx - 2*qz*qz, 2*qy*qz - 2*qx*qw],
+                [2*qx*qz - 2*qy*qw, 2*qy*qz + 2*qx*qw, 1 - 2*qx*qx - 2*qy*qy]
+            ])
+        elif rotation.shape == (3, 3):
+            rotation_matrix = rotation
+        else:
+            raise ValueError("Input must be a quaternion (4,) or a rotation matrix (3,3)")
+        
+        position = np.array(position)
+
+        # Define axis directions in local space
+        axes = {
+            'x': (rotation_matrix @ np.array([1, 0, 0])) * axis_length,
+            'y': (rotation_matrix @ np.array([0, 1, 0])) * axis_length,
+            'z': (rotation_matrix @ np.array([0, 0, 1])) * axis_length,
+        }
+        colors = {
+            'x': (1, 0, 0, 1),  # Red
+            'y': (0, 1, 0, 1),  # Green
+            'z': (0, 0, 1, 1),  # Blue
+        }
+
+        self.CoSy[name] = {}
+        for axis, vec in axes.items():
+            start = position
+            end = position + vec
+            axis_line = gl.GLLinePlotItem(
+                pos=np.array([start, end]),
+                color=colors[axis],
+                width=2,
+                antialias=True
+            )
+            self.gl_view.addItem(axis_line)
+            self.CoSy[name][axis] = axis_line
+        self.Cosy_origin[name] = position
