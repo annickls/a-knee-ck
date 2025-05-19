@@ -134,15 +134,14 @@ class KneeFlexionExperiment(QMainWindow):
         if current_modified_time > self.last_modified_time or current_size != self.last_size:
             try:
                 # Read the latest line from the CSV file
-                with open(self.csv_path, 'r') as f:
-                    # Read all lines and get the last non-empty one
-                    lines = f.readlines()
-                    if not lines:
-                        return
-                        
-                    last_line = lines[-1].strip()
-                    if not last_line:
-                        return
+                with open(self.csv_path, 'rb') as f:
+                    try:  # catch OSError in case of a one line file 
+                        f.seek(-2, os.SEEK_END)
+                        while f.read(1) != b'\n':
+                            f.seek(-2, os.SEEK_CUR)
+                    except OSError:
+                        f.seek(0)
+                    last_line = f.readline().decode().strip()
                         
                     # Parse CSV data
                     parts = last_line.split(',')
