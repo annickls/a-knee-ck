@@ -231,40 +231,26 @@ class KneeFlexionExperiment(QMainWindow):
                             UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_proximal")
                             UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_distal")
 
-                            UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m1")
-                            UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m2")
-                            UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m3")
-                            UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m4")
+                            #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m1")
+                            #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m2")
+                            #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m3")
+                            #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m4")
 
                             #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_ref")
 
-                        """# Calculate angles
-                        tibia_landmarks = {
-                            'medial': "tibia_medial",
-                            'lateral': "tibia_lateral",
-                            'proximal': "tibia_proximal",
-                            'distal': "tibia_distal"
-                        }
 
-                        femur_landmarks = {
-                            'medial': "femur_medial",
-                            'lateral': "femur_lateral",
-                            'proximal': "femur_proximal",
-                            'distal': "femur_distal"
-                        }
-
-                        flexion, varus, rotation = self.calculate_angles_from_landmarks(tibia_landmarks, femur_landmarks)
-                        print(f"Flexion/Extension: {flexion:.2f} degrees")
-                        print(f"Varus/Valgus: {varus:.2f} degrees")
-                        print(f"Internal/External Rotation: {rotation:.2f} degrees")
+                        """
+                        change that to the UpdateVisualization class to access the right values from update_landmark_alex!
+                        """
 
 
 
-                        self.joint_angles_text.setText(
-                            f"Joint Angles: Flexion: {flexion:.2f}°, "
-                            f"Varus/Valgus: {varus:.2f}°, "
-                            f"Rotation: {rotation:.2f} °"
-                        )"""
+
+                        # Access the calculated angles
+                        angles = MeshUtils.get_current_knee_angles()
+                        print(f"Flexion: {angles['flexion']:.2f}°")
+                        print(f"Adduction: {angles['adduction']:.2f}°") 
+                        print(f"Internal Rotation: {angles['rotation']:.2f}°")
                         
                         # Update force visualization
                         UpdateVisualization.update_bone_forces(self, self.current_data_index)
@@ -803,47 +789,6 @@ class KneeFlexionExperiment(QMainWindow):
         elif self.current_angle_index >= (len(constants.FLEXION_ANGLES) - 1) and self.external_rot_button.isEnabled() == False:
             self.next_button.setEnabled(False) # End of regular experiment - enable Lachmann test
 
-
-    @staticmethod
-    def quaternion_to_landmarks(self, position, quaternion, bone_type):
-        """Convert position and quaternion to landmarks for joint angle calculation"""
-        # Define the original landmarks without any offsets
-        if bone_type == 'femur':
-            original_landmarks = {
-                'proximal': np.array([77.49647521972656, -127.54686737060547, 911.6983032226562]),
-                'distal': np.array([65.46070098876953, -113.15875244140625, 1384.9970703125]),
-                'lateral': np.array([67.22425079345703, -157.83193969726562, 1399.614990234375]),
-                'medial': np.array([83.37752532958984, -106.33291625976562, 1398.119384765625])
-            }
-        else:  # tibia
-            original_landmarks = {
-                'proximal': np.array([89.87777709960938, -127.63327026367188, 1402.123779296875]),
-                'distal': np.array([53.35368728637695, -96.90910339355469, 1782.2177734375]),
-                'lateral': np.array([58.212806701660156, -146.54855346679688, 1406.6055908203125]),
-                'medial': np.array([100.51856994628906, -102.90194702148438, 1403.58154296875])
-            }
-        
-        # Apply consistent translation offset to all landmarks to align with reference frame
-        # This should match the translation used in the Kabsch algorithm in load_femur and load_tibia
-        offset = np.array([15.419721603393555, 153.50636291503906, -1636.604736328125])
-        for key in original_landmarks:
-            original_landmarks[key] = original_landmarks[key] + offset
-        
-        # Convert quaternion to rotation matrix (assuming quaternion = [w, x, y, z])
-        qw, qx, qy, qz = quaternion
-        rotation_matrix = np.array([
-            [1 - 2*qy*qy - 2*qz*qz, 2*qx*qy - 2*qz*qw, 2*qx*qz + 2*qy*qw],
-            [2*qx*qy + 2*qz*qw, 1 - 2*qx*qx - 2*qz*qz, 2*qy*qz - 2*qx*qw],
-            [2*qx*qz - 2*qy*qw, 2*qy*qz + 2*qx*qw, 1 - 2*qx*qx - 2*qy*qy]
-        ])
-        
-        # Transform each landmark by first applying rotation then translation
-        transformed_landmarks = {}
-        for key, point in original_landmarks.items():
-            transformed_point = rotation_matrix @ point + position
-            transformed_landmarks[key] = transformed_point
-        
-        return transformed_landmarks
  
     def load_femur(self):
         try:
@@ -908,30 +853,32 @@ class KneeFlexionExperiment(QMainWindow):
             self.load_femur_button.setEnabled(False)
             self.load_femur_button.setText("Femur Loaded")
 
-            femur_medial = np.array([83.37752532958984, -106.33291625976562, 1398.119384765625])
+            femur_medial = constants.FEMUR_MEDIAL
             femur_m1 = np.array([-135.7341373087663, -89.61809527197374, 1277.6241128472025])
-            femur_lateral = np.array([67.22425079345703, -157.83193969726562, 1399.614990234375])
-            femur_m2 = np.array([-111.04134830095568, -114.69156189192014, 1559.338514868094])
-            femur_proximal = np.array([77.49647521972656, -127.54686737060547, 911.6983032226562])
-            femur_m3 = np.array([-124.53185834797662, -88.77439542502907, 1557.3575856843993])
-            femur_distal = np.array([65.46070098876953, -113.15875244140625, 1384.9970703125])
-            femur_m4 = np.array([-106.98374014215688, -72.95723968988962, 1555.5494236207694])
-
+            femur_lateral = constants.FEMUR_LATERAL
+            #femur_m2 = np.array([-111.04134830095568, -114.69156189192014, 1559.338514868094])
+            femur_proximal = constants.FEMUR_PROXIMAL
+            #femur_m3 = np.array([-124.53185834797662, -88.77439542502907, 1557.3575856843993])
+            femur_distal = constants.FEMUR_DISTAL
+            #femur_m4 = np.array([-106.98374014215688, -72.95723968988962, 1555.5494236207694])
 
 
             femur_medial_rot = rotation@(femur_medial+translation)
             femur_lateral_rot = rotation@(femur_lateral+translation)
             femur_proximal_rot = rotation@(femur_proximal+translation)
             femur_distal_rot = rotation@(femur_distal+translation)
-            femur_m1_rot = rotation@(femur_m1+translation)
-            femur_m2_rot = rotation@(femur_m2+translation)
-            femur_m3_rot = rotation@(femur_m3+translation)
-            femur_m4_rot = rotation@(femur_m4+translation)
+
 
             UpdateVisualization.add_landmark(self, femur_medial_rot, "femur_medial")
             UpdateVisualization.add_landmark(self, femur_lateral_rot, "femur_lateral")
             UpdateVisualization.add_landmark(self, femur_proximal_rot, "femur_proximal")
             UpdateVisualization.add_landmark(self, femur_distal_rot, "femur_distal")
+            
+            
+            femur_m1_rot = rotation@(femur_m1+translation)
+            #femur_m2_rot = rotation@(femur_m2+translation)
+            #femur_m3_rot = rotation@(femur_m3+translation)
+            #femur_m4_rot = rotation@(femur_m4+translation)
             UpdateVisualization.add_landmark(self, femur_m1_rot, "femur_m1")
             #UpdateVisualization.add_landmark(self, femur_m2_rot, "femur_m2")
             #UpdateVisualization.add_landmark(self, femur_m3_rot, "femur_m3")
@@ -1008,17 +955,17 @@ class KneeFlexionExperiment(QMainWindow):
             self.load_tibia_button.setText("Tibia Loaded")
             #print("Tibia loaded successfully")
 
-# ---------------------------
+            # ---------------------------
             # -   Add landmark to tibia -
             # ---------------------------
-            tibia_medial = np.array([66.68541717529297, -103.38368225097656, 1400.172119140625])
-            tibia_m1 = np.array([-87.40117250193568, -90.80779189255344, 1575.7205254081575])
-            tibia_lateral = np.array([63.146968841552734, -147.86354064941406, 1407.7625732421875])
-            tibia_m2 = np.array([-111.04134830095568, -114.69156189192014, 1559.338514868094])
-            tibia_proximal = np.array([66.52336883544922, -121.91870880126953, 1399.853271484375])
-            tibia_m3 = np.array([-124.53185834797662, -88.77439542502907, 1557.3575856843993])
-            tibia_distal = np.array([65.01982879638672, -115.64944458007812, 1804.212646484375])
-            tibia_m4 = np.array([-106.98374014215688, -72.95723968988962, 1555.5494236207694])
+            tibia_medial = constants.TIBIA_MEDIAL
+            #tibia_m1 = np.array([-87.40117250193568, -90.80779189255344, 1575.7205254081575])
+            tibia_lateral = constants.TIBIA_LATERAL
+            #tibia_m2 = np.array([-111.04134830095568, -114.69156189192014, 1559.338514868094])
+            tibia_proximal = constants.TIBIA_PROXIMAL
+            #tibia_m3 = np.array([-124.53185834797662, -88.77439542502907, 1557.3575856843993])
+            tibia_distal = constants.TIBIA_DISTAL
+            #tibia_m4 = np.array([-106.98374014215688, -72.95723968988962, 1555.5494236207694])
             #tibia_ref = np.array([-87.40117250193568-0.018, -90.80779189255344, 1575.7205254081575])
 
 
@@ -1026,18 +973,17 @@ class KneeFlexionExperiment(QMainWindow):
             tibia_lateral_rot = rotation@(tibia_lateral+translation)
             tibia_proximal_rot = rotation@(tibia_proximal+translation)
             tibia_distal_rot = rotation@(tibia_distal+translation)
-            #tibia_ref_rot = rotation@(tibia_ref+translation)
 
-            tibia_m1_rot = rotation@(tibia_m1+translation)
-            tibia_m2_rot = rotation@(tibia_m2+translation)
-            tibia_m3_rot = rotation@(tibia_m3+translation)
-            tibia_m4_rot = rotation@(tibia_m4+translation)
-
-
+            
             UpdateVisualization.add_landmark(self, tibia_medial_rot, "tibia_medial")
             UpdateVisualization.add_landmark(self, tibia_lateral_rot, "tibia_lateral")
             UpdateVisualization.add_landmark(self, tibia_proximal_rot, "tibia_proximal")
             UpdateVisualization.add_landmark(self, tibia_distal_rot, "tibia_distal")
+
+            #tibia_m1_rot = rotation@(tibia_m1+translation)
+            #tibia_m2_rot = rotation@(tibia_m2+translation)
+            #tibia_m3_rot = rotation@(tibia_m3+translation)
+            #tibia_m4_rot = rotation@(tibia_m4+translation)
             #UpdateVisualization.add_landmark(self, tibia_m1_rot, "tibia_m1")
             #UpdateVisualization.add_landmark(self, tibia_m2_rot, "tibia_m2")
             #UpdateVisualization.add_landmark(self, tibia_m3_rot, "tibia_m3")
@@ -1047,9 +993,9 @@ class KneeFlexionExperiment(QMainWindow):
             # ---------------------------
             # -     Add CoSy to tibia   - 
             # ---------------------------
-            tibia_ursprung = np.array([-108.3848216194612,-90.25476224637612,1557.4634567569026])
-            tibia_ursprung_rot = rotation@(tibia_ursprung+translation)
-            UpdateVisualization.add_coordinate_axes(self, tibia_ursprung_rot, rotation, "tibia_ursprung")
+            #tibia_ursprung = np.array([-108.3848216194612,-90.25476224637612,1557.4634567569026])
+            #tibia_ursprung_rot = rotation@(tibia_ursprung+translation)
+            #UpdateVisualization.add_coordinate_axes(self, tibia_ursprung_rot, rotation, "tibia_ursprung")
 
         except Exception as e:
             print(f"Error loading tibia: {e}")
@@ -1061,260 +1007,24 @@ class KneeFlexionExperiment(QMainWindow):
         if hasattr(self, 'femur_original_vertices') and hasattr(self, 'tibia_original_vertices'):
             # Extract landmarks from the bone models (this is a simplified example)
             femur_landmarks = {
-                'proximal': [77.49647521972656+15.419721603393555, -127.54686737060547+153.50636291503906, 911.6983032226562-1636.604736328125],
-                'distal': [65.46070098876953+15.41972160339355, -113.15875244140625+153.50636291503906, 1384.9970703125-1636.604736328125],
-                'lateral': [67.22425079345703+15.41972160339355, -157.83193969726562+153.50636291503906, 1399.614990234375-1636.604736328125],
-                'medial': [83.37752532958984+15.41972160339355, -106.33291625976562+153.50636291503906, 1398.119384765625-1636.604736328125]
+                'proximal': constants.FEMUR_PROXIMAL,
+                'distal': constants.FEMUR_DISTAL,
+                'lateral': constants.FEMUR_LATERAL,
+                'medial': constants.FEMUR_MEDIAL
             }
 
             
             tibia_landmarks = {
-                'proximal': [66.52336883544922+15.419721603393555, -121.91870880126953+153.50636291503906, 1399.853271484375-1636.604736328125],
-                'distal': [65.01982879638672+15.419721603393555, -115.64944458007812+153.50636291503906, 1804.212646484375-1636.604736328125],
-                'lateral': [63.146968841552734+15.419721603393555, -147.86354064941406+153.50636291503906, 1407.7625732421875-1636.604736328125],
-                'medial': [66.68541717529297+15.419721603393555, -103.38368225097656+153.50636291503906, 1400.172119140625-1636.604736328125]
+                'proximal': constants.TIBIA_PROXIMAL,
+                'distal': constants.TIBIA_DISTAL,
+                'lateral': constants.TIBIA_LATERAL,
+                'medial': constants.TIBIA_MEDIAL
             }
             # Initialize the joint analyzer
             self.knee_analyzer = KneeJointAnalyzer(femur_landmarks, tibia_landmarks)
-            # After loading both meshes, initialize landmark visualization
 
 
 
-    def create_coordinate_system(landmarks):
-        """
-        Create an anatomical coordinate system based on landmarks.
-        For tibia:
-            - Origin: midpoint between medial and lateral landmarks
-            - Y-axis: Proximal to distal (long axis of bone)
-            - X-axis: Medial to lateral
-            - Z-axis: Posterior to anterior (cross product of X and Y)
-        
-        For femur: Similar approach with appropriate landmarks
-        
-        Args:
-            landmarks: Dictionary containing landmark positions
-        
-        Returns:
-            origin: Origin of the coordinate system
-            axes: 3x3 matrix where columns are the unit vectors of the coordinate system
-        """
-        if 'medial' in landmarks and 'lateral' in landmarks:
-            # Calculate origin as midpoint between medial and lateral landmarks
-            origin = (landmarks['medial'] + landmarks['lateral']) / 2
-            
-            # For tibia
-            if 'proximal' in landmarks and 'distal' in landmarks:
-                # Y-axis: proximal to distal (normalized)
-                y_axis = landmarks['distal'] - landmarks['proximal']
-                y_axis = y_axis / np.linalg.norm(y_axis)
-                
-                # X-axis: medial to lateral (normalized)
-                x_temp = landmarks['lateral'] - landmarks['medial']
-                
-                # Make X-axis orthogonal to Y-axis using Gram-Schmidt
-                x_axis = x_temp - np.dot(x_temp, y_axis) * y_axis
-                x_axis = x_axis / np.linalg.norm(x_axis)
-                
-                # Z-axis: Cross product of X and Y (automatically normalized)
-                z_axis = np.cross(x_axis, y_axis)
-                
-                # Combine into a 3x3 matrix where columns are the coordinate axes
-                axes = np.column_stack((x_axis, y_axis, z_axis))
-                
-                return origin, axes
-        
-        # Default return if landmarks are not as expected
-        return np.zeros(3), np.eye(3)
-
-    def calculate_grood_suntay_angles(tibia_origin, tibia_axes, femur_origin, femur_axes):
-        """
-        Calculate knee joint angles according to Grood and Suntay (1983)
-        
-        Args:
-            tibia_origin: Origin of tibia coordinate system
-            tibia_axes: 3x3 matrix of tibia coordinate axes
-            femur_origin: Origin of femur coordinate system
-            femur_axes: 3x3 matrix of femur coordinate axes
-        
-        Returns:
-            flexion: Flexion/extension angle (around femur x-axis) in degrees
-            varus: Varus/valgus angle (around floating axis) in degrees
-            rotation: Internal/external rotation angle (around tibia y-axis) in degrees
-        """
-        # Extract axes from the coordinate systems
-        e1 = femur_axes[:, 0]  # Femur x-axis (medial-lateral axis)
-        e3 = tibia_axes[:, 1]  # Tibia y-axis (proximal-distal axis)
-        
-        # Calculate the floating axis (e2) - perpendicular to both e1 and e3
-        e2 = np.cross(e3, e1)
-        e2 = e2 / np.linalg.norm(e2)  # Normalize the floating axis
-        
-        # Calculate angles according to Grood and Suntay
-        # Flexion angle (around e1)
-        flexion = np.degrees(np.arcsin(np.dot(tibia_axes[:, 2], e2)))
-        
-        # Varus/valgus angle (around e2)
-        varus = np.degrees(np.arcsin(-np.dot(tibia_axes[:, 2], e1)))
-        
-        # Internal/external rotation (around e3)
-        rotation = np.degrees(np.arcsin(np.dot(femur_axes[:, 0], e2)))
-        
-        return flexion, varus, rotation
-
-    # Function to demonstrate the calculation with your landmarks
-    def calculate_angles_from_landmarks(tibia_landmarks, femur_landmarks):
-        """
-        Calculate knee joint angles from tibia and femur landmarks
-        
-        Args:
-            tibia_landmarks: Dictionary of tibia landmark positions
-            femur_landmarks: Dictionary of femur landmark positions
-        
-        Returns:
-            flexion, varus, rotation angles in degrees
-        """
-        # Create coordinate systems
-        tibia_origin, tibia_axes = create_coordinate_system(tibia_landmarks)
-        femur_origin, femur_axes = create_coordinate_system(femur_landmarks)
-        
-        # Calculate Grood and Suntay angles
-        flexion, varus, rotation = calculate_grood_suntay_angles(
-            tibia_origin, tibia_axes, femur_origin, femur_axes)
-        
-        return flexion, varus, rotation
-
-    # Example usage with your variables
-    def calculate_from_your_variables(tibia_medial_rot, tibia_lateral_rot, 
-                                    tibia_proximal_rot, tibia_distal_rot,
-                                    femur_medial_rot, femur_lateral_rot,
-                                    femur_proximal_rot, femur_distal_rot):
-        """
-        Calculate Grood and Suntay angles from the given landmark positions
-        
-        Args:
-            tibia_*_rot: Rotated and translated tibia landmark positions
-            femur_*_rot: Rotated and translated femur landmark positions
-        
-        Returns:
-            flexion, varus, rotation angles in degrees
-        """
-        # Create dictionaries of landmarks
-        tibia_landmarks = {
-            'medial': tibia_medial_rot,
-            'lateral': tibia_lateral_rot,
-            'proximal': tibia_proximal_rot,
-            'distal': tibia_distal_rot
-        }
-        
-        femur_landmarks = {
-            'medial': femur_medial_rot,
-            'lateral': femur_lateral_rot,
-            'proximal': femur_proximal_rot,
-            'distal': femur_distal_rot
-        }
-        
-        return calculate_angles_from_landmarks(tibia_landmarks, femur_landmarks)
-
-    # Visualization function to help understand the coordinate systems
-    def visualize_coordinate_systems(tibia_landmarks, femur_landmarks):
-        """
-        Visualize the bone landmarks and coordinate systems
-        
-        Args:
-            tibia_landmarks: Dictionary of tibia landmark positions
-            femur_landmarks: Dictionary of femur landmark positions
-        """
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection='3d')
-        
-        # Create and plot tibia coordinate system
-        tibia_origin, tibia_axes = create_coordinate_system(tibia_landmarks)
-        ax.scatter(tibia_origin[0], tibia_origin[1], tibia_origin[2], color='blue', s=100, label='Tibia Origin')
-        
-        # Plot tibia landmarks
-        for name, pos in tibia_landmarks.items():
-            ax.scatter(pos[0], pos[1], pos[2], marker='o', label=f'Tibia {name}')
-        
-        # Plot tibia coordinate axes
-        axis_length = 50  # Adjust based on your scale
-        colors = ['r', 'g', 'b']
-        labels = ['X', 'Y', 'Z']
-        
-        for i in range(3):
-            ax.quiver(tibia_origin[0], tibia_origin[1], tibia_origin[2],
-                    tibia_axes[0, i] * axis_length, tibia_axes[1, i] * axis_length, tibia_axes[2, i] * axis_length,
-                    color=colors[i], label=f'Tibia {labels[i]}')
-        
-        # Create and plot femur coordinate system
-        femur_origin, femur_axes = create_coordinate_system(femur_landmarks)
-        ax.scatter(femur_origin[0], femur_origin[1], femur_origin[2], color='red', s=100, label='Femur Origin')
-        
-        # Plot femur landmarks
-        for name, pos in femur_landmarks.items():
-            ax.scatter(pos[0], pos[1], pos[2], marker='^', label=f'Femur {name}')
-        
-        # Plot femur coordinate axes
-        for i in range(3):
-            ax.quiver(femur_origin[0], femur_origin[1], femur_origin[2],
-                    femur_axes[0, i] * axis_length, femur_axes[1, i] * axis_length, femur_axes[2, i] * axis_length,
-                    color=colors[i], linestyle='--', label=f'Femur {labels[i]}')
-        
-        # Plot Grood and Suntay's floating axis
-        e1 = femur_axes[:, 0]  # Femur x-axis
-        e3 = tibia_axes[:, 1]  # Tibia y-axis
-        e2 = np.cross(e3, e1)
-        e2 = e2 / np.linalg.norm(e2)
-        
-        # Midpoint between origins for the floating axis
-        mid_origin = (tibia_origin + femur_origin) / 2
-        ax.quiver(mid_origin[0], mid_origin[1], mid_origin[2],
-                e2[0] * axis_length, e2[1] * axis_length, e2[2] * axis_length,
-                color='purple', label='Floating Axis')
-        
-        # Calculate and show angles
-        flexion, varus, rotation = calculate_grood_suntay_angles(tibia_origin, tibia_axes, femur_origin, femur_axes)
-        ax.set_title(f'Knee Joint: Flexion={flexion:.1f}°, Varus={varus:.1f}°, Rotation={rotation:.1f}°')
-        
-        # Set labels and legend
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-        ax.legend()
-        
-        plt.show()
-
-    # Example of how to use with your specific variable format
-    def calculate_angles_from_your_format(rotation, translation, 
-                                        tibia_medial, tibia_lateral, tibia_proximal, tibia_distal,
-                                        femur_medial, femur_lateral, femur_proximal, femur_distal):
-        """
-        Calculate angles based on your specific variable format
-        
-        Args:
-            rotation: Rotation matrix
-            translation: Translation vector
-            tibia_*: Original tibia landmark positions
-            femur_*: Original femur landmark positions
-        
-        Returns:
-            flexion, varus, rotation angles in degrees
-        """
-        # Apply rotation and translation to landmarks
-        tibia_medial_rot = rotation @ (tibia_medial + translation)
-        tibia_lateral_rot = rotation @ (tibia_lateral + translation)
-        tibia_proximal_rot = rotation @ (tibia_proximal + translation)
-        tibia_distal_rot = rotation @ (tibia_distal + translation)
-        
-        femur_medial_rot = rotation @ (femur_medial + translation)
-        femur_lateral_rot = rotation @ (femur_lateral + translation)
-        femur_proximal_rot = rotation @ (femur_proximal + translation)
-        femur_distal_rot = rotation @ (femur_distal + translation)
-        
-        # Now use the calculated rotated points
-        return calculate_from_your_variables(
-            tibia_medial_rot, tibia_lateral_rot, tibia_proximal_rot, tibia_distal_rot,
-            femur_medial_rot, femur_lateral_rot, femur_proximal_rot, femur_distal_rot
-        )
             
 
 

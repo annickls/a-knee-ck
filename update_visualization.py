@@ -337,19 +337,19 @@ class UpdateVisualization():
         # Define the original landmarks without any offsets
         if bone_type == 'femur':
             original_landmarks = {
-                'proximal': np.array([77.49647521972656, -127.54686737060547, 911.6983032226562]),
-                'distal': np.array([65.46070098876953, -113.15875244140625, 1384.9970703125]),
-                'lateral': np.array([67.22425079345703, -157.83193969726562, 1399.614990234375]),
-                'medial': np.array([83.37752532958984, -106.33291625976562, 1398.119384765625])
+                'proximal': constants.FEMUR_PROXIMAL,
+                'distal': constants.FEMUR_DISTAL,
+                'lateral': constants.FEMUR_LATERAL,
+                'medial': constants.FEMUR_MEDIAL
             }
         else:  # tibia
             original_landmarks = {
-                'proximal': [66.52336883544922+15.419721603393555, -121.91870880126953+153.50636291503906, 1399.853271484375-1636.604736328125],
-                'distal': [65.01982879638672+15.419721603393555, -115.64944458007812+153.50636291503906, 1804.212646484375-1636.604736328125],
-                'lateral': [63.146968841552734+15.419721603393555, -147.86354064941406+153.50636291503906, 1407.7625732421875-1636.604736328125],
-                'medial': [66.68541717529297+15.419721603393555, -103.38368225097656+153.50636291503906, 1400.172119140625-1636.604736328125]
-
+                'proximal': constants.TIBIA_PROXIMAL,
+                'distal': constants.TIBIA_DISTAL,
+                'lateral': constants.TIBIA_LATERAL,
+                'medial': constants.TIBIA_MEDIAL
             }
+
         
         # Apply consistent translation offset to all landmarks to align with reference frame
         # This should match the translation used in the Kabsch algorithm in load_femur and load_tibia
