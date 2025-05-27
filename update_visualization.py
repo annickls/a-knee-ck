@@ -17,6 +17,12 @@ class UpdateVisualization():
     femur_landmarks = {}
     current_knee_angles = {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
     femurmediallateral = [0,0,0]
+    femurproximaldistal = [0, 0, 0]
+    femurvarusaxis = [0, 0, 0]
+
+    tibiamediallateral = [0, 0, 0]
+    tibiaproximaldistal = [0, 0, 0]
+    tibiavarusaxis = [0, 0, 0]
 
     def update_current_visualization(self, force, torque):
         """Update the force/torque visualization with only the current data."""
@@ -242,7 +248,8 @@ class UpdateVisualization():
 
         # Set the position of the force arrow - attach to tibia at specific point
         #tibia_pos = MeshUtils.get_tibia_force_origin(self.last_tibia_position)
-        tibia_pos = UpdateVisualization.tibia_landmarks['tibia_proximal']['position']
+        #tibia_pos = UpdateVisualization.tibia_landmarks['tibia_proximal']['position']
+        tibia_pos = [0,0,0]
         
         # Calculate end point for the arrow
         end_point = tibia_pos + force_scaled
@@ -264,12 +271,53 @@ class UpdateVisualization():
         if self.force_arrow_head is not None:
             self.gl_view.addItem(self.force_arrow_head)
 
-        # visualize femur axis
+        # visualize femur coordinate sys for grood and suntay
         femurdistal= UpdateVisualization.femur_landmarks['femur_distal']['position']
 
-        self.femur_axis_shaft = MeshUtils.create_femur_axis(
-            femurdistal, femurdistal + UpdateVisualization.femurmediallateral, color=(1, 0, 0, 1), arrow_size=500, shaft_width=constants.SHAFT_WIDTH
+        self.femur_axis_shaft_ml = MeshUtils.create_tibia_axis(
+            femurdistal, femurdistal + UpdateVisualization.femurmediallateral, color=constants.SALMON, arrow_size=500, shaft_width=2
         )
+
+        self.femur_axis_shaft_pd = MeshUtils.create_tibia_axis(
+            femurdistal, femurdistal + UpdateVisualization.femurproximaldistal, color=constants.LIMEGREEN, arrow_size=500, shaft_width=2
+        )
+
+        self.femur_axis_shaft_varusaxis = MeshUtils.create_tibia_axis(
+            femurdistal, femurdistal + UpdateVisualization.femurvarusaxis, color=constants.DEEPSKYBLUE, arrow_size=500, shaft_width=2
+        )
+
+        #visualize tibia coordinate sys for grood and suntay
+        tibiaproximal= UpdateVisualization.tibia_landmarks['tibia_proximal']['position']
+        self.tibia_axis_shaft_ml = MeshUtils.create_tibia_axis(
+            tibiaproximal, tibiaproximal + UpdateVisualization.tibiamediallateral, color=constants.SALMON, arrow_size=500, shaft_width=2
+        )
+
+        self.tibia_axis_shaft_pd = MeshUtils.create_tibia_axis(
+            tibiaproximal, tibiaproximal + UpdateVisualization.tibiaproximaldistal, color=constants.LIMEGREEN, arrow_size=500, shaft_width=2
+        )
+
+        self.tibia_axis_shaft_varusaxis = MeshUtils.create_tibia_axis(
+            tibiaproximal, tibiaproximal + UpdateVisualization.tibiavarusaxis, color=constants.DEEPSKYBLUE, arrow_size=500, shaft_width=2
+        )
+        
+
+        if self.femur_axis_shaft_ml is not None:
+            self.gl_view.addItem(self.femur_axis_shaft_ml)
+
+        if self.femur_axis_shaft_pd is not None:
+            self.gl_view.addItem(self.femur_axis_shaft_pd)
+
+        if self.femur_axis_shaft_varusaxis is not None:
+            self.gl_view.addItem(self.femur_axis_shaft_varusaxis)
+
+        if self.tibia_axis_shaft_ml is not None:
+            self.gl_view.addItem(self.tibia_axis_shaft_ml)
+
+        if self.tibia_axis_shaft_pd is not None:
+            self.gl_view.addItem(self.tibia_axis_shaft_pd)
+
+        if self.tibia_axis_shaft_varusaxis is not None:
+            self.gl_view.addItem(self.tibia_axis_shaft_varusaxis)
 
         # Update bone angles
         #UpdateVisualization.update_bone_angles(self, data_index)
@@ -635,10 +683,14 @@ class UpdateVisualization():
                 print("Warning: Femur coordinate system is degenerate")
                 return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
             e3f = e3f / np.linalg.norm(e3f)
+
+            UpdateVisualization.femurvarusaxis = e3f
             
             # e2f: femoral long axis (corrected, perpendicular to e3f and e1f)
             e2f = np.cross(e3f, e1f)
             e2f = e2f / np.linalg.norm(e2f)
+
+            UpdateVisualization.femurproximaldistal = e2f
             
             # Tibial coordinate system
             # e2t: tibial long axis (proximal - distal direction)
@@ -647,6 +699,8 @@ class UpdateVisualization():
                 print("Warning: Tibia proximal-distal vector is too small")
                 return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
             e2t = e2t / np.linalg.norm(e2t)
+
+            UpdateVisualization.tibiaproximaldistal = e2t
             
             # Temporary tibial medial-lateral axis
             temp_tibia = tibia_lateral - tibia_medial
@@ -654,6 +708,8 @@ class UpdateVisualization():
                 print("Warning: Tibia medial-lateral vector is too small")
                 return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
             temp_tibia = temp_tibia / np.linalg.norm(temp_tibia)
+
+            
             
             # e3t: tibial anterior-posterior axis
             e3t = np.cross(temp_tibia, e2t)
@@ -662,9 +718,13 @@ class UpdateVisualization():
                 return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
             e3t = e3t / np.linalg.norm(e3t)
             
+            UpdateVisualization.tibiavarusaxis = e3t
+
             # e1t: tibial medial-lateral axis (corrected)
             e1t = np.cross(e2t, e3t)
             e1t = e1t / np.linalg.norm(e1t)
+
+            UpdateVisualization.tibiamediallateral = e1t
             
             # Calculate floating axis (common perpendicular to e1f and e2t)
             floating_axis = np.cross(e1f, e2t)
