@@ -23,7 +23,7 @@ TIBIA = os.path.join(current_folder, "data_for_gui", tibia_fileName)
 
 PIVOT_POINT_FEMUR = [0, 0, 0]
 PIVOT_POINT_TIBA = [0, 0, 0]
-DISTANCE_BONE_VIZ = 3000
+DISTANCE_BONE_VIZ = 2000
 #TRACKER_FEMUR = [-50.0, -200.0, 1220.0]
 TRACKER_FEMUR = [0.0, 0.0, 0.0]
 #TRACKER_TIBIA = [-100.0, -200.0, 1520.0]
@@ -60,5 +60,5 @@ BUTTON_HEIGHT = 60
 root_folder = os.path.dirname(current_folder)
 #DATA_PREVIOUS_TEST = "print_data.F_sensor_temp_data_79.txt"
 DATA_PREVIOUS_TEST = "/home/annick/GUI/data_for_gui/print_data.F_sensor_temp_data_7.txt"
-#DATA_CSV = os.path.join(root_folder, "knee_eval_ws", "data.csv")
-DATA_CSV = "data.csv"
+DATA_CSV = os.path.join(root_folder, "knee_eval_ws", "data.csv")
+#DATA_CSV = "data.csv"

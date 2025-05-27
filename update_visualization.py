@@ -16,6 +16,7 @@ class UpdateVisualization():
     tibia_landmarks = {}
     femur_landmarks = {}
     current_knee_angles = {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
+    femurmediallateral = [0,0,0]
 
     def update_current_visualization(self, force, torque):
         """Update the force/torque visualization with only the current data."""
@@ -240,7 +241,8 @@ class UpdateVisualization():
         force_scaled = force * scale_factor
 
         # Set the position of the force arrow - attach to tibia at specific point
-        tibia_pos = MeshUtils.get_tibia_force_origin(self.last_tibia_position)
+        #tibia_pos = MeshUtils.get_tibia_force_origin(self.last_tibia_position)
+        tibia_pos = UpdateVisualization.tibia_landmarks['tibia_proximal']['position']
         
         # Calculate end point for the arrow
         end_point = tibia_pos + force_scaled
@@ -262,11 +264,18 @@ class UpdateVisualization():
         if self.force_arrow_head is not None:
             self.gl_view.addItem(self.force_arrow_head)
 
+        # visualize femur axis
+        femurdistal= UpdateVisualization.femur_landmarks['femur_distal']['position']
+
+        self.femur_axis_shaft = MeshUtils.create_femur_axis(
+            femurdistal, femurdistal + UpdateVisualization.femurmediallateral, color=(1, 0, 0, 1), arrow_size=500, shaft_width=constants.SHAFT_WIDTH
+        )
+
         # Update bone angles
-        UpdateVisualization.update_bone_angles(self, data_index)
+        #UpdateVisualization.update_bone_angles(self, data_index)
         
         # Update anatomical axes visualization
-        UpdateVisualization.update_axes_visualization(self, data_index)
+        #UpdateVisualization.update_axes_visualization(self, data_index)
 
    
     def update_display(self):
@@ -288,95 +297,6 @@ class UpdateVisualization():
         except Exception as e:
             self.image_label.setText(f"Error loading image: {str(e)}")
 
-    @staticmethod
-    def update_bone_angles(self, data_index=0):
-        """Update joint angles display based on current bone positions"""
-        # Check if we have necessary data and bone tab is active
-        if (not hasattr(self, 'last_femur_position') or 
-            not hasattr(self, 'last_tibia_position') or
-            self.tabs.currentIndex() != 2):
-            return
-            
-        # If we have an analyzer, calculate the angles
-        if hasattr(self, 'knee_analyzer') and self.knee_analyzer is not None:
-            try:
-                # Convert quaternions to landmarks
-                femur_current_markers = UpdateVisualization.quaternion_to_landmarks(
-                    self,
-                    self.last_femur_position, 
-                    self.last_femur_quaternion,
-                    'femur'
-                )
-                
-                tibia_current_markers = UpdateVisualization.quaternion_to_landmarks(
-                    self,
-                    self.last_tibia_position,
-                    self.last_tibia_quaternion,
-                    'tibia'
-                )
-                
-                # Convert any numpy arrays to lists for the knee analyzer
-                femur_markers_dict = {k: v.tolist() if isinstance(v, np.ndarray) else v 
-                                    for k, v in femur_current_markers.items()}
-                tibia_markers_dict = {k: v.tolist() if isinstance(v, np.ndarray) else v 
-                                    for k, v in tibia_current_markers.items()}
-                
-                # Calculate angles
-                angles = self.knee_analyzer.update_transformations(
-                    femur_markers_dict, tibia_markers_dict)
-                
-                # Update text display
-                self.joint_angles_text.setText(
-                    f"Joint Angles: Flexion: {angles['flexion']:.1f}°, "
-                    f"Varus/Valgus: {angles['varus_valgus']:.1f}°, "
-                    f"Rotation: {angles['rotation']:.1f}°"
-                )
-            except Exception as e:
-                print(f"Error calculating joint angles: {str(e)}")
-                import traceback
-                traceback.print_exc()
-
-    @staticmethod
-    def quaternion_to_landmarks(self, position, quaternion, bone_type):
-        """Convert position and quaternion to landmarks for joint angle calculation"""
-        # Define the original landmarks without any offsets
-        if bone_type == 'femur':
-            original_landmarks = {
-                'proximal': constants.FEMUR_PROXIMAL,
-                'distal': constants.FEMUR_DISTAL,
-                'lateral': constants.FEMUR_LATERAL,
-                'medial': constants.FEMUR_MEDIAL
-            }
-        else:  # tibia
-            original_landmarks = {
-                'proximal': constants.TIBIA_PROXIMAL,
-                'distal': constants.TIBIA_DISTAL,
-                'lateral': constants.TIBIA_LATERAL,
-                'medial': constants.TIBIA_MEDIAL
-            }
-
-        
-        # Apply consistent translation offset to all landmarks to align with reference frame
-        # This should match the translation used in the Kabsch algorithm in load_femur and load_tibia
-        offset = np.array([15.419721603393555, 153.50636291503906, -1636.604736328125])
-        for key in original_landmarks:
-            original_landmarks[key] = original_landmarks[key] + offset
-        
-        # Convert quaternion to rotation matrix (assuming quaternion = [w, x, y, z])
-        qw, qx, qy, qz = quaternion
-        rotation_matrix = np.array([
-            [1 - 2*qy*qy - 2*qz*qz, 2*qx*qy - 2*qz*qw, 2*qx*qz + 2*qy*qw],
-            [2*qx*qy + 2*qz*qw, 1 - 2*qx*qx - 2*qz*qz, 2*qy*qz - 2*qx*qw],
-            [2*qx*qz - 2*qy*qw, 2*qy*qz + 2*qx*qw, 1 - 2*qx*qx - 2*qy*qy]
-        ])
-        
-        # Transform each landmark by first applying rotation then translation
-        transformed_landmarks = {}
-        for key, point in original_landmarks.items():
-            transformed_point = rotation_matrix @ point + position
-            transformed_landmarks[key] = transformed_point
-        
-        return transformed_landmarks
 
     @staticmethod
     def visualize_anatomical_axes(self):
@@ -397,9 +317,9 @@ class UpdateVisualization():
             'origin': None  # Origin point
         }
 
-    @staticmethod
+    """@staticmethod
     def update_axes_visualization(self, data_index=0):
-        """Update the anatomical axes visualization in 3D bone view"""
+        #Update the anatomical axes visualization in 3D bone view
         # Skip if not on the bone visualization tab
         if self.tabs.currentIndex() != 2:
             return
@@ -513,7 +433,7 @@ class UpdateVisualization():
         except Exception as e:
             print(f"Error updating anatomical axes: {str(e)}")
             import traceback
-            traceback.print_exc()
+            traceback.print_exc()"""
 
 
     @staticmethod
@@ -643,6 +563,13 @@ class UpdateVisualization():
             """print(f"Knee Angles - Flexion: {angles['flexion']:.2f}°, "
                   f"Adduction: {angles['adduction']:.2f}°, "
                   f"Internal Rotation: {angles['rotation']:.2f}°")"""
+            
+            self.joint_angles_text.setText(
+                    f"Joint Angles: Flexion: {angles['flexion']:.2f}°, "
+                    f"Varus/Valgus: {angles['adduction']:.2f}°, "
+                    f"Rotation: {angles['rotation']:.2f}°"
+                )
+            
 
 
     @staticmethod
@@ -677,12 +604,12 @@ class UpdateVisualization():
             femur_distal = UpdateVisualization.femur_landmarks['femur_distal']['position']
             
             # Debug: Print landmark positions to verify they're different
-            print(f"Debug - Tibia medial: {tibia_medial}")
-            print(f"Debug - Tibia lateral: {tibia_lateral}")
-            print(f"Debug - Tibia medial: {tibia_proximal}")
-            print(f"Debug - Tibia lateral: {tibia_distal}")
-            print(f"Debug - Femur medial: {femur_medial}")
-            print(f"Debug - Femur lateral: {femur_lateral}")
+            #print(f"Debug - Tibia medial: {tibia_medial}")
+            #print(f"Debug - Tibia lateral: {tibia_lateral}")
+            #print(f"Debug - Tibia medial: {tibia_proximal}")
+            #print(f"Debug - Tibia lateral: {tibia_distal}")
+            #print(f"Debug - Femur medial: {femur_medial}")
+            #print(f"Debug - Femur lateral: {femur_lateral}")
             
             # Define coordinate systems according to Grood and Suntay
             
@@ -693,6 +620,7 @@ class UpdateVisualization():
                 print("Warning: Femur medial-lateral vector is too small")
                 return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
             e1f = e1f / np.linalg.norm(e1f)
+            UpdateVisualization.femurmediallateral = e1f
             
             # Temporary femoral long axis (proximal - distal direction)
             temp_femur = femur_proximal - femur_distal

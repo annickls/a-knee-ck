@@ -27,12 +27,12 @@ import logging
 from plot_config1 import MplCanvas, ColoredGLAxisItem
 from mesh_utils import MeshUtils
 from update_visualization import UpdateVisualization
-from knee_angles import KneeJointAnalyzer
 import warnings
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from PyQt5.QtCore import QPropertyAnimation, QEasingCurve, pyqtProperty
 
 class KneeFlexionExperiment(QMainWindow):
     def __init__(self):
@@ -81,8 +81,6 @@ class KneeFlexionExperiment(QMainWindow):
         self.recording_start_time = None
         self.current_test_name = ""
 
-        # Initialize knee joint analyzer (will be properly set up when bones are loaded)
-        self.knee_analyzer = None
         
         # Ensure directory exists for data files
         os.makedirs("recorded_data", exist_ok=True)
@@ -243,9 +241,9 @@ class KneeFlexionExperiment(QMainWindow):
 
                         # Access the calculated angles
                         angles = UpdateVisualization.get_current_knee_angles()
-                        print(f"Flexion: {angles['flexion']:.2f}°")
-                        print(f"Adduction: {angles['adduction']:.2f}°") 
-                        print(f"Internal Rotation: {angles['rotation']:.2f}°")
+                        #print(f"Flexion: {angles['flexion']:.2f}°")
+                        #print(f"Adduction: {angles['adduction']:.2f}°") 
+                        #print(f"Internal Rotation: {angles['rotation']:.2f}°")
                         
                         # Update force visualization
                         UpdateVisualization.update_bone_forces(self, self.current_data_index)
@@ -393,7 +391,7 @@ class KneeFlexionExperiment(QMainWindow):
         # Create 3D GL View Widget for bone visualization
         self.gl_view = gl.GLViewWidget()
         self.gl_view.setCameraPosition(distance = constants.DISTANCE_BONE_VIZ, elevation=30, azimuth=-55)
-        self.gl_view.setMinimumHeight(400)
+        self.gl_view.setMinimumHeight(600)
         # Add axes for reference
         self.axes = ColoredGLAxisItem(size=(100, 100, 100)) #defined colors
         self.gl_view.addItem(self.axes)
@@ -422,10 +420,7 @@ class KneeFlexionExperiment(QMainWindow):
         tab3_layout.addWidget(self.gl_view)
         tab3_layout.addLayout(bone_load_layout)
         self.tab3.setLayout(tab3_layout)
-        """# Timer for bone animation updates
-        self.bone_timer = QTimer()
-        self.bone_timer.timeout.connect(self.update_bones)
-        self.bone_timer.setInterval(20)  # 25ms for 40 fps"""
+
 
         left_layout.addWidget(self.tabs)
         self.left_widget.setLayout(left_layout)
@@ -525,6 +520,8 @@ class KneeFlexionExperiment(QMainWindow):
         
         right_widget.setLayout(right_layout)
         bottom_splitter.addWidget(right_widget)
+
+        bottom_splitter.setSizes([1000, 200])  # adjust sizes for left and right part
         
         # Add the splitter to the main layout
         main_layout.addWidget(bottom_splitter, 2, 0, 1, 2)
@@ -784,6 +781,25 @@ class KneeFlexionExperiment(QMainWindow):
         elif self.current_angle_index >= (len(constants.FLEXION_ANGLES) - 1) and self.external_rot_button.isEnabled() == False:
             self.next_button.setEnabled(False) # End of regular experiment - enable Lachmann test
 
+    def add_camera_roll(self, roll_degrees=0):
+        """
+        Add roll rotation to current camera view
+        """
+        import numpy as np
+        from PyQt5.QtGui import QMatrix4x4
+        
+        # Create roll rotation matrix
+        roll_rad = np.radians(roll_degrees)
+        
+        # Apply roll around the Z-axis (viewing direction)
+        roll_transform = QMatrix4x4()
+        roll_transform.rotate(roll_degrees, 0, 0, 1)  # Roll around Z-axis
+        
+        # Get current view matrix and apply roll
+        current_view = self.gl_view.viewMatrix()
+        rolled_view = roll_transform * current_view
+        
+        self.gl_view.setCameraParams(view=rolled_view)  
  
     def load_femur(self):
         try:
@@ -828,7 +844,8 @@ class KneeFlexionExperiment(QMainWindow):
             self.gl_view.addItem(self.femur_mesh)
 
             # Configure the main camera view
-            self.gl_view.setCameraPosition(distance=40, elevation=30, azimuth=45)
+            self.gl_view.setCameraPosition(distance=constants.DISTANCE_BONE_VIZ, elevation=30, azimuth=45)
+
 
             # Configure lighting direction - this is the key part
             # This positions the light coming from the opposite side
@@ -923,7 +940,8 @@ class KneeFlexionExperiment(QMainWindow):
                 faces=tibia_faces,
                 smooth=True,
                 drawEdges=False,
-                color = QtGui.QColor(47, 79, 79),
+                #color = QtGui.QColor(47, 79, 79),
+                color=(112, 128, 144, 255),
                 computeNormals=True,
                 shader='shaded',
                 glOptions='opaque'
@@ -934,7 +952,7 @@ class KneeFlexionExperiment(QMainWindow):
             # You can also adjust these lighting parameters for better contrast
             self.gl_view.opts['ambient'] = 0.3     # Amount of ambient light (0-1)
             self.gl_view.opts['diffuse'] = 0.8     # Amount of diffuse light (0-1)
-            self.gl_view.opts['specular'] = 0.2    # Amount of specular light (0-1)
+            self.gl_view.opts['specular'] = 0.2  # Amount of specular light (0-1)
             self.gl_view.opts['shininess'] = 50    # Controls the sharpness of specular highlights
             self.gl_view.addItem(self.tibia_mesh)
             
@@ -997,26 +1015,6 @@ class KneeFlexionExperiment(QMainWindow):
             import traceback
             traceback.print_exc()
             self.load_tibia_button.setText("Error")
-
-        # Check if both meshes are loaded
-        if hasattr(self, 'femur_original_vertices') and hasattr(self, 'tibia_original_vertices'):
-            # Extract landmarks from the bone models (this is a simplified example)
-            femur_landmarks = {
-                'proximal': constants.FEMUR_PROXIMAL,
-                'distal': constants.FEMUR_DISTAL,
-                'lateral': constants.FEMUR_LATERAL,
-                'medial': constants.FEMUR_MEDIAL
-            }
-
-            
-            tibia_landmarks = {
-                'proximal': constants.TIBIA_PROXIMAL,
-                'distal': constants.TIBIA_DISTAL,
-                'lateral': constants.TIBIA_LATERAL,
-                'medial': constants.TIBIA_MEDIAL
-            }
-            # Initialize the joint analyzer
-            self.knee_analyzer = KneeJointAnalyzer(femur_landmarks, tibia_landmarks)
 
 
 
