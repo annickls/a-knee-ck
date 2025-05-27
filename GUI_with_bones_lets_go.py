@@ -239,15 +239,10 @@ class KneeFlexionExperiment(QMainWindow):
                             #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_ref")
 
 
-                        """
-                        change that to the UpdateVisualization class to access the right values from update_landmark_alex!
-                        """
-
-
 
 
                         # Access the calculated angles
-                        angles = MeshUtils.get_current_knee_angles()
+                        angles = UpdateVisualization.get_current_knee_angles()
                         print(f"Flexion: {angles['flexion']:.2f}°")
                         print(f"Adduction: {angles['adduction']:.2f}°") 
                         print(f"Internal Rotation: {angles['rotation']:.2f}°")

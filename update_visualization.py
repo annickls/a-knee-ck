@@ -12,6 +12,11 @@ import numpy as np
 from mesh_utils import MeshUtils
 from PyQt5.QtCore import Qt, QTimer
 class UpdateVisualization():
+        # Add class variables to store landmark positions for angle calculations
+    tibia_landmarks = {}
+    femur_landmarks = {}
+    current_knee_angles = {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
+
     def update_current_visualization(self, force, torque):
         """Update the force/torque visualization with only the current data."""
         # Force arrow
@@ -613,6 +618,191 @@ class UpdateVisualization():
         origin = self.landmarks_origin[name]
         transform = transform_mesh[:3,:3]@origin + transform_mesh[:3,3]
         self.landmarks[name].translate(transform[0], transform[1], transform[2])
+        #print(name)
+        #print(transform)
+
+        # Store the landmark position directly (since it's already correctly calculated)
+        landmark_data = {
+            'position': np.array(transform)
+        }
+        
+        if name.startswith('tibia'):
+            UpdateVisualization.tibia_landmarks[name] = landmark_data
+        elif name.startswith('femur'):
+            UpdateVisualization.femur_landmarks[name] = landmark_data
+        else:
+            print(f"Warning: Unknown landmark type {name}")
+            return
+        
+        # Calculate knee angles if we have sufficient landmarks
+        if UpdateVisualization._has_required_landmarks():
+            angles = UpdateVisualization.calculate_grood_suntay_angles()
+            UpdateVisualization.current_knee_angles = angles
+            
+            # Print or log the angles for debugging
+            """print(f"Knee Angles - Flexion: {angles['flexion']:.2f}°, "
+                  f"Adduction: {angles['adduction']:.2f}°, "
+                  f"Internal Rotation: {angles['rotation']:.2f}°")"""
+
+
+    @staticmethod
+    def _has_required_landmarks():
+        """Check if we have the minimum required landmarks for angle calculation."""
+        required_tibia = ['tibia_medial', 'tibia_lateral', 'tibia_proximal', 'tibia_distal']
+        required_femur = ['femur_medial', 'femur_lateral', 'femur_proximal', 'femur_distal']
+        
+        tibia_available = all(landmark in UpdateVisualization.tibia_landmarks for landmark in required_tibia)
+        femur_available = all(landmark in UpdateVisualization.femur_landmarks for landmark in required_femur)
+        
+        return tibia_available and femur_available
+    
+    @staticmethod
+    def calculate_grood_suntay_angles():
+        """
+        Calculate knee angles using the Grood and Suntay method.
+        
+        Returns:
+            dict: Dictionary containing flexion, adduction, and rotation angles in degrees
+        """
+        try:
+            # Get landmark positions directly (already transformed and correct)
+            tibia_medial = UpdateVisualization.tibia_landmarks['tibia_medial']['position']
+            tibia_lateral = UpdateVisualization.tibia_landmarks['tibia_lateral']['position']
+            tibia_proximal = UpdateVisualization.tibia_landmarks['tibia_proximal']['position']
+            tibia_distal = UpdateVisualization.tibia_landmarks['tibia_distal']['position']
+            
+            femur_medial = UpdateVisualization.femur_landmarks['femur_medial']['position']
+            femur_lateral = UpdateVisualization.femur_landmarks['femur_lateral']['position']
+            femur_proximal = UpdateVisualization.femur_landmarks['femur_proximal']['position']
+            femur_distal = UpdateVisualization.femur_landmarks['femur_distal']['position']
+            
+            # Debug: Print landmark positions to verify they're different
+            print(f"Debug - Tibia medial: {tibia_medial}")
+            print(f"Debug - Tibia lateral: {tibia_lateral}")
+            print(f"Debug - Tibia medial: {tibia_proximal}")
+            print(f"Debug - Tibia lateral: {tibia_distal}")
+            print(f"Debug - Femur medial: {femur_medial}")
+            print(f"Debug - Femur lateral: {femur_lateral}")
+            
+            # Define coordinate systems according to Grood and Suntay
+            
+            # Femoral coordinate system
+            # e1f: femoral flexion-extension axis (lateral - medial direction)
+            e1f = femur_lateral - femur_medial
+            if np.linalg.norm(e1f) < 1e-10:
+                print("Warning: Femur medial-lateral vector is too small")
+                return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
+            e1f = e1f / np.linalg.norm(e1f)
+            
+            # Temporary femoral long axis (proximal - distal direction)
+            temp_femur = femur_proximal - femur_distal
+            if np.linalg.norm(temp_femur) < 1e-10:
+                print("Warning: Femur proximal-distal vector is too small")
+                return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
+            temp_femur = temp_femur / np.linalg.norm(temp_femur)
+            
+            # e3f: femoral anterior-posterior axis (perpendicular to e1f and temp_femur)
+            e3f = np.cross(e1f, temp_femur)
+            if np.linalg.norm(e3f) < 1e-10:
+                print("Warning: Femur coordinate system is degenerate")
+                return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
+            e3f = e3f / np.linalg.norm(e3f)
+            
+            # e2f: femoral long axis (corrected, perpendicular to e3f and e1f)
+            e2f = np.cross(e3f, e1f)
+            e2f = e2f / np.linalg.norm(e2f)
+            
+            # Tibial coordinate system
+            # e2t: tibial long axis (proximal - distal direction)
+            e2t = tibia_proximal - tibia_distal
+            if np.linalg.norm(e2t) < 1e-10:
+                print("Warning: Tibia proximal-distal vector is too small")
+                return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
+            e2t = e2t / np.linalg.norm(e2t)
+            
+            # Temporary tibial medial-lateral axis
+            temp_tibia = tibia_lateral - tibia_medial
+            if np.linalg.norm(temp_tibia) < 1e-10:
+                print("Warning: Tibia medial-lateral vector is too small")
+                return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
+            temp_tibia = temp_tibia / np.linalg.norm(temp_tibia)
+            
+            # e3t: tibial anterior-posterior axis
+            e3t = np.cross(temp_tibia, e2t)
+            if np.linalg.norm(e3t) < 1e-10:
+                print("Warning: Tibia coordinate system is degenerate")
+                return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
+            e3t = e3t / np.linalg.norm(e3t)
+            
+            # e1t: tibial medial-lateral axis (corrected)
+            e1t = np.cross(e2t, e3t)
+            e1t = e1t / np.linalg.norm(e1t)
+            
+            # Calculate floating axis (common perpendicular to e1f and e2t)
+            floating_axis = np.cross(e1f, e2t)
+            if np.linalg.norm(floating_axis) < 1e-10:
+                print("Warning: Floating axis is degenerate")
+                return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
+            floating_axis = floating_axis / np.linalg.norm(floating_axis)
+            
+            # Calculate Grood and Suntay angles using rotation matrix decomposition
+            
+            # Create rotation matrices for femur and tibia coordinate systems
+            R_femur = np.column_stack([e1f, e2f, e3f])
+            R_tibia = np.column_stack([e1t, e2t, e3t])
+            
+            # Relative rotation matrix from femur to tibia
+            R_rel = R_tibia.T @ R_femur
+            
+            # Extract Grood and Suntay angles from rotation matrix
+            # Following the ZXY Euler angle sequence used in Grood and Suntay
+            
+            # Flexion (rotation about femoral medial-lateral axis)
+            flexion = np.arcsin(-R_rel[1, 2])
+            flexion_deg = np.degrees(flexion)
+            
+            # Adduction (rotation about floating axis)
+            cos_adduction = R_rel[2, 2] / np.cos(flexion)
+            cos_adduction = np.clip(cos_adduction, -1.0, 1.0)
+            adduction = np.arccos(cos_adduction)
+            if R_rel[0, 2] < 0:
+                adduction = -adduction
+            adduction_deg = np.degrees(adduction)
+            
+            # Internal rotation (rotation about tibial long axis)
+            cos_rotation = R_rel[1, 1] / np.cos(flexion)
+            cos_rotation = np.clip(cos_rotation, -1.0, 1.0)
+            rotation = np.arccos(cos_rotation)
+            if R_rel[1, 0] < 0:
+                rotation = -rotation
+            rotation_deg = np.degrees(rotation)
+            
+            return {
+                'flexion': flexion_deg,
+                'adduction': adduction_deg,
+                'rotation': rotation_deg
+            }
+            
+        except Exception as e:
+            print(f"Error calculating Grood and Suntay angles: {e}")
+            import traceback
+            traceback.print_exc()
+            return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
+    
+    @staticmethod
+    def get_current_knee_angles():
+        """Get the current knee angles."""
+        return UpdateVisualization.current_knee_angles.copy()
+    
+    @staticmethod
+    def reset_landmarks():
+        """Reset all stored landmarks."""
+        UpdateVisualization.tibia_landmarks.clear()
+        UpdateVisualization.femur_landmarks.clear()
+        UpdateVisualization.current_knee_angles = {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
+
+
+
 
     def add_coordinate_axes(self, position, rotation, name, axis_length=50.0):
         """
