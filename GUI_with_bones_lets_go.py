@@ -229,10 +229,10 @@ class KneeFlexionExperiment(QMainWindow):
                             UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_proximal")
                             UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_distal")
 
-                            #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m1")
-                            #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m2")
-                            #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m3")
-                            #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m4")
+                            UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m1")
+                            UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m2")
+                            UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m3")
+                            UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m4")
 
                             #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_ref")
 
@@ -316,7 +316,6 @@ class KneeFlexionExperiment(QMainWindow):
             print(f"Tab changed to {index}, visualization updated")
 
     def setup_ui(self):
-        
         
         # Main widget and layout
         main_widget = QWidget()
@@ -972,13 +971,13 @@ class KneeFlexionExperiment(QMainWindow):
             # -   Add landmark to tibia -
             # ---------------------------
             tibia_medial = constants.TIBIA_MEDIAL
-            #tibia_m1 = np.array([-87.40117250193568, -90.80779189255344, 1575.7205254081575])
+            tibia_m1 = np.array([-87.40117250193568, -90.80779189255344, 1575.7205254081575])
             tibia_lateral = constants.TIBIA_LATERAL
-            #tibia_m2 = np.array([-111.04134830095568, -114.69156189192014, 1559.338514868094])
+            tibia_m2 = np.array([-111.04134830095568, -114.69156189192014, 1559.338514868094])
             tibia_proximal = constants.TIBIA_PROXIMAL
-            #tibia_m3 = np.array([-124.53185834797662, -88.77439542502907, 1557.3575856843993])
+            tibia_m3 = np.array([-124.53185834797662, -88.77439542502907, 1557.3575856843993])
             tibia_distal = constants.TIBIA_DISTAL
-            #tibia_m4 = np.array([-106.98374014215688, -72.95723968988962, 1555.5494236207694])
+            tibia_m4 = np.array([-106.98374014215688, -72.95723968988962, 1555.5494236207694])
             #tibia_ref = np.array([-87.40117250193568-0.018, -90.80779189255344, 1575.7205254081575])
 
 
@@ -993,14 +992,14 @@ class KneeFlexionExperiment(QMainWindow):
             UpdateVisualization.add_landmark(self, tibia_proximal_rot, "tibia_proximal")
             UpdateVisualization.add_landmark(self, tibia_distal_rot, "tibia_distal")
 
-            #tibia_m1_rot = rotation@(tibia_m1+translation)
-            #tibia_m2_rot = rotation@(tibia_m2+translation)
-            #tibia_m3_rot = rotation@(tibia_m3+translation)
-            #tibia_m4_rot = rotation@(tibia_m4+translation)
-            #UpdateVisualization.add_landmark(self, tibia_m1_rot, "tibia_m1")
-            #UpdateVisualization.add_landmark(self, tibia_m2_rot, "tibia_m2")
-            #UpdateVisualization.add_landmark(self, tibia_m3_rot, "tibia_m3")
-            #UpdateVisualization.add_landmark(self, tibia_m4_rot, "tibia_m4")
+            tibia_m1_rot = rotation@(tibia_m1+translation)
+            tibia_m2_rot = rotation@(tibia_m2+translation)
+            tibia_m3_rot = rotation@(tibia_m3+translation)
+            tibia_m4_rot = rotation@(tibia_m4+translation)
+            UpdateVisualization.add_landmark(self, tibia_m1_rot, "tibia_m1")
+            UpdateVisualization.add_landmark(self, tibia_m2_rot, "tibia_m2")
+            UpdateVisualization.add_landmark(self, tibia_m3_rot, "tibia_m3")
+            UpdateVisualization.add_landmark(self, tibia_m4_rot, "tibia_m4")
             #UpdateVisualization.add_landmark(self, tibia_ref_rot, "tibia_ref")
 
             # ---------------------------

@@ -24,6 +24,8 @@ class UpdateVisualization():
     tibiaproximaldistal = [0, 0, 0]
     tibiavarusaxis = [0, 0, 0]
 
+    floatingaxis = [0, 0, 0]
+
     def update_current_visualization(self, force, torque):
         """Update the force/torque visualization with only the current data."""
         # Force arrow
@@ -249,10 +251,10 @@ class UpdateVisualization():
         # Set the position of the force arrow - attach to tibia at specific point
         #tibia_pos = MeshUtils.get_tibia_force_origin(self.last_tibia_position)
         #tibia_pos = UpdateVisualization.tibia_landmarks['tibia_proximal']['position']
-        tibia_pos = [0,0,0]
+        tibiaproximal= UpdateVisualization.tibia_landmarks['tibia_proximal']['position']
         
         # Calculate end point for the arrow
-        end_point = tibia_pos + force_scaled
+        end_point = tibiaproximal + force_scaled
         
         # First, remove old arrows if they exist
         if hasattr(self, 'force_arrow_shaft') and self.force_arrow_shaft is not None:
@@ -262,7 +264,7 @@ class UpdateVisualization():
         
         # Create new arrows
         self.force_arrow_shaft, self.force_arrow_head = MeshUtils.create_arrow(
-            tibia_pos, end_point, color=(1, 0, 0, 1), arrow_size=constants.ARROW_SIZE, shaft_width=constants.SHAFT_WIDTH
+            tibiaproximal, end_point, color=(1, 0, 0, 1), arrow_size=constants.ARROW_SIZE, shaft_width=constants.SHAFT_WIDTH
         )
         
         # Add new arrows to view
@@ -273,9 +275,10 @@ class UpdateVisualization():
 
         # visualize femur coordinate sys for grood and suntay
         femurdistal= UpdateVisualization.femur_landmarks['femur_distal']['position']
+        femurmedial= UpdateVisualization.femur_landmarks['femur_medial']['position']
 
         self.femur_axis_shaft_ml = MeshUtils.create_tibia_axis(
-            femurdistal, femurdistal + UpdateVisualization.femurmediallateral, color=constants.SALMON, arrow_size=500, shaft_width=2
+            femurmedial, femurmedial + UpdateVisualization.femurmediallateral, color=constants.SALMON, arrow_size=500, shaft_width=2
         )
 
         self.femur_axis_shaft_pd = MeshUtils.create_tibia_axis(
@@ -286,8 +289,10 @@ class UpdateVisualization():
             femurdistal, femurdistal + UpdateVisualization.femurvarusaxis, color=constants.DEEPSKYBLUE, arrow_size=500, shaft_width=2
         )
 
+
         #visualize tibia coordinate sys for grood and suntay
-        tibiaproximal= UpdateVisualization.tibia_landmarks['tibia_proximal']['position']
+        tibiamedial= UpdateVisualization.tibia_landmarks['tibia_medial']['position']
+        
         self.tibia_axis_shaft_ml = MeshUtils.create_tibia_axis(
             tibiaproximal, tibiaproximal + UpdateVisualization.tibiamediallateral, color=constants.SALMON, arrow_size=500, shaft_width=2
         )
@@ -300,6 +305,10 @@ class UpdateVisualization():
             tibiaproximal, tibiaproximal + UpdateVisualization.tibiavarusaxis, color=constants.DEEPSKYBLUE, arrow_size=500, shaft_width=2
         )
         
+        self.tibia_femur_floating_axis = MeshUtils.create_tibia_axis(
+            tibiaproximal, tibiaproximal + UpdateVisualization.floatingaxis, color=(1, 0, 0, 1), arrow_size=500, shaft_width=2
+        )
+
 
         if self.femur_axis_shaft_ml is not None:
             self.gl_view.addItem(self.femur_axis_shaft_ml)
@@ -318,6 +327,9 @@ class UpdateVisualization():
 
         if self.tibia_axis_shaft_varusaxis is not None:
             self.gl_view.addItem(self.tibia_axis_shaft_varusaxis)
+
+        if self.tibia_femur_floating_axis is not None:
+            self.gl_view.addItem(self.tibia_femur_floating_axis)
 
         # Update bone angles
         #UpdateVisualization.update_bone_angles(self, data_index)
@@ -651,13 +663,6 @@ class UpdateVisualization():
             femur_proximal = UpdateVisualization.femur_landmarks['femur_proximal']['position']
             femur_distal = UpdateVisualization.femur_landmarks['femur_distal']['position']
             
-            # Debug: Print landmark positions to verify they're different
-            #print(f"Debug - Tibia medial: {tibia_medial}")
-            #print(f"Debug - Tibia lateral: {tibia_lateral}")
-            #print(f"Debug - Tibia medial: {tibia_proximal}")
-            #print(f"Debug - Tibia lateral: {tibia_distal}")
-            #print(f"Debug - Femur medial: {femur_medial}")
-            #print(f"Debug - Femur lateral: {femur_lateral}")
             
             # Define coordinate systems according to Grood and Suntay
             
@@ -732,6 +737,9 @@ class UpdateVisualization():
                 print("Warning: Floating axis is degenerate")
                 return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
             floating_axis = floating_axis / np.linalg.norm(floating_axis)
+
+            UpdateVisualization.floatingaxis = floating_axis
+
             
             # Calculate Grood and Suntay angles using rotation matrix decomposition
             
