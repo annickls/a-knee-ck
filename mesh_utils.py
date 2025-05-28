@@ -102,57 +102,6 @@ class MeshUtils:
             return shaft, None
         
 
-    @staticmethod
-    def create_femur_axis(start_point, end_point, color=(1,0,0,1), arrow_size=50.0, shaft_width=2.0):
-        """Create an axis from start_point to end_point"""
-        direction = end_point - start_point
-        length = np.linalg.norm(direction)
-        if length < 0.01:
-            return None, None
-            
-        direction = direction / length
-        shaft_length = length * 0.85
-        shaft_end = start_point + direction * shaft_length
-        shaft_points = np.array([start_point, shaft_end])
-        
-        shaft = gl.GLLinePlotItem(pos=shaft_points, color=color, width=shaft_width, antialias=True)
-        
-        try:
-            md = gl.MeshData.cylinder(rows=10, cols=40, radius=[0, arrow_size], length=length*0.15)
-            vertices = md.vertexes()
-            faces = md.faces()
-            
-            z_axis = np.array([0, 0, -1])
-            
-            if np.allclose(direction, z_axis, rtol=1e-5, atol=1e-5):
-                rotation_matrix = np.eye(3)
-            elif np.allclose(direction, -z_axis, rtol=1e-5, atol=1e-5):
-                rotation_matrix = np.array([
-                    [1, 0, 0],
-                    [0, -1, 0],
-                    [0, 0, -1]
-                ])
-            else:
-                rotation_axis = np.cross(z_axis, direction)
-                rotation_axis = rotation_axis / np.linalg.norm(rotation_axis)
-                
-                angle = np.arccos(np.clip(np.dot(z_axis, direction), -1.0, 1.0))
-                
-                K = np.array([
-                    [0, -rotation_axis[2], rotation_axis[1]],
-                    [rotation_axis[2], 0, -rotation_axis[0]],
-                    [-rotation_axis[1], rotation_axis[0], 0]
-                ])
-                rotation_matrix = np.eye(3) + np.sin(angle) * K + (1 - np.cos(angle)) * np.dot(K, K)
-            
-            transformed_vertices = np.dot(vertices, rotation_matrix.T)
-            transformed_vertices += shaft_end
-
-            return shaft
-        except Exception as e:
-            print(f"Error creating femur axis: {e}")
-            return shaft, None
-
 
     @staticmethod
     def create_tibia_axis(start_point, end_point, color=(1,0,0,1), arrow_size=50.0, shaft_width=2.0):
@@ -166,44 +115,6 @@ class MeshUtils:
         shaft_points = np.array([start_point, shaft_end])
         
         shaft = gl.GLLinePlotItem(pos=shaft_points, color=color, width=shaft_width, antialias=True)
-
-        #return shaft
-        
-        """try:
-            md = gl.MeshData.cylinder(rows=10, cols=40, radius=[0, arrow_size], length=length*0.15)
-            vertices = md.vertexes()
-            faces = md.faces()
-            
-            z_axis = np.array([0, 0, -1])
-            
-            if np.allclose(direction, z_axis, rtol=1e-5, atol=1e-5):
-                rotation_matrix = np.eye(3)
-            elif np.allclose(direction, -z_axis, rtol=1e-5, atol=1e-5):
-                rotation_matrix = np.array([
-                    [1, 0, 0],
-                    [0, -1, 0],
-                    [0, 0, -1]
-                ])
-            else:
-                rotation_axis = np.cross(z_axis, direction)
-                rotation_axis = rotation_axis / np.linalg.norm(rotation_axis)
-                
-                angle = np.arccos(np.clip(np.dot(z_axis, direction), -1.0, 1.0))
-                
-                K = np.array([
-                    [0, -rotation_axis[2], rotation_axis[1]],
-                    [rotation_axis[2], 0, -rotation_axis[0]],
-                    [-rotation_axis[1], rotation_axis[0], 0]
-                ])
-                rotation_matrix = np.eye(3) + np.sin(angle) * K + (1 - np.cos(angle)) * np.dot(K, K)
-            
-            transformed_vertices = np.dot(vertices, rotation_matrix.T)
-            transformed_vertices += shaft_end
-
-            return shaft
-        except Exception as e:
-            print(f"Error creating femur axis: {e}")
-            return shaft, None"""
         return shaft
 
     

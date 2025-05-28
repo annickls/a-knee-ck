@@ -273,6 +273,24 @@ class UpdateVisualization():
         if self.force_arrow_head is not None:
             self.gl_view.addItem(self.force_arrow_head)
 
+        #remove old axes from the plot
+        if hasattr(self, 'femur_axis_shaft_ml') and self.femur_axis_shaft_ml is not None:
+            self.gl_view.removeItem(self.femur_axis_shaft_ml)
+        if hasattr(self, 'femur_axis_shaft_pd') and self.femur_axis_shaft_pd is not None:
+            self.gl_view.removeItem(self.femur_axis_shaft_pd)
+        if hasattr(self, 'femur_axis_shaft_varusaxis') and self.femur_axis_shaft_varusaxis is not None:
+            self.gl_view.removeItem(self.femur_axis_shaft_varusaxis)
+
+        if hasattr(self, 'tibia_axis_shaft_ml') and self.tibia_axis_shaft_ml is not None:
+            self.gl_view.removeItem(self.tibia_axis_shaft_ml)
+        if hasattr(self, 'tibia_axis_shaft_pd') and self.tibia_axis_shaft_pd is not None:
+            self.gl_view.removeItem(self.tibia_axis_shaft_pd)
+        if hasattr(self, 'tibia_axis_shaft_varusaxis') and self.tibia_axis_shaft_varusaxis is not None:
+            self.gl_view.removeItem(self.tibia_axis_shaft_varusaxis)
+
+        if hasattr(self, 'tibia_femur_floating_axis') and self.tibia_femur_floating_axis  is not None:
+            self.gl_view.removeItem(self.tibia_femur_floating_axis)
+
         # visualize femur coordinate sys for grood and suntay
         femurdistal= UpdateVisualization.femur_landmarks['femur_distal']['position']
         femurmedial= UpdateVisualization.femur_landmarks['femur_medial']['position']
@@ -376,124 +394,6 @@ class UpdateVisualization():
             'z': None,  # ML axis
             'origin': None  # Origin point
         }
-
-    """@staticmethod
-    def update_axes_visualization(self, data_index=0):
-        #Update the anatomical axes visualization in 3D bone view
-        # Skip if not on the bone visualization tab
-        if self.tabs.currentIndex() != 2:
-            return
-        
-        # Skip if we don't have bone positions
-        if not hasattr(self, 'last_femur_position') or not hasattr(self, 'last_tibia_position'):
-            return
-        
-        # Skip if knee_analyzer is not initialized
-        if not hasattr(self, 'knee_analyzer') or self.knee_analyzer is None:
-            print("Warning: knee_analyzer is not initialized, skipping axes visualization update")
-            return
-        
-        # Create axes visualization objects if they don't exist yet
-        if not hasattr(self, 'femur_axis_visuals'):
-            UpdateVisualization.visualize_anatomical_axes(self)
-        
-        # Get transformed landmarks - use the improved quaternion_to_landmarks function
-        femur_landmarks = UpdateVisualization.quaternion_to_landmarks(
-            self,
-            self.last_femur_position,
-            self.last_femur_quaternion,
-            'femur'
-        )
-        
-        tibia_landmarks = UpdateVisualization.quaternion_to_landmarks(
-            self,
-            self.last_tibia_position,
-            self.last_tibia_quaternion,
-            'tibia'
-        )
-        
-        # Use KneeJointAnalyzer to get the current anatomical axes
-        try:
-            # Convert any numpy arrays to lists for the knee analyzer
-            femur_landmarks_dict = {k: v.tolist() if isinstance(v, np.ndarray) else v 
-                                for k, v in femur_landmarks.items()}
-            tibia_landmarks_dict = {k: v.tolist() if isinstance(v, np.ndarray) else v 
-                                for k, v in tibia_landmarks.items()}
-            
-            # Update the transformations
-            angles = self.knee_analyzer.update_transformations(femur_landmarks_dict, tibia_landmarks_dict)
-            
-            # Get the current axes from the analyzer
-            femur_axes = self.knee_analyzer.current_femur_axes
-            tibia_axes = self.knee_analyzer.current_tibia_axes
-            
-            # Get origins - using distal femur and proximal tibia as joint center points
-            femur_origin = femur_landmarks['distal']
-            tibia_origin = tibia_landmarks['proximal']
-            
-            # Define axis lengths (scale as needed)
-            axis_length = 50.0
-            
-            # Update femur axes visualization
-            UpdateVisualization._update_axis_visual(
-                self,
-                self.femur_axis_visuals, 'x', 
-                femur_origin, 
-                femur_origin + femur_axes[:, 0] * axis_length,
-                color=(1, 0, 0, 1)  # Red for AP
-            )
-            UpdateVisualization._update_axis_visual(
-                self,
-                self.femur_axis_visuals, 'y', 
-                femur_origin, 
-                femur_origin + femur_axes[:, 1] * axis_length,
-                color=(0, 1, 0, 1)  # Green for PD
-            )
-            UpdateVisualization._update_axis_visual(
-                self,
-                self.femur_axis_visuals, 'z', 
-                femur_origin, 
-                femur_origin + femur_axes[:, 2] * axis_length,
-                color=(0, 0, 1, 1)  # Blue for ML
-            )
-            
-            # Update tibia axes visualization
-            UpdateVisualization._update_axis_visual(
-                self,
-                self.tibia_axis_visuals, 'x', 
-                tibia_origin, 
-                tibia_origin + tibia_axes[:, 0] * axis_length,
-                color=(1, 0, 0, 1)  # Red for AP
-            )
-            UpdateVisualization._update_axis_visual(
-                self,
-                self.tibia_axis_visuals, 'y', 
-                tibia_origin, 
-                tibia_origin + tibia_axes[:, 1] * axis_length,
-                color=(0, 1, 0, 1)  # Green for PD
-            )
-            UpdateVisualization._update_axis_visual(
-                self,
-                self.tibia_axis_visuals, 'z', 
-                tibia_origin, 
-                tibia_origin + tibia_axes[:, 2] * axis_length,
-                color=(0, 0, 1, 1)  # Blue for ML
-            )
-            
-            # Update origin points
-            UpdateVisualization._update_origin_visual(self, self.femur_axis_visuals, femur_origin, color=(1, 1, 1, 1))
-            UpdateVisualization._update_origin_visual(self, self.tibia_axis_visuals, tibia_origin, color=(1, 1, 1, 1))
-            
-            # Update angle display
-            self.joint_angles_text.setText(
-                f"Joint Angles: Flexion: {angles['flexion']:.1f}°, " +
-                f"Varus/Valgus: {angles['varus_valgus']:.1f}°, " +
-                f"Rotation: {angles['rotation']:.1f}°"
-            )
-        except Exception as e:
-            print(f"Error updating anatomical axes: {str(e)}")
-            import traceback
-            traceback.print_exc()"""
 
 
     @staticmethod
