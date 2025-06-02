@@ -11,6 +11,7 @@ import constants
 import numpy as np
 from mesh_utils import MeshUtils
 from PyQt5.QtCore import Qt, QTimer
+import math
 class UpdateVisualization():
         # Add class variables to store landmark positions for angle calculations
     tibia_landmarks = {}
@@ -276,17 +277,17 @@ class UpdateVisualization():
         #remove old axes from the plot
         if hasattr(self, 'femur_axis_shaft_ml') and self.femur_axis_shaft_ml is not None:
             self.gl_view.removeItem(self.femur_axis_shaft_ml)
-        if hasattr(self, 'femur_axis_shaft_pd') and self.femur_axis_shaft_pd is not None:
-            self.gl_view.removeItem(self.femur_axis_shaft_pd)
-        if hasattr(self, 'femur_axis_shaft_varusaxis') and self.femur_axis_shaft_varusaxis is not None:
-            self.gl_view.removeItem(self.femur_axis_shaft_varusaxis)
+        #if hasattr(self, 'femur_axis_shaft_pd') and self.femur_axis_shaft_pd is not None:
+        #    self.gl_view.removeItem(self.femur_axis_shaft_pd)
+        #if hasattr(self, 'femur_axis_shaft_varusaxis') and self.femur_axis_shaft_varusaxis is not None:
+        #    self.gl_view.removeItem(self.femur_axis_shaft_varusaxis)
 
-        if hasattr(self, 'tibia_axis_shaft_ml') and self.tibia_axis_shaft_ml is not None:
-            self.gl_view.removeItem(self.tibia_axis_shaft_ml)
+        #if hasattr(self, 'tibia_axis_shaft_ml') and self.tibia_axis_shaft_ml is not None:
+        #    self.gl_view.removeItem(self.tibia_axis_shaft_ml)
         if hasattr(self, 'tibia_axis_shaft_pd') and self.tibia_axis_shaft_pd is not None:
             self.gl_view.removeItem(self.tibia_axis_shaft_pd)
-        if hasattr(self, 'tibia_axis_shaft_varusaxis') and self.tibia_axis_shaft_varusaxis is not None:
-            self.gl_view.removeItem(self.tibia_axis_shaft_varusaxis)
+        #if hasattr(self, 'tibia_axis_shaft_varusaxis') and self.tibia_axis_shaft_varusaxis is not None:
+        #    self.gl_view.removeItem(self.tibia_axis_shaft_varusaxis)
 
         if hasattr(self, 'tibia_femur_floating_axis') and self.tibia_femur_floating_axis  is not None:
             self.gl_view.removeItem(self.tibia_femur_floating_axis)
@@ -299,29 +300,29 @@ class UpdateVisualization():
             femurmedial, femurmedial + UpdateVisualization.femurmediallateral, color=constants.SALMON, arrow_size=500, shaft_width=2
         )
 
-        self.femur_axis_shaft_pd = MeshUtils.create_tibia_axis(
-            femurdistal, femurdistal + UpdateVisualization.femurproximaldistal, color=constants.LIMEGREEN, arrow_size=500, shaft_width=2
-        )
+        #self.femur_axis_shaft_pd = MeshUtils.create_tibia_axis(
+        #    femurdistal, femurdistal + UpdateVisualization.femurproximaldistal, color=constants.LIMEGREEN, arrow_size=500, shaft_width=2
+        #)
 
-        self.femur_axis_shaft_varusaxis = MeshUtils.create_tibia_axis(
-            femurdistal, femurdistal + UpdateVisualization.femurvarusaxis, color=constants.DEEPSKYBLUE, arrow_size=500, shaft_width=2
-        )
+        #self.femur_axis_shaft_varusaxis = MeshUtils.create_tibia_axis(
+        #    femurdistal, femurdistal + UpdateVisualization.femurvarusaxis, color=constants.DEEPSKYBLUE, arrow_size=500, shaft_width=2
+        #)
 
 
         #visualize tibia coordinate sys for grood and suntay
         tibiamedial= UpdateVisualization.tibia_landmarks['tibia_medial']['position']
         
-        self.tibia_axis_shaft_ml = MeshUtils.create_tibia_axis(
-            tibiaproximal, tibiaproximal + UpdateVisualization.tibiamediallateral, color=constants.SALMON, arrow_size=500, shaft_width=2
-        )
+        #self.tibia_axis_shaft_ml = MeshUtils.create_tibia_axis(
+        #    tibiaproximal, tibiaproximal + UpdateVisualization.tibiamediallateral, color=constants.SALMON, arrow_size=500, shaft_width=2
+        #)
 
         self.tibia_axis_shaft_pd = MeshUtils.create_tibia_axis(
             tibiaproximal, tibiaproximal + UpdateVisualization.tibiaproximaldistal, color=constants.LIMEGREEN, arrow_size=500, shaft_width=2
         )
 
-        self.tibia_axis_shaft_varusaxis = MeshUtils.create_tibia_axis(
-            tibiaproximal, tibiaproximal + UpdateVisualization.tibiavarusaxis, color=constants.DEEPSKYBLUE, arrow_size=500, shaft_width=2
-        )
+        #self.tibia_axis_shaft_varusaxis = MeshUtils.create_tibia_axis(
+        #    tibiaproximal, tibiaproximal + UpdateVisualization.tibiavarusaxis, color=constants.DEEPSKYBLUE, arrow_size=500, shaft_width=2
+        #)
         
         self.tibia_femur_floating_axis = MeshUtils.create_tibia_axis(
             tibiaproximal, tibiaproximal + UpdateVisualization.floatingaxis, color=(1, 0, 0, 1), arrow_size=500, shaft_width=2
@@ -331,20 +332,20 @@ class UpdateVisualization():
         if self.femur_axis_shaft_ml is not None:
             self.gl_view.addItem(self.femur_axis_shaft_ml)
 
-        if self.femur_axis_shaft_pd is not None:
-            self.gl_view.addItem(self.femur_axis_shaft_pd)
+        #if self.femur_axis_shaft_pd is not None:
+        #    self.gl_view.addItem(self.femur_axis_shaft_pd)
 
-        if self.femur_axis_shaft_varusaxis is not None:
-            self.gl_view.addItem(self.femur_axis_shaft_varusaxis)
+        #if self.femur_axis_shaft_varusaxis is not None:
+        #    self.gl_view.addItem(self.femur_axis_shaft_varusaxis)
 
-        if self.tibia_axis_shaft_ml is not None:
-            self.gl_view.addItem(self.tibia_axis_shaft_ml)
+        #if self.tibia_axis_shaft_ml is not None:
+        #    self.gl_view.addItem(self.tibia_axis_shaft_ml)
 
         if self.tibia_axis_shaft_pd is not None:
             self.gl_view.addItem(self.tibia_axis_shaft_pd)
 
-        if self.tibia_axis_shaft_varusaxis is not None:
-            self.gl_view.addItem(self.tibia_axis_shaft_varusaxis)
+        #if self.tibia_axis_shaft_varusaxis is not None:
+        #    self.gl_view.addItem(self.tibia_axis_shaft_varusaxis)
 
         if self.tibia_femur_floating_axis is not None:
             self.gl_view.addItem(self.tibia_femur_floating_axis)
@@ -518,11 +519,8 @@ class UpdateVisualization():
         if UpdateVisualization._has_required_landmarks():
             angles = UpdateVisualization.calculate_grood_suntay_angles()
             UpdateVisualization.current_knee_angles = angles
+            print(angles['adduction'])
             
-            # Print or log the angles for debugging
-            """print(f"Knee Angles - Flexion: {angles['flexion']:.2f}°, "
-                  f"Adduction: {angles['adduction']:.2f}°, "
-                  f"Internal Rotation: {angles['rotation']:.2f}°")"""
             
             self.joint_angles_text.setText(
                     f"Joint Angles: Flexion: {angles['flexion']:.2f}°, "
@@ -642,6 +640,7 @@ class UpdateVisualization():
 
             
             # Calculate Grood and Suntay angles using rotation matrix decomposition
+         
             
             # Create rotation matrices for femur and tibia coordinate systems
             R_femur = np.column_stack([e1f, e2f, e3f])
@@ -673,11 +672,43 @@ class UpdateVisualization():
                 rotation = -rotation
             rotation_deg = np.degrees(rotation)
             
+
+            e1 = e1f
+            e3 = e2t
+            e2 = floating_axis
+    
+            # 1. Flexion/Extension (rotation about e1)
+            # This is the angle between the projections of e3 onto the plane perpendicular to e1
+            cos_alpha = np.dot(e3, np.dot(R_femur[:, 2], np.eye(3) - np.outer(e1, e1)))
+            sin_alpha = np.dot(e2, np.dot(R_femur[:, 2], np.eye(3) - np.outer(e1, e1)))
+            flexion_extension = math.atan2(sin_alpha, cos_alpha)
+            
+            # 2. Abduction/Adduction (rotation about e3)  
+            cos_beta = np.dot(e1, np.dot(R_femur[:, 0], np.eye(3) - np.outer(e3, e3)))
+            sin_beta = np.dot(e2, np.dot(R_femur[:, 0], np.eye(3) - np.outer(e3, e3)))
+            abduction_adduction = math.atan2(sin_beta, cos_beta)
+            
+            # 3. Internal/External rotation (rotation about e2)
+            cos_gamma = np.dot(e1, e3)
+            sin_gamma = np.linalg.norm(np.cross(e1, e3))
+            internal_external = math.atan2(sin_gamma, cos_gamma)
+
+            flexion_deg = np.degrees(flexion_extension)
+            adduction_deg = np.degrees(abduction_adduction)
+            rotation_deg = np.degrees(internal_external)
+
+
+
             return {
                 'flexion': flexion_deg,
                 'adduction': adduction_deg,
                 'rotation': rotation_deg
             }
+            
+            
+
+       
+
             
         except Exception as e:
             print(f"Error calculating Grood and Suntay angles: {e}")

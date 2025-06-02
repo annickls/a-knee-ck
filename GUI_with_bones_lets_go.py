@@ -358,7 +358,7 @@ class KneeFlexionExperiment(QMainWindow):
          
         # Add tabs to the tab widget
         self.tabs.addTab(self.tab1, "current data")
-        self.tabs.addTab(self.tab2, "current + previous data")
+        self.tabs.addTab(self.tab2, "force && torque history")
         self.tabs.addTab(self.tab3, "bone visualization")
 
         # first tab

@@ -60,5 +60,5 @@ BUTTON_HEIGHT = 60
 root_folder = os.path.dirname(current_folder)
 #DATA_PREVIOUS_TEST = "print_data.F_sensor_temp_data_79.txt"
 DATA_PREVIOUS_TEST = "/home/annick/GUI/data_for_gui/print_data.F_sensor_temp_data_7.txt"
-DATA_CSV = os.path.join(root_folder, "knee_eval_ws", "data.csv")
-#DATA_CSV = "data_new.csv"
+#DATA_CSV = os.path.join(root_folder, "knee_eval_ws", "data.csv")
+DATA_CSV = "data_new.csv"
