@@ -11,23 +11,16 @@ FLEXION_ANGLES = [0, 30, 60, 90, 120]
 current_folder = os.path.dirname(os.path.abspath(__file__))
 
 # Bone STLs
-#FEMUR= "/home/annick/a-knee-ck/data_for_gui/femur_new.stl"
 #FEMUR = "simplify_Segmentation_1_femur.stl"
 femur_fileName = "femur_new.stl"
 FEMUR = os.path.join(current_folder, "data_for_gui", femur_fileName)
 
-#TIBIA = "/home/annick/a-knee-ck/data_for_gui/tibia_new.stl"
 #TIBIA = "simplify_Segmentation_1_tibia.stl"
-tibia_fileName = "tibia_test2.stl"
+tibia_fileName = "tibia_new.stl"
 TIBIA = os.path.join(current_folder, "data_for_gui", tibia_fileName)
 
-PIVOT_POINT_FEMUR = [0, 0, 0]
-PIVOT_POINT_TIBA = [0, 0, 0]
+
 DISTANCE_BONE_VIZ = 2000
-#TRACKER_FEMUR = [-50.0, -200.0, 1220.0]
-TRACKER_FEMUR = [0.0, 0.0, 0.0]
-#TRACKER_TIBIA = [-100.0, -200.0, 1520.0]
-TRACKER_TIBIA = [0.0, 0.0, 0.0]
 
 #landmarks
 FEMUR_MEDIAL = np.array([83.37752532958984, -106.33291625976562, 1398.119384765625])

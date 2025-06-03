@@ -979,6 +979,8 @@ class KneeFlexionExperiment(QMainWindow):
             tibia_distal = constants.TIBIA_DISTAL
             tibia_m4 = np.array([-106.98374014215688, -72.95723968988962, 1555.5494236207694])
             #tibia_ref = np.array([-87.40117250193568-0.018, -90.80779189255344, 1575.7205254081575])
+            #tibia_m4 = np.array([-106.98374014215688, -90.5572396899, 1535.5494236207694])
+            #tibia_m3 = np.array([-124.53185834797662, -88.77439542502907, 1521.95758568])
 
 
             tibia_medial_rot = rotation@(tibia_medial+translation)

@@ -519,7 +519,7 @@ class UpdateVisualization():
         if UpdateVisualization._has_required_landmarks():
             angles = UpdateVisualization.calculate_grood_suntay_angles()
             UpdateVisualization.current_knee_angles = angles
-            print(angles['adduction'])
+            #print(angles['adduction'])
             
             
             self.joint_angles_text.setText(
