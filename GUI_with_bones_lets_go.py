@@ -241,6 +241,7 @@ class KneeFlexionExperiment(QMainWindow):
 
                         # Access the calculated angles
                         angles = UpdateVisualization.get_current_knee_angles()
+                        #print(angles)
                         #print(f"Flexion: {angles['flexion']:.2f}°")
                         #print(f"Adduction: {angles['adduction']:.2f}°") 
                         #print(f"Internal Rotation: {angles['rotation']:.2f}°")
@@ -286,20 +287,40 @@ class KneeFlexionExperiment(QMainWindow):
         """Stop recording and save data to file"""
         if not self.recording:
             return
+            
         self.recording = False
-        
+
         # Create a filename with timestamp, angle, and test type
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         angle = constants.FLEXION_ANGLES[self.current_angle_index]
-        filename = f"recorded_data/{timestamp}_{angle}deg_{self.current_test_name}.txt"
-        
-        # Write data to file
-        with open(filename, 'w') as f:
-            f.write("# Timestamp, Fx, Fy, Fz, Tx, Ty, Tz, FemurPosX, FemurPosY, FemurPosZ, FemurQuatW, FemurQuatX, FemurQuatY, FemurQuatZ, TibiaPosX, TibiaPosY, TibiaPosZ, TibiaQuatW, TibiaQuatX, TibiaQuatY, TibiaQuatZ\n")
+        #filename = f"recorded_data/{timestamp}_{angle}deg_{self.current_test_name}.txt"
+
+        # Get current knee angles
+        angles = UpdateVisualization.get_current_knee_angles()
+
+        # Create angle filename (same as main file but with _angles suffix)
+        relevant_filename = f"recorded_data/{timestamp}_{angle}deg_{self.current_test_name}_relevant.txt"
+
+        # Write both files simultaneously
+        #with open(filename, 'w') as main_file, open(arelevant_filename, 'w') as angle_file:
+        with open(relevant_filename, 'w') as angle_file:    
+            # Write main data
+            #main_file.write("# Timestamp, Fx, Fy, Fz, Tx, Ty, Tz, FemurPosX, FemurPosY, FemurPosZ, FemurQuatW, FemurQuatX, FemurQuatY, FemurQuatZ, TibiaPosX, TibiaPosY, TibiaPosZ, TibiaQuatW, TibiaQuatX, TibiaQuatY, TibiaQuatZ\n")
+            #for data_point in self.current_recording_data:
+            #    main_file.write(','.join(map(str, data_point)) + '\n')
+            
+            # Write angle data with timestamp and torques
+            angle_file.write("# Timestamp, Flexion, Adduction, Rotation, Tx, Ty, Tz, Fx, Fy, Fz\n")
             for data_point in self.current_recording_data:
-                f.write(','.join(map(str, data_point)) + '\n')
-        
-        print(f"Saved {len(self.current_recording_data)} data points to {filename}")
+                timestamp = data_point[0]  
+                tx, ty, tz = data_point[4], data_point[5], data_point[6]  
+                fx, fy, fz = data_point[1], data_point[2], data_point[3]  
+                angle_file.write(f"{timestamp}, {angles['flexion']}, {angles['adduction']}, {angles['rotation']}, {tx}, {ty}, {tz}, {fx}, {fy}, {fz}\n")
+
+        #print(f"Saved {len(self.current_recording_data)} data points to {filename}")
+        print(f"Saved {len(self.current_recording_data)} data points with relevant data to {relevant_filename}")
+
+        # Clear the recording data
         self.current_recording_data = []
     
     def on_tab_changed(self, index):

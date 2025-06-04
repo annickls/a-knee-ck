@@ -524,9 +524,9 @@ class UpdateVisualization():
             
             
             self.joint_angles_text.setText(
-                    f"Joint Angles: Flexion: {angles['flexion']:.2f}°, "
-                    f"Varus/Valgus: {angles['adduction']:.2f}°, "
-                    f"Rotation: {angles['rotation']:.2f}°"
+                    f"Joint Angles: Flexion: {int(angles['flexion'])}°, "
+                    f"Varus/Valgus: {int(angles['adduction'])}°, "
+                    f"Rotation: {int(angles['rotation'])}°"
                 )
             
 
