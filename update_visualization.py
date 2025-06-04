@@ -16,7 +16,7 @@ class UpdateVisualization():
         # Add class variables to store landmark positions for angle calculations
     tibia_landmarks = {}
     femur_landmarks = {}
-    current_knee_angles = {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
+    current_knee_angles = {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0, 'anterior_posterior': 0.0, 'medial_lateral': 0.0, 'proximal_distal': 0.0}
     femurmediallateral = [0,0,0]
     femurproximaldistal = [0, 0, 0]
     femurvarusaxis = [0, 0, 0]
@@ -524,9 +524,15 @@ class UpdateVisualization():
             
             
             self.joint_angles_text.setText(
-                    f"Joint Angles: Flexion: {int(angles['flexion'])}°, "
-                    f"Varus/Valgus: {int(angles['adduction'])}°, "
-                    f"Rotation: {int(angles['rotation'])}°"
+                    f"Joint Angles: \n Flexion: {int(angles['flexion'])}°\n "
+                    f"Varus (+) / Valgus (-): {int(angles['adduction'])}°\n "
+                    f"Int (+) and Ext (-) Rotation: {int(angles['rotation'])}°"
+                )
+            
+            self.joint_translations_text.setText(
+                    f"Translation: \n anterior(+) / posterior(-): {int(angles['anterior_posterior'])}mm\n "
+                    f"medial(+) / lateral(-): {int(angles['medial_lateral'])}mm\n "
+                    f"distal(+) / proximal(-): {int(angles['proximal_distal'])}mm"
                 )
             
 
@@ -639,72 +645,9 @@ class UpdateVisualization():
 
             UpdateVisualization.floatingaxis = floating_axis
 
-            
-            """# Calculate Grood and Suntay angles using rotation matrix decomposition
-         
-            
-            # Create rotation matrices for femur and tibia coordinate systems
-            R_femur = np.column_stack([e1f, e2f, e3f])
-            R_tibia = np.column_stack([e1t, e2t, e3t])
-            
-            # Relative rotation matrix from femur to tibia
-            R_rel = R_tibia.T @ R_femur  # Rotation from femur to tibia frame
-            
-            # Extract Grood and Suntay angles from rotation matrix
-            # Following the ZXY Euler angle sequence used in Grood and Suntay
-            
-            # Flexion (rotation about femoral medial-lateral axis)
-            flexion = np.arcsin(-R_rel[1, 2])
-            flexion_deg = np.degrees(flexion)
-            
-            # Adduction (rotation about floating axis)
-            cos_adduction = R_rel[2, 2] / np.cos(flexion)
-            cos_adduction = np.clip(cos_adduction, -1.0, 1.0)
-            adduction = np.arccos(cos_adduction)
-            if R_rel[0, 2] < 0:
-                adduction = -adduction
-            adduction_deg = np.degrees(adduction)
-            
-            # Internal rotation (rotation about tibial long axis)
-            cos_rotation = R_rel[1, 1] / np.cos(flexion)
-            cos_rotation = np.clip(cos_rotation, -1.0, 1.0)
-            rotation = np.arccos(cos_rotation)
-            if R_rel[1, 0] < 0:
-                rotation = -rotation
-            rotation_deg = np.degrees(rotation)
-            
-            # Verify orthogonality
-            print("R_femur orthogonal:", np.allclose(R_femur @ R_femur.T, np.eye(3)))
-            print("R_tibia orthogonal:", np.allclose(R_tibia @ R_tibia.T, np.eye(3)))
-
-            # Floating axis should be perpendicular to both e1f and e2t
-            print("Floating axis ⊥ e1f:", np.abs(np.dot(floating_axis, e1f)) < 1e-10)
-            print("Floating axis ⊥ e2t:", np.abs(np.dot(floating_axis, e2t)) < 1e-10)
-
-            e1 = e1f
-            e3 = e2t
-            e2 = floating_axis"""
-    
-            """# 1. Flexion/Extension (rotation about e1)
-            # This is the angle between the projections of e3 onto the plane perpendicular to e1
-            cos_alpha = np.dot(e3, np.dot(R_femur[:, 2], np.eye(3) - np.outer(e1, e1)))
-            sin_alpha = np.dot(e2, np.dot(R_femur[:, 2], np.eye(3) - np.outer(e1, e1)))
-            flexion_extension = math.atan2(sin_alpha, cos_alpha)
-            
-            # 2. Abduction/Adduction (rotation about e3)  
-            cos_beta = np.dot(e1, np.dot(R_femur[:, 0], np.eye(3) - np.outer(e3, e3)))
-            sin_beta = np.dot(e2, np.dot(R_femur[:, 0], np.eye(3) - np.outer(e3, e3)))
-            abduction_adduction = math.atan2(sin_beta, cos_beta)
-            
-            # 3. Internal/External rotation (rotation about e2)
-            cos_gamma = np.dot(e1, e3)
-            sin_gamma = np.linalg.norm(np.cross(e1, e3))
-            internal_external = math.atan2(sin_gamma, cos_gamma)
-
-            flexion_deg = np.degrees(flexion_extension)
-            adduction_deg = np.degrees(abduction_adduction)
-            rotation_deg = np.degrees(internal_external)"""
-
+            # Define origins of coordinate systems (typically midpoints of key landmarks)
+            femur_origin = (femur_medial + femur_lateral) / 2.0  # Midpoint of femoral condyles
+            tibia_origin = (tibia_medial + tibia_lateral) / 2.0   # Midpoint of tibial plateau
 
                 # ============= ANGLE CALCULATIONS =============
             
@@ -767,6 +710,26 @@ class UpdateVisualization():
             rotation_angle = np.arccos(cos_rotation) * 180.0 / np.pi
             rotation_angle *= sign_rotation
             
+            # ============= TRANSLATION CALCULATIONS =============
+        
+            # Calculate translation vector from tibia origin to femur origin
+            translation_vector = femur_origin - tibia_origin
+            
+            # Project translation onto Grood & Suntay axes (consistent with rotation definitions)
+            
+            # Medial-Lateral translation: along femoral flexion-extension axis (e1f)
+            # (+ = medial, - = lateral)  
+            medial_lateral = np.dot(translation_vector, e1f)
+            
+            # Anterior-Posterior translation: along floating axis
+            # (+ = anterior, - = posterior)
+            anterior_posterior = -np.dot(translation_vector, floating_axis)
+            
+            # Proximal-Distal translation: along tibial long axis (e2t)
+            # (+ = proximal, - = distal)
+            proximal_distal = np.dot(translation_vector, e2t)
+            
+
             # Store results for debugging/visualization
             UpdateVisualization.knee_angles = {
                 'flexion': flexion_angle,
@@ -774,32 +737,27 @@ class UpdateVisualization():
                 'rotation': rotation_angle
             }
             
+            UpdateVisualization.knee_translations = {
+                'anterior_posterior': anterior_posterior,
+                'medial_lateral': medial_lateral,
+                'proximal_distal': proximal_distal
+            }
             
             return {
                 'flexion': flexion_angle,
                 'adduction': adduction_angle,
-                'rotation': rotation_angle
+                'rotation': rotation_angle,
+                'anterior_posterior': anterior_posterior,
+                'medial_lateral': medial_lateral,
+                'proximal_distal': proximal_distal
             }
-
-
-
-
-            #return {
-            #    'flexion': flexion_deg,
-            #    'adduction': adduction_deg,
-             #   'rotation': rotation_deg
-            #}
-            
-            
-
-       
-
             
         except Exception as e:
-            print(f"Error calculating Grood and Suntay angles: {e}")
+            print(f"Error calculating Grood and Suntay angles and translations: {e}")
             import traceback
             traceback.print_exc()
-            return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
+            return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0,
+                'anterior_posterior': 0.0, 'medial_lateral': 0.0, 'proximal_distal': 0.0}
     
     @staticmethod
     def get_current_knee_angles():

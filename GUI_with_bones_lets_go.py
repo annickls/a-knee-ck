@@ -310,13 +310,12 @@ class KneeFlexionExperiment(QMainWindow):
             #    main_file.write(','.join(map(str, data_point)) + '\n')
             
             # Write angle data with timestamp and torques
-            angle_file.write("# Timestamp, Flexion, Adduction, Rotation, Tx, Ty, Tz, Fx, Fy, Fz\n")
+            angle_file.write("# Timestamp, Flexion, Adduction, Rotation, Translation_ap, Translation_ml, Translation_pd, Tx, Ty, Tz, Fx, Fy, Fz\n")
             for data_point in self.current_recording_data:
                 timestamp = data_point[0]  
                 tx, ty, tz = data_point[4], data_point[5], data_point[6]  
                 fx, fy, fz = data_point[1], data_point[2], data_point[3]  
-                angle_file.write(f"{timestamp}, {angles['flexion']}, {angles['adduction']}, {angles['rotation']}, {tx}, {ty}, {tz}, {fx}, {fy}, {fz}\n")
-
+                angle_file.write(f"{timestamp}, {angles['flexion']}, {angles['adduction']}, {angles['rotation']}, {angles['anterior_posterior']}, {angles['medial_lateral']}, {angles['proximal_distal']}, {tx}, {ty}, {tz}, {fx}, {fy}, {fz}\n")
         #print(f"Saved {len(self.current_recording_data)} data points to {filename}")
         print(f"Saved {len(self.current_recording_data)} data points with relevant data to {relevant_filename}")
 
@@ -430,13 +429,21 @@ class KneeFlexionExperiment(QMainWindow):
         self.force_arrow_head = None
 
         # Add text display for joint angles
-        self.joint_angles_text = QLabel("Joint Angles: Not calculated yet")
+        angles_translations_layout = QHBoxLayout()
+        self.joint_angles_text = QLabel("Joint Angles: \n Not calculated yet")
         self.joint_angles_text.setFont(QFont("Arial", 10))
-        self.joint_angles_text.setAlignment(Qt.AlignCenter)
-        tab3_layout.addWidget(self.joint_angles_text)
+        self.joint_angles_text.setAlignment(Qt.AlignLeft)
+        angles_translations_layout.addWidget(self.joint_angles_text)
+
+        # Add text display for joint translations
+        self.joint_translations_text = QLabel("Joint Translations: \n Not calculated yet")
+        self.joint_translations_text.setFont(QFont("Arial", 10))
+        self.joint_translations_text.setAlignment(Qt.AlignLeft)
+        angles_translations_layout.addWidget(self.joint_translations_text)
 
         # Connect tab change signal
         self.tabs.currentChanged.connect(self.on_tab_changed)
+        tab3_layout.addLayout(angles_translations_layout)
         tab3_layout.addWidget(self.gl_view)
         tab3_layout.addLayout(bone_load_layout)
         self.tab3.setLayout(tab3_layout)
