@@ -825,7 +825,7 @@ class KneeFlexionExperiment(QMainWindow):
             yaml_path = os.path.join(current_folder, "data_for_gui/marker_coordinates.yaml")
             translation, rotation = MeshUtils.kabsch(yaml_path, "femur")
             femur_vertices_centered = femur_vertices + translation
-            femur_vertices_transformed = np.dot(femur_vertices_centered, rotation)
+            femur_vertices_transformed = (rotation@(femur_vertices_centered.T)).T
             # Create mesh item with the repositioned and rotated vertices
             # Set up the mesh with proper shading
             self.femur_mesh = gl.GLMeshItem(

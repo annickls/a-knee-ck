@@ -598,7 +598,7 @@ class UpdateVisualization():
             
             # Tibial coordinate system
             # e2t: tibial long axis (proximal - distal direction)
-            e2t = tibia_distal - tibia_proximal
+            e2t = tibia_proximal - tibia_distal
             if np.linalg.norm(e2t) < 1e-10:
                 print("Warning: Tibia proximal-distal vector is too small")
                 return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
@@ -607,7 +607,7 @@ class UpdateVisualization():
             UpdateVisualization.tibiaproximaldistal = e2t
             
             # Temporary tibial medial-lateral axis
-            temp_tibia = tibia_lateral - tibia_medial
+            temp_tibia = tibia_medial - tibia_lateral
             if np.linalg.norm(temp_tibia) < 1e-10:
                 print("Warning: Tibia medial-lateral vector is too small")
                 return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
@@ -718,7 +718,7 @@ class UpdateVisualization():
             
             # The reference direction in the femoral coordinate system (e2f)
             # Calculate angle between the projected tibial axis and femoral long axis
-            cos_flexion = np.dot(e2t_projected, e2f)
+            cos_flexion = np.dot(e2f, e2t_projected)
             cos_flexion = np.clip(cos_flexion, -1.0, 1.0)  # Prevent numerical errors
             
             # Determine sign using cross product
@@ -727,6 +727,7 @@ class UpdateVisualization():
             
             flexion_angle = np.arccos(cos_flexion) * 180.0 / np.pi
             flexion_angle *= sign_flexion
+            
             
             # 2. ABDUCTION/ADDUCTION ANGLE  
             # Angle between femoral long axis (e2f) and its projection onto the plane
