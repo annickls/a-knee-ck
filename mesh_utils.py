@@ -136,6 +136,7 @@ class MeshUtils:
 
         q = bone_ref
         p = bone_slicer
+        
 
         centroid_p = np.mean(p, axis=0)
         centroid_q = np.mean(q, axis=0)
