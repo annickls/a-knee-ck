@@ -33,6 +33,7 @@ from scipy.spatial.transform import Rotation as R
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from PyQt5.QtCore import QPropertyAnimation, QEasingCurve, pyqtProperty
+from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsProxyWidget
 
 class KneeFlexionExperiment(QMainWindow):
     def __init__(self):
@@ -407,8 +408,10 @@ class KneeFlexionExperiment(QMainWindow):
         
          # bone tab
         tab3_layout = QVBoxLayout()
-        # Create 3D GL View Widget for bone visualization
+
+        # Create your GLViewWidget
         self.gl_view = gl.GLViewWidget()
+
         self.gl_view.setCameraPosition(distance = constants.DISTANCE_BONE_VIZ, elevation=30, azimuth=-55)
         self.gl_view.setMinimumHeight(600)
         # Add axes for reference
@@ -431,13 +434,13 @@ class KneeFlexionExperiment(QMainWindow):
         # Add text display for joint angles
         angles_translations_layout = QHBoxLayout()
         self.joint_angles_text = QLabel("Joint Angles: \n Not calculated yet")
-        self.joint_angles_text.setFont(QFont("Arial", 10))
+        self.joint_angles_text.setFont(QFont("Arial", 11))
         self.joint_angles_text.setAlignment(Qt.AlignLeft)
         angles_translations_layout.addWidget(self.joint_angles_text)
 
         # Add text display for joint translations
         self.joint_translations_text = QLabel("Joint Translations: \n Not calculated yet")
-        self.joint_translations_text.setFont(QFont("Arial", 10))
+        self.joint_translations_text.setFont(QFont("Arial", 11))
         self.joint_translations_text.setAlignment(Qt.AlignLeft)
         angles_translations_layout.addWidget(self.joint_translations_text)
 
@@ -960,6 +963,7 @@ class KneeFlexionExperiment(QMainWindow):
             translation, rotation = MeshUtils.kabsch(yaml_path, "tibia")
             tibia_vertices_centered = tibia_vertices + translation
             tibia_vertices_transformed = (rotation@(tibia_vertices_centered.T)).T
+
 
             # Create mesh item with the repositioned and rotated vertices
             self.tibia_mesh = gl.GLMeshItem(
