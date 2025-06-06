@@ -1,4 +1,3 @@
-
 import os
 import numpy as np
 
@@ -11,33 +10,24 @@ FLEXION_ANGLES = [0, 30, 60, 90, 120]
 current_folder = os.path.dirname(os.path.abspath(__file__))
 
 # Bone STLs
-#FEMUR = "simplify_Segmentation_1_femur.stl"
 femur_fileName = "femur_new.stl"
 FEMUR = os.path.join(current_folder, "data_for_gui", femur_fileName)
 
-#TIBIA = "simplify_Segmentation_1_tibia.stl"
 tibia_fileName = "tibia_new.stl"
 TIBIA = os.path.join(current_folder, "data_for_gui", tibia_fileName)
 
-
+#camera settings bone visualization
 DISTANCE_BONE_VIZ = 2000
+SCALE_FACTOR_ARROW = 20
 
-#landmarks
-#FEMUR_MEDIAL = np.array([83.37752532958984, -106.33291625976562, 1398.119384765625])
-#FEMUR_LATERAL = np.array([67.22425079345703, -157.83193969726562, 1399.614990234375])
-#FEMUR_PROXIMAL= np.array([77.49647521972656, -127.54686737060547, 911.6983032226562])
-#FEMUR_DISTAL = np.array([65.46070098876953, -113.15875244140625, 1384.9970703125])
-#TIBIA_MEDIAL = np.array([66.68541717529297, -103.38368225097656, 1400.172119140625])
-#TIBIA_LATERAL = np.array([63.146968841552734, -147.86354064941406, 1407.7625732421875])
-#TIBIA_PROXIMAL = np.array([66.52336883544922, -121.91870880126953, 1399.853271484375])
-#TIBIA_DISTAL = np.array([65.01982879638672, -115.64944458007812, 1804.212646484375])
-
-FEMUR_LATERAL = np.array([83.65975952148438,-155.98374938964844,1397.8660888671875])
-FEMUR_MEDIAL = np.array([95,-105,1398.205])
+#landmarks of femur and tibia for grood & suntay calculations
+FEMUR_LATERAL = np.array([110.0960693359375, -108.0730972290039, 1385.2410888671875])
+FEMUR_MEDIAL = np.array([96.95680236816406,-164.77444458007812,1386.5252685546875])
 FEMUR_PROXIMAL= np.array([75,-130,935])
 FEMUR_DISTAL = np.array([83.05928802490234,-130.9730682373047,1373.7659912109375])
-TIBIA_LATERAL = np.array([69.4353256225586,-142.4228515625,1407.4371337890625])
-TIBIA_MEDIAL= np.array([80,-105,1401.037])
+
+TIBIA_LATERAL = np.array([80,-105,1401.037])
+TIBIA_MEDIAL= np.array([69.4353256225586,-142.4228515625,1407.4371337890625])
 TIBIA_PROXIMAL = np.array([66.03421783447266,-120.49935913085938,1400.6976318359375])
 TIBIA_DISTAL = np.array([56.0771484375,-104.6276626586914,1806.37841796875])
 
@@ -61,7 +51,6 @@ BUTTON_HEIGHT = 60
 
 # data
 root_folder = os.path.dirname(current_folder)
-#DATA_PREVIOUS_TEST = "print_data.F_sensor_temp_data_79.txt"
 DATA_PREVIOUS_TEST = "/home/annick/GUI/data_for_gui/print_data.F_sensor_temp_data_7.txt"
 DATA_CSV = os.path.join(root_folder, "knee_eval_ws", "data.csv")
 #DATA_CSV = "data_new.csv"

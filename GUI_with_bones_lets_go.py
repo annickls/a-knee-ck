@@ -216,11 +216,6 @@ class KneeFlexionExperiment(QMainWindow):
                             UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_lateral")
                             UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_proximal")
                             UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_distal")
-
-                            #UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_m1")
-                            #UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_m2")
-                            #UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_m3")
-                            #UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_m4")
                         
                         if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
                             MeshUtils.update_mesh_with_data(self.tibia_mesh, tibia_position, tibia_quaternion)
@@ -230,12 +225,12 @@ class KneeFlexionExperiment(QMainWindow):
                             UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_proximal")
                             UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_distal")
 
-                            UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m1")
-                            UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m2")
-                            UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m3")
-                            UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m4")
+                            #visualize landmarks for debugging
+                            #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m1")
+                            #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m2")
+                            #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m3")
+                            #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m4")
 
-                            #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_ref")
 
 
 
@@ -249,6 +244,9 @@ class KneeFlexionExperiment(QMainWindow):
                         
                         # Update force visualization
                         UpdateVisualization.update_bone_forces(self, self.current_data_index)
+
+                    elif current_tab == 3:
+                        UpdateVisualization.update_tibia_path(self)
                     
                     # If recording is active, record this data point
                     if self.recording:
@@ -376,11 +374,13 @@ class KneeFlexionExperiment(QMainWindow):
         self.tab1 = QWidget()
         self.tab2 = QWidget()
         self.tab3 = QWidget()
+        self.tab4 = QWidget()
          
         # Add tabs to the tab widget
         self.tabs.addTab(self.tab1, "current data")
         self.tabs.addTab(self.tab2, "force && torque history")
         self.tabs.addTab(self.tab3, "bone visualization")
+        self.tabs.addTab(self.tab4, "position path")
 
         # first tab
         tab1_layout = QVBoxLayout()
@@ -451,6 +451,15 @@ class KneeFlexionExperiment(QMainWindow):
         tab3_layout.addLayout(bone_load_layout)
         self.tab3.setLayout(tab3_layout)
 
+
+           # second tab
+        tab4_layout = QVBoxLayout()
+        # Create matplotlib visualization
+        self.canvas_path = MplCanvas(width=4, height=8, mode="history")
+        tab4_layout.addWidget(self.canvas_path)
+        self.tab4.setLayout(tab4_layout)
+
+        
 
         left_layout.addWidget(self.tabs)
         self.left_widget.setLayout(left_layout)
@@ -597,6 +606,8 @@ class KneeFlexionExperiment(QMainWindow):
                 UpdateVisualization.update_history_visualization(self)
             elif current_tab == 2:  # Bone visualization tab
                 UpdateVisualization.update_bone_forces(self, self.current_data_index)
+            elif current_tab == 3:
+                UpdateVisualization.update_tibia_path(self)
             
             # Record data if recording is active
             if self.recording:
@@ -811,25 +822,6 @@ class KneeFlexionExperiment(QMainWindow):
         elif self.current_angle_index >= (len(constants.FLEXION_ANGLES) - 1) and self.external_rot_button.isEnabled() == False:
             self.next_button.setEnabled(False) # End of regular experiment - enable Lachmann test
 
-    def add_camera_roll(self, roll_degrees=0):
-        """
-        Add roll rotation to current camera view
-        """
-        import numpy as np
-        from PyQt5.QtGui import QMatrix4x4
-        
-        # Create roll rotation matrix
-        roll_rad = np.radians(roll_degrees)
-        
-        # Apply roll around the Z-axis (viewing direction)
-        roll_transform = QMatrix4x4()
-        roll_transform.rotate(roll_degrees, 0, 0, 1)  # Roll around Z-axis
-        
-        # Get current view matrix and apply roll
-        current_view = self.gl_view.viewMatrix()
-        rolled_view = roll_transform * current_view
-        
-        self.gl_view.setCameraParams(view=rolled_view)  
  
     def load_femur(self):
         try:
@@ -896,46 +888,27 @@ class KneeFlexionExperiment(QMainWindow):
             self.load_femur_button.setText("Femur Loaded")
 
             femur_medial = constants.FEMUR_MEDIAL
-            femur_m1 = np.array([-135.7341373087663, -89.61809527197374, 1277.6241128472025])
             femur_lateral = constants.FEMUR_LATERAL
-            #femur_m2 = np.array([-111.04134830095568, -114.69156189192014, 1559.338514868094])
             femur_proximal = constants.FEMUR_PROXIMAL
-            #femur_m3 = np.array([-124.53185834797662, -88.77439542502907, 1557.3575856843993])
             femur_distal = constants.FEMUR_DISTAL
-            #femur_m4 = np.array([-106.98374014215688, -72.95723968988962, 1555.5494236207694])
-
 
             femur_medial_rot = rotation@(femur_medial+translation)
             femur_lateral_rot = rotation@(femur_lateral+translation)
             femur_proximal_rot = rotation@(femur_proximal+translation)
             femur_distal_rot = rotation@(femur_distal+translation)
 
-
             UpdateVisualization.add_landmark(self, femur_medial_rot, "femur_medial")
             UpdateVisualization.add_landmark(self, femur_lateral_rot, "femur_lateral")
             UpdateVisualization.add_landmark(self, femur_proximal_rot, "femur_proximal")
             UpdateVisualization.add_landmark(self, femur_distal_rot, "femur_distal")
             
-            
-            femur_m1_rot = rotation@(femur_m1+translation)
-            #femur_m2_rot = rotation@(femur_m2+translation)
-            #femur_m3_rot = rotation@(femur_m3+translation)
-            #femur_m4_rot = rotation@(femur_m4+translation)
-            #UpdateVisualization.add_landmark(self, femur_m1_rot, "femur_m1")
-            #UpdateVisualization.add_landmark(self, femur_m2_rot, "femur_m2")
-            #UpdateVisualization.add_landmark(self, femur_m3_rot, "femur_m3")
-            #UpdateVisualization.add_landmark(self, femur_m4_rot, "femur_m4")
-
-
-            #print("Femur loaded successfully")
+         
         except Exception as e:
             print(f"Error loading femur: {e}")
             import traceback
             traceback.print_exc()
             self.load_femur_button.setText("Error")
-
-
-        
+  
 
     def load_tibia(self):
         try:
@@ -997,41 +970,40 @@ class KneeFlexionExperiment(QMainWindow):
             # Disable load button
             self.load_tibia_button.setEnabled(False)
             self.load_tibia_button.setText("Tibia Loaded")
-            #print("Tibia loaded successfully")
 
             # ---------------------------
             # -   Add landmark to tibia -
             # ---------------------------
             tibia_medial = constants.TIBIA_MEDIAL
-            tibia_m1 = np.array([-87.40117250193568, -90.80779189255344, 1575.7205254081575])
             tibia_lateral = constants.TIBIA_LATERAL
-            tibia_m2 = np.array([-111.04134830095568, -114.69156189192014, 1559.338514868094])
             tibia_proximal = constants.TIBIA_PROXIMAL
-            tibia_m3 = np.array([-124.53185834797662, -88.77439542502907, 1557.3575856843993])
             tibia_distal = constants.TIBIA_DISTAL
-            tibia_m4 = np.array([-106.98374014215688, -72.95723968988962, 1555.5494236207694])
-            #tibia_ref = np.array([-87.40117250193568-0.018, -90.80779189255344, 1575.7205254081575])
-
 
             tibia_medial_rot = rotation@(tibia_medial+translation)
             tibia_lateral_rot = rotation@(tibia_lateral+translation)
             tibia_proximal_rot = rotation@(tibia_proximal+translation)
             tibia_distal_rot = rotation@(tibia_distal+translation)
 
-            
             UpdateVisualization.add_landmark(self, tibia_medial_rot, "tibia_medial")
             UpdateVisualization.add_landmark(self, tibia_lateral_rot, "tibia_lateral")
             UpdateVisualization.add_landmark(self, tibia_proximal_rot, "tibia_proximal")
             UpdateVisualization.add_landmark(self, tibia_distal_rot, "tibia_distal")
 
-            tibia_m1_rot = rotation@(tibia_m1+translation)
-            tibia_m2_rot = rotation@(tibia_m2+translation)
-            tibia_m3_rot = rotation@(tibia_m3+translation)
-            tibia_m4_rot = rotation@(tibia_m4+translation)
-            UpdateVisualization.add_landmark(self, tibia_m1_rot, "tibia_m1")
-            UpdateVisualization.add_landmark(self, tibia_m2_rot, "tibia_m2")
-            UpdateVisualization.add_landmark(self, tibia_m3_rot, "tibia_m3")
-            UpdateVisualization.add_landmark(self, tibia_m4_rot, "tibia_m4")
+
+
+            #visualise marker points for debugging
+            #tibia_m1 = np.array([-87.40117250193568, -90.80779189255344, 1575.7205254081575])
+            #tibia_m2 = np.array([-111.04134830095568, -114.69156189192014, 1559.338514868094])
+            #tibia_m3 = np.array([-124.53185834797662, -88.77439542502907, 1557.3575856843993])
+            #tibia_m4 = np.array([-106.98374014215688, -72.95723968988962, 1555.5494236207694])
+            #tibia_m1_rot = rotation@(tibia_m1+translation)
+            #tibia_m2_rot = rotation@(tibia_m2+translation)
+            #tibia_m3_rot = rotation@(tibia_m3+translation)
+            #tibia_m4_rot = rotation@(tibia_m4+translation)
+            #UpdateVisualization.add_landmark(self, tibia_m1_rot, "tibia_m1")
+            #UpdateVisualization.add_landmark(self, tibia_m2_rot, "tibia_m2")
+            #UpdateVisualization.add_landmark(self, tibia_m3_rot, "tibia_m3")
+            #UpdateVisualization.add_landmark(self, tibia_m4_rot, "tibia_m4")
             #UpdateVisualization.add_landmark(self, tibia_ref_rot, "tibia_ref")
 
             # ---------------------------

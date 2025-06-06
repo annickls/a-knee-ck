@@ -1,4 +1,3 @@
-
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -12,6 +11,8 @@ import numpy as np
 from mesh_utils import MeshUtils
 from PyQt5.QtCore import Qt, QTimer
 import math
+
+
 class UpdateVisualization():
         # Add class variables to store landmark positions for angle calculations
     tibia_landmarks = {}
@@ -246,12 +247,9 @@ class UpdateVisualization():
         force = self.forces[idx].copy()
         
         # Scale forces for better visualization
-        scale_factor = 20.0
-        force_scaled = force * scale_factor
+        force_scaled = force * constants.SCALE_FACTOR_ARROW
 
         # Set the position of the force arrow - attach to tibia at specific point
-        #tibia_pos = MeshUtils.get_tibia_force_origin(self.last_tibia_position)
-        #tibia_pos = UpdateVisualization.tibia_landmarks['tibia_proximal']['position']
         tibiaproximal= UpdateVisualization.tibia_landmarks['tibia_proximal']['position']
         
         # Calculate end point for the arrow
@@ -274,79 +272,43 @@ class UpdateVisualization():
         if self.force_arrow_head is not None:
             self.gl_view.addItem(self.force_arrow_head)
 
+
+
         #remove old axes from the plot
         if hasattr(self, 'femur_axis_shaft_ml') and self.femur_axis_shaft_ml is not None:
             self.gl_view.removeItem(self.femur_axis_shaft_ml)
-        #if hasattr(self, 'femur_axis_shaft_pd') and self.femur_axis_shaft_pd is not None:
-        #    self.gl_view.removeItem(self.femur_axis_shaft_pd)
-        #if hasattr(self, 'femur_axis_shaft_varusaxis') and self.femur_axis_shaft_varusaxis is not None:
-        #    self.gl_view.removeItem(self.femur_axis_shaft_varusaxis)
 
-        #if hasattr(self, 'tibia_axis_shaft_ml') and self.tibia_axis_shaft_ml is not None:
-        #    self.gl_view.removeItem(self.tibia_axis_shaft_ml)
         if hasattr(self, 'tibia_axis_shaft_pd') and self.tibia_axis_shaft_pd is not None:
             self.gl_view.removeItem(self.tibia_axis_shaft_pd)
-        #if hasattr(self, 'tibia_axis_shaft_varusaxis') and self.tibia_axis_shaft_varusaxis is not None:
-        #    self.gl_view.removeItem(self.tibia_axis_shaft_varusaxis)
 
         if hasattr(self, 'tibia_femur_floating_axis') and self.tibia_femur_floating_axis  is not None:
             self.gl_view.removeItem(self.tibia_femur_floating_axis)
 
-        # visualize femur coordinate sys for grood and suntay
+        # visualize important axes for grood and suntay
         femurdistal= UpdateVisualization.femur_landmarks['femur_distal']['position']
         femurmedial= UpdateVisualization.femur_landmarks['femur_medial']['position']
         femurlateral= UpdateVisualization.femur_landmarks['femur_lateral']['position']
-
-        self.femur_axis_shaft_ml = MeshUtils.create_tibia_axis(
-            femurlateral, femurlateral + UpdateVisualization.femurmediallateral, color=constants.SALMON, arrow_size=500, shaft_width=2
-        )
-
-        #self.femur_axis_shaft_pd = MeshUtils.create_tibia_axis(
-        #    femurdistal, femurdistal + UpdateVisualization.femurproximaldistal, color=constants.LIMEGREEN, arrow_size=500, shaft_width=2
-        #)
-
-        #self.femur_axis_shaft_varusaxis = MeshUtils.create_tibia_axis(
-        #    femurdistal, femurdistal + UpdateVisualization.femurvarusaxis, color=constants.DEEPSKYBLUE, arrow_size=500, shaft_width=2
-        #)
-
-
-        #visualize tibia coordinate sys for grood and suntay
         tibiamedial= UpdateVisualization.tibia_landmarks['tibia_medial']['position']
-        
-        #self.tibia_axis_shaft_ml = MeshUtils.create_tibia_axis(
-        #    tibiaproximal, tibiaproximal + UpdateVisualization.tibiamediallateral, color=constants.SALMON, arrow_size=500, shaft_width=2
-        #)
 
+        #Femur medial-lateral axis
+        self.femur_axis_shaft_ml = MeshUtils.create_tibia_axis(
+            femurmedial, femurmedial + UpdateVisualization.femurmediallateral, color=constants.SALMON, arrow_size=500, shaft_width=2
+        )
+        #Tibia proximal-distal axis
         self.tibia_axis_shaft_pd = MeshUtils.create_tibia_axis(
-            tibiaproximal, tibiaproximal + UpdateVisualization.tibiaproximaldistal, color=constants.LIMEGREEN, arrow_size=500, shaft_width=2
-        )
-
-        #self.tibia_axis_shaft_varusaxis = MeshUtils.create_tibia_axis(
-        #    tibiaproximal, tibiaproximal + UpdateVisualization.tibiavarusaxis, color=constants.DEEPSKYBLUE, arrow_size=500, shaft_width=2
-        #)
-        
+                    tibiaproximal, tibiaproximal + UpdateVisualization.tibiaproximaldistal, color=constants.LIMEGREEN, arrow_size=500, shaft_width=2
+                )
+        #floating axis (cross product between the other two axes)
         self.tibia_femur_floating_axis = MeshUtils.create_tibia_axis(
-            tibiaproximal, tibiaproximal + UpdateVisualization.floatingaxis, color=(1, 0, 0, 1), arrow_size=500, shaft_width=2
-        )
+                    tibiaproximal, tibiaproximal + UpdateVisualization.floatingaxis, color=constants.DEEPSKYBLUE, arrow_size=500, shaft_width=2
+                )
 
 
         if self.femur_axis_shaft_ml is not None:
             self.gl_view.addItem(self.femur_axis_shaft_ml)
 
-        #if self.femur_axis_shaft_pd is not None:
-        #    self.gl_view.addItem(self.femur_axis_shaft_pd)
-
-        #if self.femur_axis_shaft_varusaxis is not None:
-        #    self.gl_view.addItem(self.femur_axis_shaft_varusaxis)
-
-        #if self.tibia_axis_shaft_ml is not None:
-        #    self.gl_view.addItem(self.tibia_axis_shaft_ml)
-
         if self.tibia_axis_shaft_pd is not None:
             self.gl_view.addItem(self.tibia_axis_shaft_pd)
-
-        #if self.tibia_axis_shaft_varusaxis is not None:
-        #    self.gl_view.addItem(self.tibia_axis_shaft_varusaxis)
 
         if self.tibia_femur_floating_axis is not None:
             self.gl_view.addItem(self.tibia_femur_floating_axis)
@@ -573,7 +535,7 @@ class UpdateVisualization():
             
             # Femoral coordinate system
             # e1f: femoral flexion-extension axis (lateral - medial direction)
-            e1f = femur_medial - femur_lateral
+            e1f = femur_lateral - femur_medial
             if np.linalg.norm(e1f) < 1e-10:
                 print("Warning: Femur medial-lateral vector is too small")
                 return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
@@ -613,7 +575,7 @@ class UpdateVisualization():
             UpdateVisualization.tibiaproximaldistal = e2t
             
             # Temporary tibial medial-lateral axis
-            temp_tibia = tibia_medial - tibia_lateral
+            temp_tibia = tibia_lateral - tibia_medial
             if np.linalg.norm(temp_tibia) < 1e-10:
                 print("Warning: Tibia medial-lateral vector is too small")
                 return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
@@ -830,3 +792,45 @@ class UpdateVisualization():
             self.gl_view.addItem(axis_line)
             self.CoSy[name][axis] = axis_line
         self.Cosy_origin[name] = position
+
+
+    def update_tibia_path(self):
+        """Update the tibia position path visualization"""
+        #tibia_position_annick = UpdateVisualization.tibia_landmarks['tibia_distal']['position']
+        #print(tibia_position_annick)
+        #print(UpdateVisualization.tibia_landmarks)
+        try:
+            # Extract tibia position data
+            #tibia_position_annick = UpdateVisualization.tibia_landmarks['tibia_distal']['position']
+            tibia_position_annick = [1, 1, 1]
+
+            tibia_pos_x = tibia_position_annick[0]
+            tibia_pos_y = tibia_position_annick[1]
+            tibia_pos_z = tibia_position_annick[2]
+            
+            # Get time array (adjust column index as needed)
+            time_array = 1
+            
+            # Update the canvas
+            self.canvas_path.update_tibia_position_path(
+                tibia_pos_x, tibia_pos_y, tibia_pos_z, time_array
+            )
+            
+        except Exception as e:
+            print(f"Error updating tibia path: {e}")
+
+    def clear_tibia_path(self):
+        """Clear the tibia position path visualization"""
+        if hasattr(self.canvas_path, 'axes_position'):
+            self.canvas_path.axes_position.clear()
+            self.canvas_path._setup_position_plot()
+            self.canvas_path.draw()
+
+    # Alternative: If you want to automatically update when data changes
+    def on_data_update(self):
+        """Called whenever your data is updated"""
+        # Your existing data update code...
+        
+        # Automatically update the tibia path if tab4 is active
+        if hasattr(self, 'canvas_path') and self.canvas_path.mode == "position_path":
+            self.update_tibia_path()
