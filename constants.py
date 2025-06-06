@@ -20,6 +20,7 @@ TIBIA = os.path.join(current_folder, "data_for_gui", tibia_fileName)
 DISTANCE_BONE_VIZ = 2000
 SCALE_FACTOR_ARROW = 20
 
+
 #landmarks of femur and tibia for grood & suntay calculations
 FEMUR_LATERAL = np.array([110.0960693359375, -108.0730972290039, 1385.2410888671875])
 FEMUR_MEDIAL = np.array([96.95680236816406,-164.77444458007812,1386.5252685546875])
