@@ -9,6 +9,7 @@ class MplCanvas(FigureCanvas):
     """Matplotlib canvas class for embedding plots in Qt that can display either current or historical force/torque data"""
     def __init__(self, width=5, height=4, mode="current"):
         self.fig = Figure(figsize=(width, height))
+        
         self.mode = mode  # "current", "history", or "position_path"
         
         if mode == "position_path":
@@ -24,6 +25,28 @@ class MplCanvas(FigureCanvas):
         # Initialize the FigureCanvas
         super().__init__(self.fig)
         self.fig.tight_layout()
+
+        if mode == "varus_valgus":
+            self.ax = self.fig.add_subplot(111)
+            self.ax.set_xlabel('Varus/Valgus Displacement')
+            self.ax.set_ylabel('Flexion Angle (degrees)')
+            self.ax.set_title('Real-time Flexion vs Varus/Valgus')
+            self.ax.grid(True, alpha=0.3)
+            
+            # Set initial axis limits
+            self.ax.set_xlim(-20, 20)  # Adjust range as needed
+            self.ax.set_ylim(0, 120)   # Adjust range as needed
+            
+            # Add vertical line at x=0 for reference
+            self.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
+            
+            # Initialize empty line for real-time plotting
+            self.line, = self.ax.plot([], [], 'b-', linewidth=2, alpha=0.7)
+            self.current_point, = self.ax.plot([], [], 'ro', markersize=8)
+            
+            # Store data for plotting
+            self.varus_valgus_data = []
+            self.flexion_data = []
     
     def _setup_position_plot(self):
         """Setup the tibia position path plot"""
@@ -85,6 +108,36 @@ class MplCanvas(FigureCanvas):
         self.torque_mag_text = self.axes_torque.text2D(0.4, 1.0, "", transform=self.axes_torque.transAxes)
         self.force_comp_text = self.axes_force.text2D(0.32, 0.95, "", transform=self.axes_force.transAxes, fontsize=8)
         self.torque_comp_text = self.axes_torque.text2D(0.4, 0.95, "", transform=self.axes_torque.transAxes, fontsize=8)
+
+    def update_varus_valgus_plot(self, flexion_angle, var_val_displacement):
+        """Update the varus/valgus vs flexion plot with new data"""
+        if self.mode == "varus_valgus":
+            # Add new data point
+            self.varus_valgus_data.append(var_val_displacement)
+            self.flexion_data.append(flexion_angle)
+            
+            # Keep only last N points for performance (adjust as needed)
+            max_points = 1000
+            if len(self.varus_valgus_data) > max_points:
+                self.varus_valgus_data = self.varus_valgus_data[-max_points:]
+                self.flexion_data = self.flexion_data[-max_points:]
+            
+            # Update the line plot
+            self.line.set_data(self.varus_valgus_data, self.flexion_data)
+            
+            # Update current point
+            self.current_point.set_data([var_val_displacement], [flexion_angle])
+            
+            # Auto-scale axes if needed
+            if len(self.varus_valgus_data) > 10:
+                margin = 5
+                x_min, x_max = min(self.varus_valgus_data), max(self.varus_valgus_data)
+                y_min, y_max = min(self.flexion_data), max(self.flexion_data)
+                
+                self.ax.set_xlim(x_min - margin, x_max + margin)
+                self.ax.set_ylim(y_min - margin, y_max + margin)
+            
+            self.draw()
     
     def update_tibia_position_path(self, tibia_pos_x, tibia_pos_y, tibia_pos_z, time_array):
         """Update the tibia position path visualization"""

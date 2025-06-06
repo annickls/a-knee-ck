@@ -231,7 +231,10 @@ class KneeFlexionExperiment(QMainWindow):
                             #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m3")
                             #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m4")
 
-
+                            # Example usage in your data processing loop
+                            flexion_angle = 90
+                            var_val_displacement = 10
+                            self.update_varus_valgus_diagram(flexion_angle, var_val_displacement)
 
 
 
@@ -407,16 +410,23 @@ class KneeFlexionExperiment(QMainWindow):
         self.tab2.setLayout(tab2_layout)
         
          # bone tab
+        # Modified third tab layout with dynamic diagram
         tab3_layout = QVBoxLayout()
+
+        # Create horizontal layout for bone visualization and dynamic diagram
+        bone_and_diagram_layout = QHBoxLayout()
+
+        # Left side - Bone visualization section
+        bone_viz_layout = QVBoxLayout()
 
         # Create your GLViewWidget
         self.gl_view = gl.GLViewWidget()
-
-        self.gl_view.setCameraPosition(distance = constants.DISTANCE_BONE_VIZ, elevation=30, azimuth=-55)
+        self.gl_view.setCameraPosition(distance=constants.DISTANCE_BONE_VIZ, elevation=30, azimuth=-55)
         self.gl_view.setMinimumHeight(600)
         # Add axes for reference
-        self.axes = ColoredGLAxisItem(size=(100, 100, 100)) #defined colors
+        self.axes = ColoredGLAxisItem(size=(100, 100, 100))  # defined colors
         self.gl_view.addItem(self.axes)
+
         # buttons for loading bones
         bone_load_layout = QHBoxLayout()
         self.load_femur_button = QPushButton("Load Femur")
@@ -425,13 +435,34 @@ class KneeFlexionExperiment(QMainWindow):
         self.load_tibia_button = QPushButton("Load Tibia")
         self.load_tibia_button.clicked.connect(self.load_tibia)
         bone_load_layout.addWidget(self.load_tibia_button)
+
         # set background color
         self.gl_view.setBackgroundColor(QtGui.QColor(255, 255, 255))
-         # Add force visualization objects
+        # Add force visualization objects
         self.force_arrow_shaft = None
         self.force_arrow_head = None
 
-        # Add text display for joint angles
+        bone_viz_layout.addWidget(self.gl_view)
+        bone_viz_layout.addLayout(bone_load_layout)
+
+        # Right side - Dynamic diagram section
+        diagram_layout = QVBoxLayout()
+
+        # Add title for the diagram
+        diagram_label = QLabel("Flexion vs Varus/Valgus")
+        diagram_label.setAlignment(Qt.AlignCenter)
+        diagram_label.setFont(QFont("Arial", 12, QFont.Bold))
+        diagram_layout.addWidget(diagram_label)
+
+        # Create matplotlib canvas for the dynamic diagram
+        self.canvas_varus_valgus = MplCanvas(width=4, height=6, mode="varus_valgus")
+        diagram_layout.addWidget(self.canvas_varus_valgus)
+
+        # Add both sections to horizontal layout
+        bone_and_diagram_layout.addLayout(bone_viz_layout, 2)  # Give bone viz more space (ratio 2:1)
+        bone_and_diagram_layout.addLayout(diagram_layout, 1)
+
+        # Add text display for joint angles and translations
         angles_translations_layout = QHBoxLayout()
         self.joint_angles_text = QLabel("Joint Angles: \n Not calculated yet")
         self.joint_angles_text.setFont(QFont("Arial", 11))
@@ -446,9 +477,10 @@ class KneeFlexionExperiment(QMainWindow):
 
         # Connect tab change signal
         self.tabs.currentChanged.connect(self.on_tab_changed)
+
+        # Add all components to main tab layout
         tab3_layout.addLayout(angles_translations_layout)
-        tab3_layout.addWidget(self.gl_view)
-        tab3_layout.addLayout(bone_load_layout)
+        tab3_layout.addLayout(bone_and_diagram_layout)
         self.tab3.setLayout(tab3_layout)
 
 
@@ -1019,6 +1051,11 @@ class KneeFlexionExperiment(QMainWindow):
             traceback.print_exc()
             self.load_tibia_button.setText("Error")
 
+
+    def update_varus_valgus_diagram(self, flexion_angle, var_val_displacement):
+        """Call this method to update the dynamic diagram with new data"""
+        if hasattr(self, 'canvas_varus_valgus'):
+            self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, var_val_displacement)
 
 
             
