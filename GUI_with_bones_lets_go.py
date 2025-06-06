@@ -233,9 +233,11 @@ class KneeFlexionExperiment(QMainWindow):
 
 
                             # Example usage in your data processing loop
-                            flexion_angle = 90
-                            var_val_displacement = 10
-                            self.update_varus_valgus_diagram(flexion_angle, var_val_displacement)
+                            angles_new = UpdateVisualization.get_current_knee_angles()
+                            flexion_angle = angles_new['flexion']
+                            varus_angle = angles_new['adduction']
+                            #var_val_displacement = flexion_angle - 10
+                            self.update_varus_valgus_diagram(flexion_angle, varus_angle)
 
 
                         # Access the calculated angles
@@ -455,7 +457,7 @@ class KneeFlexionExperiment(QMainWindow):
         diagram_layout.addWidget(diagram_label)
 
         # Create matplotlib canvas for the dynamic diagram
-        self.canvas_varus_valgus = MplCanvas(width=4, height=6, mode="varus_valgus")
+        self.canvas_varus_valgus = MplCanvas(width=6, height=7, mode="varus_valgus")
         diagram_layout.addWidget(self.canvas_varus_valgus)
 
         # Add both sections to horizontal layout

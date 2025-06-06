@@ -1,6 +1,5 @@
-# Script to create README.md file
+# Knee Evaluation Test Bench
 
-readme_content = """# Knee Evaluation System
 
 A real-time data visualization system for knee evaluation using OptiTrack motion capture and force/torque (FT) sensor data.
 
