@@ -231,15 +231,12 @@ class KneeFlexionExperiment(QMainWindow):
                             #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m3")
                             #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m4")
 
-<<<<<<< HEAD
+
                             # Example usage in your data processing loop
                             flexion_angle = 90
                             var_val_displacement = 10
                             self.update_varus_valgus_diagram(flexion_angle, var_val_displacement)
 
-
-=======
->>>>>>> bd01cca9ef765b2627ba967f6f374de4081f8f51
 
                         # Access the calculated angles
                         #angles = UpdateVisualization.get_current_knee_angles()
