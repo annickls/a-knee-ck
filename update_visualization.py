@@ -573,7 +573,7 @@ class UpdateVisualization():
             
             # Femoral coordinate system
             # e1f: femoral flexion-extension axis (lateral - medial direction)
-            e1f = femur_medial - femur_lateral
+            e1f = femur_lateral - femur_medial
             if np.linalg.norm(e1f) < 1e-10:
                 print("Warning: Femur medial-lateral vector is too small")
                 return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
@@ -613,7 +613,7 @@ class UpdateVisualization():
             UpdateVisualization.tibiaproximaldistal = e2t
             
             # Temporary tibial medial-lateral axis
-            temp_tibia = tibia_medial - tibia_lateral
+            temp_tibia = tibia_lateral - tibia_medial
             if np.linalg.norm(temp_tibia) < 1e-10:
                 print("Warning: Tibia medial-lateral vector is too small")
                 return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
