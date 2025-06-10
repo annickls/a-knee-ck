@@ -112,7 +112,7 @@ class MplCanvas(FigureCanvas):
         self.torque_comp_text = self.axes_torque.text2D(0.4, 0.95, "", transform=self.axes_torque.transAxes, fontsize=8)
 
     def update_varus_valgus_plot(self, flexion_angle, var_val_displacement):
-        """Update the varus/valgus vs flexion plot with new data"""
+        """Update the varus/valgus vs flexion plot with new data showing horizontal bars"""
         if self.mode == "varus_valgus":
             # Add new data point
             self.varus_valgus_data.append(var_val_displacement)
@@ -124,11 +124,35 @@ class MplCanvas(FigureCanvas):
                 self.varus_valgus_data = self.varus_valgus_data[-max_points:]
                 self.flexion_data = self.flexion_data[-max_points:]
             
-            # Update the line plot
-            self.line.set_data(self.varus_valgus_data, self.flexion_data)
+            # Clear previous plot elements
+            self.ax.clear()
             
-            # Update current point
-            self.current_point.set_data([var_val_displacement], [flexion_angle])
+            # Re-setup the plot
+            self.ax.set_xlabel('Varus/Valgus Displacement')
+            self.ax.set_ylabel('Flexion Angle (degrees)')
+            self.ax.set_title('Real-time Flexion vs Varus/Valgus')
+            self.ax.grid(True, alpha=0.3)
+            
+            # Add vertical line at x=0 for reference
+            self.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
+            
+            # Draw horizontal bars from center (x=0) to displacement value
+            for i, (displacement, flexion) in enumerate(zip(self.varus_valgus_data, self.flexion_data)):
+                # Color based on displacement direction
+                color = 'red' if displacement > 0 else 'blue'
+                alpha = 0.3 + 0.4 * (i / max(1, len(self.varus_valgus_data) - 1))  # Fade older bars
+                
+                # Draw horizontal line from 0 to displacement value
+                self.ax.plot([0, displacement], [flexion, flexion], 
+                            color=color, linewidth=2, alpha=alpha)
+            
+            # Update current point (red dot)
+            self.ax.plot(var_val_displacement, flexion_angle, 'ro', markersize=8, zorder=10)
+            
+            # Highlight current bar with thicker line
+            current_color = 'red' if var_val_displacement > 0 else 'blue'
+            self.ax.plot([0, var_val_displacement], [flexion_angle, flexion_angle], 
+                        color=current_color, linewidth=4, alpha=0.8, zorder=5)
             
             # Auto-scale axes if needed
             if len(self.varus_valgus_data) > 10:
@@ -136,8 +160,14 @@ class MplCanvas(FigureCanvas):
                 x_min, x_max = min(self.varus_valgus_data), max(self.varus_valgus_data)
                 y_min, y_max = min(self.flexion_data), max(self.flexion_data)
                 
-                self.ax.set_xlim(x_min - margin, x_max + margin)
+                # Ensure the x-axis includes zero and some margin
+                x_range = max(abs(x_min), abs(x_max))
+                self.ax.set_xlim(-x_range - margin, x_range + margin)
                 self.ax.set_ylim(y_min - margin, y_max + margin)
+            else:
+                # Set initial axis limits
+                self.ax.set_xlim(-20, 20)
+                self.ax.set_ylim(0, 120)
             
             self.draw()
     
