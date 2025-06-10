@@ -41,7 +41,7 @@ class UpdateVisualization():
             self.force_arrow_plt = self.canvas_current.axes_force.quiver(
                 0, 0, 0, 
                 force[0], force[1], force[2],
-                color='blue', 
+                color='red', 
                 linewidth=1,
                 normalize=False,
                 arrow_length_ratio=0.1
@@ -58,7 +58,7 @@ class UpdateVisualization():
             self.torque_arrow_plt = self.canvas_current.axes_torque.quiver(
                 0, 0, 0, 
                 torque[0], torque[1], torque[2],
-                color='red', 
+                color='blue', 
                 linewidth=1,
                 normalize=False,
                 arrow_length_ratio=0.1
@@ -96,8 +96,8 @@ class UpdateVisualization():
         # If we're just starting or reset, we need to draw all arrows
         if len(self.canvas_history.force_arrows) == 0:
             # Plot history with color gradient (older = more transparent)
-            cmap_force = plt.get_cmap('Blues')
-            cmap_torque = plt.get_cmap('PuRd')
+            cmap_force = plt.get_cmap('PuRd')
+            cmap_torque = plt.get_cmap('Blues')
             
             # Draw all arrows in history
             for i, (hist_force, hist_torque) in enumerate(zip(self.force_history, self.torque_history)):
@@ -272,9 +272,43 @@ class UpdateVisualization():
         if self.force_arrow_head is not None:
             self.gl_view.addItem(self.force_arrow_head)
 
+        
+        # same with torques
+        # Get current data point
+        idx = data_index % len(self.torques)
+        torque = self.torques[idx].copy()
+
+         # Scale forces for better visualization
+        torque_scaled = torque * constants.SCALE_FACTOR_ARROW
+
+        # Calculate end point for the arrow
+        end_point_torque = tibiaproximal + torque_scaled
+
+        # First, remove old arrows if they exist
+        if hasattr(self, 'torque_arrow_shaft') and self.torque_arrow_shaft is not None:
+            self.gl_view.removeItem(self.torque_arrow_shaft)
+        if hasattr(self, 'torque_arrow_head') and self.torque_arrow_head is not None:
+            self.gl_view.removeItem(self.torque_arrow_head)
+
+        # Create new arrows
+        self.torque_arrow_shaft, self.torque_arrow_head = MeshUtils.create_arrow(
+            tibiaproximal, end_point_torque, color=(0, 0, 1, 1), arrow_size=constants.ARROW_SIZE, shaft_width=constants.SHAFT_WIDTH
+        )
+
+        # Add new arrows to view
+        if self.torque_arrow_shaft is not None:
+            self.gl_view.addItem(self.torque_arrow_shaft)
+        if self.torque_arrow_head is not None:
+            self.gl_view.addItem(self.torque_arrow_head)
 
 
-        #remove old axes from the plot
+        # visualize important axes for grood and suntay
+        femurdistal= UpdateVisualization.femur_landmarks['femur_distal']['position']
+        femurmedial= UpdateVisualization.femur_landmarks['femur_medial']['position']
+        femurlateral= UpdateVisualization.femur_landmarks['femur_lateral']['position']
+        tibiamedial= UpdateVisualization.tibia_landmarks['tibia_medial']['position']
+        
+        """#remove old axes from the plot
         if hasattr(self, 'femur_axis_shaft_ml') and self.femur_axis_shaft_ml is not None:
             self.gl_view.removeItem(self.femur_axis_shaft_ml)
 
@@ -284,11 +318,6 @@ class UpdateVisualization():
         if hasattr(self, 'tibia_femur_floating_axis') and self.tibia_femur_floating_axis  is not None:
             self.gl_view.removeItem(self.tibia_femur_floating_axis)
 
-        # visualize important axes for grood and suntay
-        femurdistal= UpdateVisualization.femur_landmarks['femur_distal']['position']
-        femurmedial= UpdateVisualization.femur_landmarks['femur_medial']['position']
-        femurlateral= UpdateVisualization.femur_landmarks['femur_lateral']['position']
-        tibiamedial= UpdateVisualization.tibia_landmarks['tibia_medial']['position']
 
         #Femur medial-lateral axis
         self.femur_axis_shaft_ml = MeshUtils.create_tibia_axis(
@@ -311,8 +340,10 @@ class UpdateVisualization():
             self.gl_view.addItem(self.tibia_axis_shaft_pd)
 
         if self.tibia_femur_floating_axis is not None:
-            self.gl_view.addItem(self.tibia_femur_floating_axis)
+            self.gl_view.addItem(self.tibia_femur_floating_axis)"""
 
+        # Create/update legend
+        UpdateVisualization.create_legend(self)
         # Update bone angles
         #UpdateVisualization.update_bone_angles(self, data_index)
         
@@ -834,3 +865,36 @@ class UpdateVisualization():
         # Automatically update the tibia path if tab4 is active
         if hasattr(self, 'canvas_path') and self.canvas_path.mode == "position_path":
             self.update_tibia_path()
+
+    @staticmethod
+    def create_legend(main_window):
+        """Create a legend for force and torque arrows"""
+        # Remove existing legend items
+        if hasattr(main_window, 'legend_items'):
+            for item in main_window.legend_items:
+                if item is not None:
+                    main_window.gl_view.removeItem(item)
+        
+        main_window.legend_items = []
+        
+        # Position legend
+        legend_x = -50
+        legend_y = 50
+        legend_z = 0
+        
+        try:
+            # Create colored text items
+            force_text = gl.GLTextItem(pos=(legend_x, legend_y, legend_z), 
+                                      text="■ Force", color=(1, 0, 0, 1))
+            torque_text = gl.GLTextItem(pos=(legend_x, legend_y - 15, legend_z), 
+                                       text="■ Torque", color=(0, 0, 1, 1))
+            
+            main_window.legend_items = [force_text, torque_text]
+            
+            # Add to view
+            for item in main_window.legend_items:
+                main_window.gl_view.addItem(item)
+                
+        except Exception as e:
+            print(f"Error creating legend: {e}")
+            main_window.legend_items = []

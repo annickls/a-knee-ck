@@ -441,7 +441,9 @@ class KneeFlexionExperiment(QMainWindow):
         # Add force visualization objects
         self.force_arrow_shaft = None
         self.force_arrow_head = None
+        gl_legend = self.setup_legend_widget()
 
+        bone_viz_layout.addWidget(gl_legend)
         bone_viz_layout.addWidget(self.gl_view)
         bone_viz_layout.addLayout(bone_load_layout)
 
@@ -1057,6 +1059,25 @@ class KneeFlexionExperiment(QMainWindow):
         if hasattr(self, 'canvas_varus_valgus'):
             self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, var_val_displacement)
 
+    def setup_legend_widget(self):
+        """Create a separate widget for the legend"""
+        legend_widget = QWidget()
+        legend_layout = QVBoxLayout()
+        legend_layout.setSpacing(5)
+        legend_layout.setContentsMargins(5, 5, 5, 5)
+        
+        # Combine color and text in single labels
+        force_label = QLabel("● Force")
+        force_label.setStyleSheet("color: red; font-size: 14px;")
+        
+        torque_label = QLabel("● Torque")
+        torque_label.setStyleSheet("color: blue; font-size: 14px;")
+        
+        legend_layout.addWidget(force_label)
+        legend_layout.addWidget(torque_label)
+        legend_widget.setLayout(legend_layout)
+        
+        return legend_widget
 
             
 
