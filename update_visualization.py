@@ -17,7 +17,7 @@ class UpdateVisualization():
         # Add class variables to store landmark positions for angle calculations
     tibia_landmarks = {}
     femur_landmarks = {}
-    current_knee_angles = {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0, 'anterior_posterior': 0.0, 'medial_lateral': 0.0, 'proximal_distal': 0.0}
+    current_knee_angles = {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0, 'anterior_posterior': 0.0, 'medial_lateral': 0.0, 'proximal_distal': 0.0, 'medial_tibia-femur': 0.0, 'lateral_tibia-femur':0.0}
     femurmediallateral = [0,0,0]
     femurproximaldistal = [0, 0, 0]
     femurvarusaxis = [0, 0, 0]
@@ -318,6 +318,9 @@ class UpdateVisualization():
         if hasattr(self, 'tibia_femur_floating_axis') and self.tibia_femur_floating_axis  is not None:
             self.gl_view.removeItem(self.tibia_femur_floating_axis)
 
+
+       
+    
 
         #Femur medial-lateral axis
         self.femur_axis_shaft_ml = MeshUtils.create_tibia_axis(
@@ -723,6 +726,10 @@ class UpdateVisualization():
             proximal_distal = np.dot(translation_vector, e2t)
             
 
+            #===========Clalculation distances femur condyles - tibia plateau medial and lateral========
+            medial_tibia_femur = femur_medial - tibia_medial
+            lateral_tibia_femur = femur_lateral - tibia_lateral
+
             # Store results for debugging/visualization
             UpdateVisualization.knee_angles = {
                 'flexion': flexion_angle,
@@ -733,7 +740,9 @@ class UpdateVisualization():
             UpdateVisualization.knee_translations = {
                 'anterior_posterior': anterior_posterior,
                 'medial_lateral': medial_lateral,
-                'proximal_distal': proximal_distal
+                'proximal_distal': proximal_distal,
+                'medial_tibia_femur': medial_tibia_femur,
+                'lateral_tibia_femur': lateral_tibia_femur
             }
             
             return {
@@ -742,7 +751,9 @@ class UpdateVisualization():
                 'rotation': rotation_angle,
                 'anterior_posterior': anterior_posterior,
                 'medial_lateral': medial_lateral,
-                'proximal_distal': proximal_distal
+                'proximal_distal': proximal_distal,
+                'medial_tibia_femur': medial_tibia_femur,
+                'lateral_tibia_femur': lateral_tibia_femur
             }
             
         except Exception as e:

@@ -32,6 +32,8 @@ class MplCanvas(FigureCanvas):
             self.ax.set_ylabel('Flexion Angle (degrees)')
             self.ax.set_title('Real-time Flexion vs Varus/Valgus')
             self.ax.grid(True, alpha=0.3)
+
+            self.fig.subplots_adjust(left=0.15, bottom=0.15, right = 0.95, top =0.90)
             
             # Set initial axis limits
             self.ax.set_xlim(-20, 20)  # Adjust range as needed

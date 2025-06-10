@@ -233,9 +233,12 @@ class KneeFlexionExperiment(QMainWindow):
 
 
                             # Example usage in your data processing loop
-                            flexion_angle = 90
-                            var_val_displacement = 10
-                            self.update_varus_valgus_diagram(flexion_angle, var_val_displacement)
+                            angles_new = UpdateVisualization.get_current_knee_angles()
+                            flexion_angle = angles_new['flexion']
+                            varus_angle = angles_new['adduction']
+                            #var_val_displacement = flexion_angle - 10
+                            self.update_varus_valgus_diagram(flexion_angle, varus_angle)
+                            print(angles_new['lateral_tibia_femur'])
 
 
                         # Access the calculated angles
@@ -457,7 +460,7 @@ class KneeFlexionExperiment(QMainWindow):
         diagram_layout.addWidget(diagram_label)
 
         # Create matplotlib canvas for the dynamic diagram
-        self.canvas_varus_valgus = MplCanvas(width=4, height=6, mode="varus_valgus")
+        self.canvas_varus_valgus = MplCanvas(width=6, height=7, mode="varus_valgus")
         diagram_layout.addWidget(self.canvas_varus_valgus)
 
         # Add both sections to horizontal layout
@@ -571,7 +574,7 @@ class KneeFlexionExperiment(QMainWindow):
 
          # Start reading csv button
         self.start_buttoncsv = QPushButton("Start Reading")
-        self.start_buttoncsv.setFixedSize(150, 40)
+        #self.start_buttoncsv.setFixedSize(150, 40)
         self.start_buttoncsv.clicked.connect(self.toggle_monitoring)
         
         # Layout arrangement
@@ -580,16 +583,18 @@ class KneeFlexionExperiment(QMainWindow):
         subsub_layout.addWidget(self.next_button)
 
         right_layout.addLayout(subsub_layout, 0, 0)
-        right_layout.addWidget(self.next_label, 0, 2)
-        right_layout.addWidget(self.image_frame, 1, 1, 5, 3)
-        right_layout.addWidget(self.start_buttoncsv, 8,2, 5, 1)
-        right_layout.addWidget(record_data_label, 1, 0, 2, 1)
+        right_layout.addWidget(self.next_label, 1, 0)
+        #right_layout.addWidget(self.image_frame, 1, 1, 5, 3)
+        
+        right_layout.addWidget(record_data_label, 2, 0, 2, 1)
         right_layout.addWidget(self.rotate_button, 3, 0)
         right_layout.addWidget(self.varus_button, 4, 0)
         right_layout.addWidget(self.valgus_button, 5, 0)
         right_layout.addWidget(self.internal_rot_button, 6, 0)
         right_layout.addWidget(self.external_rot_button, 7, 0)
         right_layout.addWidget(self.lachmann_button, 8, 0)
+        right_layout.addWidget(self.start_buttoncsv, 9,0, 2, 1)
+
         
         right_widget.setLayout(right_layout)
         bottom_splitter.addWidget(right_widget)
