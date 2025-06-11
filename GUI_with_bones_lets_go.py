@@ -84,6 +84,8 @@ class KneeFlexionExperiment(QMainWindow):
 
         self.axes_valgus_on = 0
 
+        self.diagram_mode = "varus_valgus"  # Can be "varus_valgus" or "rotation"
+
         
         # Ensure directory exists for data files
         os.makedirs("recorded_data", exist_ok=True)
@@ -124,34 +126,6 @@ class KneeFlexionExperiment(QMainWindow):
             self.start_buttoncsv.setText("Start Recieving Data")
             print("--- Real-Time Data Recieving Stopped ---")
             self.experiment_running = False  # Disable updates when not monitoring
-
-    def toggle_diagram_axes_helper(self):
-        if self.axes_valgus_on:
-            self.axes_valgus_on = 0
-        else:
-            self.axes_valgus_on = 1
-
-    def toggle_diagram_axes(self):
-        angles_new = UpdateVisualization.get_current_knee_angles()
-        if self.axes_valgus_on:
-            flexion_angle = angles_new['flexion']
-            varus_angle = angles_new['lateral_tibia_femur']
-            varus_angle = np.array(varus_angle)
-            varus_angle = np.linalg.norm(varus_angle)
-                            
-            valgus_angle = angles_new['medial_tibia_femur']
-            valgus_angle = np.array(valgus_angle)
-            valgus_angle = np.linalg.norm(valgus_angle)
-            
-            self.update_varus_valgus_diagram(flexion_angle, -varus_angle)
-            self.update_varus_valgus_diagram(flexion_angle, valgus_angle)
-            
-        else: 
-            flexion_angle = angles_new['flexion']
-            rotation_angle = angles_new['rotation']
-
-            #var_val_displacement = flexion_angle
-            self.update_varus_valgus_diagram(flexion_angle, rotation_angle)
 
 
            
@@ -269,20 +243,25 @@ class KneeFlexionExperiment(QMainWindow):
                            
                             angles_new = UpdateVisualization.get_current_knee_angles()
                             flexion_angle = angles_new['flexion']
-                            varus_angle = angles_new['lateral_tibia_femur']
-                            varus_angle = np.array(varus_angle)
-                            varus_angle = np.linalg.norm(varus_angle)
-                            
-                            valgus_angle = angles_new['medial_tibia_femur']
-                            valgus_angle = np.array(valgus_angle)
-                            valgus_angle = np.linalg.norm(valgus_angle)
-                            
 
-                            #var_val_displacement = flexion_angle
-                            #self.update_varus_valgus_diagram(flexion_angle, -varus_angle)
-                            #self.update_varus_valgus_diagram(flexion_angle, valgus_angle)
-                            #print(angles_new['lateral_tibia_femur'])
-                            self.toggle_diagram_axes()
+                            if self.diagram_mode == "varus_valgus":
+                                varus_angle = angles_new['lateral_tibia_femur']
+                                varus_angle = np.array(varus_angle)
+                                varus_angle = np.linalg.norm(varus_angle)
+                                
+                                valgus_angle = angles_new['medial_tibia_femur']
+                                valgus_angle = np.array(valgus_angle)
+                                valgus_angle = np.linalg.norm(valgus_angle)
+                                
+                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, -varus_angle)
+                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, valgus_angle)
+                            else:  # rotation mode
+                                # Extract rotation angles from your angles_new dictionary
+                                internal_rotation_angle = angles_new['rotation']
+                                #external_rotation_angle = -internal_rotation_angle 
+                                
+                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, internal_rotation_angle)
+                                #self.update_varus_valgus_diagram(flexion_angle, external_rotation_angle)
 
 
                         
@@ -622,6 +601,7 @@ class KneeFlexionExperiment(QMainWindow):
 
         #test button to change axes in diagram
         self.diagram_axes_button = QPushButton("click to show rotation")
+        self.diagram_axes_button.setFixedHeight(constants.BUTTON_HEIGHT)
         self.diagram_axes_button.clicked.connect(self.toggle_diagram_axes)
         
         # Layout arrangement
@@ -1133,6 +1113,62 @@ class KneeFlexionExperiment(QMainWindow):
         legend_widget.setLayout(legend_layout)
         
         return legend_widget
+    
+    def toggle_diagram_axes(self):
+        """Toggle between varus/valgus and rotation display modes"""
+        if self.diagram_mode == "varus_valgus":
+            self.diagram_mode = "rotation"
+            self.diagram_axes_button.setText("click to show varus/valgus")
+            
+            # Update diagram title
+            if hasattr(self, 'canvas_varus_valgus'):
+                try:
+                    # Clear the plot and reset
+                    self.canvas_varus_valgus.ax.clear()
+                    self.canvas_varus_valgus.ax.set_xlabel('Rotation Angle (degrees)')
+                    self.canvas_varus_valgus.ax.set_ylabel('Flexion Angle (degrees)')
+                    self.canvas_varus_valgus.ax.set_title('Real-time Flexion vs Internal/External Rotation')
+                    self.canvas_varus_valgus.ax.grid(True, alpha=0.3)
+                    self.canvas_varus_valgus.ax.set_xlim(-50, 50)  # Adjust range as needed for rotation
+                    self.canvas_varus_valgus.ax.set_ylim(-10, 120)
+                    self.canvas_varus_valgus.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
+                    
+                    # Clear the stored data arrays
+                    self.canvas_varus_valgus.varus_valgus_data = []
+                    self.canvas_varus_valgus.flexion_data = []
+                    
+                    self.canvas_varus_valgus.draw()
+                    
+                except Exception as e:
+                    print(f"Error updating plot to rotation mode: {e}")
+                    
+        else:
+            self.diagram_mode = "varus_valgus"
+            self.diagram_axes_button.setText("click to show rotation")
+            
+            # Update diagram title back to varus/valgus
+            if hasattr(self, 'canvas_varus_valgus'):
+                try:
+                    # Clear the plot and reset
+                    self.canvas_varus_valgus.ax.clear()
+                    self.canvas_varus_valgus.ax.set_xlabel('Varus/Valgus Displacement')
+                    self.canvas_varus_valgus.ax.set_ylabel('Flexion Angle (degrees)')
+                    self.canvas_varus_valgus.ax.set_title('Real-time Flexion vs Varus/Valgus')
+                    self.canvas_varus_valgus.ax.grid(True, alpha=0.3)
+                    self.canvas_varus_valgus.ax.set_xlim(-50, 50)
+                    self.canvas_varus_valgus.ax.set_ylim(-10, 120)
+                    self.canvas_varus_valgus.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
+                    
+                    # Clear the stored data arrays
+                    self.canvas_varus_valgus.varus_valgus_data = []
+                    self.canvas_varus_valgus.flexion_data = []
+                    
+                    self.canvas_varus_valgus.draw()
+                    
+                except Exception as e:
+                    print(f"Error updating plot to varus/valgus mode: {e}")
+        
+        print(f"Diagram mode switched to: {self.diagram_mode}")
 
             
 
