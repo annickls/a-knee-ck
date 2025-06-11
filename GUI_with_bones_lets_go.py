@@ -82,6 +82,8 @@ class KneeFlexionExperiment(QMainWindow):
         self.recording_start_time = None
         self.current_test_name = ""
 
+        self.axes_valgus_on = 0
+
         
         # Ensure directory exists for data files
         os.makedirs("recorded_data", exist_ok=True)
@@ -122,6 +124,38 @@ class KneeFlexionExperiment(QMainWindow):
             self.start_buttoncsv.setText("Start Recieving Data")
             print("--- Real-Time Data Recieving Stopped ---")
             self.experiment_running = False  # Disable updates when not monitoring
+
+    def toggle_diagram_axes_helper(self):
+        if self.axes_valgus_on:
+            self.axes_valgus_on = 0
+        else:
+            self.axes_valgus_on = 1
+
+    def toggle_diagram_axes(self):
+        angles_new = UpdateVisualization.get_current_knee_angles()
+        if self.axes_valgus_on:
+            flexion_angle = angles_new['flexion']
+            varus_angle = angles_new['lateral_tibia_femur']
+            varus_angle = np.array(varus_angle)
+            varus_angle = np.linalg.norm(varus_angle)
+                            
+            valgus_angle = angles_new['medial_tibia_femur']
+            valgus_angle = np.array(valgus_angle)
+            valgus_angle = np.linalg.norm(valgus_angle)
+            
+            self.update_varus_valgus_diagram(flexion_angle, -varus_angle)
+            self.update_varus_valgus_diagram(flexion_angle, valgus_angle)
+            
+        else: 
+            flexion_angle = angles_new['flexion']
+            rotation_angle = angles_new['rotation']
+
+            #var_val_displacement = flexion_angle
+            self.update_varus_valgus_diagram(flexion_angle, rotation_angle)
+
+
+           
+    
 
     def read_csv_data(self):
         csv_file = Path(self.csv_path)
@@ -232,21 +266,25 @@ class KneeFlexionExperiment(QMainWindow):
                             #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m4")
 
 
-                            # Example usage in your data processing loop
+                           
                             angles_new = UpdateVisualization.get_current_knee_angles()
                             flexion_angle = angles_new['flexion']
-                            varus_angle = angles_new['adduction']
-                            #var_val_displacement = flexion_angle - 10
-                            self.update_varus_valgus_diagram(flexion_angle, varus_angle)
-                            print(angles_new['lateral_tibia_femur'])
+                            varus_angle = angles_new['lateral_tibia_femur']
+                            varus_angle = np.array(varus_angle)
+                            varus_angle = np.linalg.norm(varus_angle)
+                            
+                            valgus_angle = angles_new['medial_tibia_femur']
+                            valgus_angle = np.array(valgus_angle)
+                            valgus_angle = np.linalg.norm(valgus_angle)
+                            
+
+                            #var_val_displacement = flexion_angle
+                            #self.update_varus_valgus_diagram(flexion_angle, -varus_angle)
+                            #self.update_varus_valgus_diagram(flexion_angle, valgus_angle)
+                            #print(angles_new['lateral_tibia_femur'])
+                            self.toggle_diagram_axes()
 
 
-                        # Access the calculated angles
-                        #angles = UpdateVisualization.get_current_knee_angles()
-                        #print(angles)
-                        #print(f"Flexion: {angles['flexion']:.2f}°")
-                        #print(f"Adduction: {angles['adduction']:.2f}°") 
-                        #print(f"Internal Rotation: {angles['rotation']:.2f}°")
                         
                         # Update force visualization
                         UpdateVisualization.update_bone_forces(self, self.current_data_index)
@@ -257,7 +295,7 @@ class KneeFlexionExperiment(QMainWindow):
                     # If recording is active, record this data point
                     if self.recording:
                         current_time = time.time() - self.recording_start_time
-                        
+                        angles = UpdateVisualization.get_current_knee_angles()
                         # Use real bone data from CSV
                         data_point = [
                             current_time,
@@ -266,7 +304,9 @@ class KneeFlexionExperiment(QMainWindow):
                             femur_position[0], femur_position[1], femur_position[2],
                             femur_quaternion[0], femur_quaternion[1], femur_quaternion[2], femur_quaternion[3],
                             tibia_position[0], tibia_position[1], tibia_position[2],
-                            tibia_quaternion[0], tibia_quaternion[1], tibia_quaternion[2], tibia_quaternion[3]
+                            tibia_quaternion[0], tibia_quaternion[1], tibia_quaternion[2], tibia_quaternion[3],
+                            angles['flexion'], angles['adduction'], angles['rotation'],
+                            angles['anterior_posterior'], angles['medial_lateral'], angles['proximal_distal']
                         ]
                         
                         self.current_recording_data.append(data_point)
@@ -298,31 +338,34 @@ class KneeFlexionExperiment(QMainWindow):
         # Create a filename with timestamp, angle, and test type
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         angle = constants.FLEXION_ANGLES[self.current_angle_index]
-        #filename = f"recorded_data/{timestamp}_{angle}deg_{self.current_test_name}.txt"
+        filename = f"recorded_data/{timestamp}_{angle}deg_{self.current_test_name}.txt"
 
         # Get current knee angles
         angles = UpdateVisualization.get_current_knee_angles()
+        
 
         # Create angle filename (same as main file but with _angles suffix)
-        relevant_filename = f"recorded_data/{timestamp}_{angle}deg_{self.current_test_name}_relevant.txt"
+        #relevant_filename = f"recorded_data/{timestamp}_{angle}deg_{self.current_test_name}_relevant.txt"
 
         # Write both files simultaneously
-        #with open(filename, 'w') as main_file, open(arelevant_filename, 'w') as angle_file:
-        with open(relevant_filename, 'w') as angle_file:    
+        #with open(filename, 'w') as main_file, open(relevant_filename, 'w') as angle_file:
+        with open(filename, 'w') as main_file:    
             # Write main data
-            #main_file.write("# Timestamp, Fx, Fy, Fz, Tx, Ty, Tz, FemurPosX, FemurPosY, FemurPosZ, FemurQuatW, FemurQuatX, FemurQuatY, FemurQuatZ, TibiaPosX, TibiaPosY, TibiaPosZ, TibiaQuatW, TibiaQuatX, TibiaQuatY, TibiaQuatZ\n")
-            #for data_point in self.current_recording_data:
-            #    main_file.write(','.join(map(str, data_point)) + '\n')
+            main_file.write("# Timestamp, Fx, Fy, Fz, Tx, Ty, Tz, FemurPosX, FemurPosY, FemurPosZ, FemurQuatW, FemurQuatX, FemurQuatY, FemurQuatZ, TibiaPosX, TibiaPosY, TibiaPosZ, TibiaQuatW, TibiaQuatX, TibiaQuatY, TibiaQuatZ, Flexion, Adduction, Rotation, Anterior_Posterior, Medial_Lateral, Proximal_Distal\n")
+            for data_point in self.current_recording_data:
+                main_file.write(','.join(map(str, data_point)) + '\n')
             
             # Write angle data with timestamp and torques
-            angle_file.write("# Timestamp, Flexion, Adduction, Rotation, Translation_ap, Translation_ml, Translation_pd, Tx, Ty, Tz, Fx, Fy, Fz\n")
-            for data_point in self.current_recording_data:
-                timestamp = data_point[0]  
-                tx, ty, tz = data_point[4], data_point[5], data_point[6]  
-                fx, fy, fz = data_point[1], data_point[2], data_point[3]  
-                angle_file.write(f"{timestamp}, {angles['flexion']}, {angles['adduction']}, {angles['rotation']}, {angles['anterior_posterior']}, {angles['medial_lateral']}, {angles['proximal_distal']}, {tx}, {ty}, {tz}, {fx}, {fy}, {fz}\n")
+            #angle_file.write("# Timestamp, Flexion, Adduction, Rotation, Translation_ap, Translation_ml, Translation_pd, Tx, Ty, Tz, Fx, Fy, Fz, test\n")
+            #for data_point in self.current_recording_data:
+            #    timestamp = data_point[0]  
+            #    tx, ty, tz = data_point[4], data_point[5], data_point[6]  
+            #    fx, fy, fz = data_point[1], data_point[2], data_point[3]  
+            #    flexion = data_point[21]
+                
+                #angle_file.write(f"{timestamp}, {angles['flexion']}, {angles['adduction']}, {angles['rotation']}, {angles['anterior_posterior']}, {angles['medial_lateral']}, {angles['proximal_distal']}, {tx}, {ty}, {tz}, {fx}, {fy}, {fz},{flexion}\n")
         #print(f"Saved {len(self.current_recording_data)} data points to {filename}")
-        print(f"Saved {len(self.current_recording_data)} data points with relevant data to {relevant_filename}")
+        print(f"Saved {len(self.current_recording_data)} data points with relevant data to {filename}")
 
         # Clear the recording data
         self.current_recording_data = []
@@ -576,6 +619,10 @@ class KneeFlexionExperiment(QMainWindow):
         self.start_buttoncsv = QPushButton("Start Reading")
         #self.start_buttoncsv.setFixedSize(150, 40)
         self.start_buttoncsv.clicked.connect(self.toggle_monitoring)
+
+        #test button to change axes in diagram
+        self.diagram_axes_button = QPushButton("click to show rotation")
+        self.diagram_axes_button.clicked.connect(self.toggle_diagram_axes)
         
         # Layout arrangement
         subsub_layout = QHBoxLayout()
@@ -594,6 +641,7 @@ class KneeFlexionExperiment(QMainWindow):
         right_layout.addWidget(self.external_rot_button, 7, 0)
         right_layout.addWidget(self.lachmann_button, 8, 0)
         right_layout.addWidget(self.start_buttoncsv, 9,0, 2, 1)
+        right_layout.addWidget(self.diagram_axes_button, 10,0, 2, 1)
 
         
         right_widget.setLayout(right_layout)
@@ -656,7 +704,7 @@ class KneeFlexionExperiment(QMainWindow):
                 force = self.forces[self.current_data_index].copy()
                 torque = self.torques[self.current_data_index].copy()
                 
-                
+                angles = UpdateVisualization.get_current_knee_angles()
                 # Make sure these variables are defined in your read_csv_data method
                 if hasattr(self, 'last_femur_position') and hasattr(self, 'last_femur_quaternion') and \
                 hasattr(self, 'last_tibia_position') and hasattr(self, 'last_tibia_quaternion'):
@@ -671,7 +719,9 @@ class KneeFlexionExperiment(QMainWindow):
                         self.last_femur_quaternion[2], self.last_femur_quaternion[3],
                         self.last_tibia_position[0], self.last_tibia_position[1], self.last_tibia_position[2],
                         self.last_tibia_quaternion[0], self.last_tibia_quaternion[1], 
-                        self.last_tibia_quaternion[2], self.last_tibia_quaternion[3]
+                        self.last_tibia_quaternion[2], self.last_tibia_quaternion[3],
+                        angles['flexion'], angles['adduction'], angles['rotation'],
+                        angles['anterior_posterior'], angles['medial_lateral'], angles['proximal_distal']
                     ]
                     
                     self.current_recording_data.append(data_point)

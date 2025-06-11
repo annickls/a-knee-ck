@@ -2,7 +2,7 @@ import os
 import numpy as np
 
 # experiment parameters
-HOLD_TIME = 5 #seconds to hold knee positions
+HOLD_TIME = 30 #seconds to hold knee positions
 LACHMANN_TIME = 8 # seconds for lachmann test
 FLEXION_ANGLES = [0, 30, 60, 90, 120]
 
@@ -39,7 +39,8 @@ AXIS_LINEWIDTH = 0.85
 HISTORY_SIZE = 100
 FORCE_MAX = 12
 TORQUE_MAX = 3
-ARROW_SIZE = 6.0
+ARROW_SIZE_FORCE = 6.0
+ARROW_SIZE_TORQUE = 6.0
 SHAFT_WIDTH = 2.0
 
 # colors
@@ -54,4 +55,4 @@ BUTTON_HEIGHT = 60
 root_folder = os.path.dirname(current_folder)
 DATA_PREVIOUS_TEST = "/home/annick/GUI/data_for_gui/print_data.F_sensor_temp_data_7.txt"
 DATA_CSV = os.path.join(root_folder, "knee_eval_ws", "data.csv")
-DATA_CSV = "data_new.csv"
+#DATA_CSV = "data_new.csv"

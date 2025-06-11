@@ -51,7 +51,8 @@ class MeshUtils:
             return None, None
             
         direction = direction / length
-        shaft_length = length * 0.85
+        #shaft_length = length * 0.85
+        shaft_length = length * 0.95 # add here something to differentiate between force and torque
         shaft_end = start_point + direction * shaft_length
         shaft_points = np.array([start_point, shaft_end])
         

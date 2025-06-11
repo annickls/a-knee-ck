@@ -112,62 +112,53 @@ class MplCanvas(FigureCanvas):
         self.torque_comp_text = self.axes_torque.text2D(0.4, 0.95, "", transform=self.axes_torque.transAxes, fontsize=8)
 
     def update_varus_valgus_plot(self, flexion_angle, var_val_displacement):
-        """Update the varus/valgus vs flexion plot with new data showing horizontal bars"""
+        """Update the varus/valgus vs flexion plot by adding only the newest data point"""
         if self.mode == "varus_valgus":
             # Add new data point
             self.varus_valgus_data.append(var_val_displacement)
             self.flexion_data.append(flexion_angle)
             
             # Keep only last N points for performance (adjust as needed)
-            max_points = 1000
+            """ max_points = 1000
             if len(self.varus_valgus_data) > max_points:
                 self.varus_valgus_data = self.varus_valgus_data[-max_points:]
                 self.flexion_data = self.flexion_data[-max_points:]
+                # If we hit the limit, we need to redraw everything
+                self._redraw_full_plot(flexion_angle, var_val_displacement)
+                return"""
             
-            # Clear previous plot elements
-            self.ax.clear()
+            # For the first point, setup the plot
+            if len(self.varus_valgus_data) == 1:
+                self.ax.clear()
+                self.ax.set_xlabel('Varus/Valgus Displacement')
+                self.ax.set_ylabel('Flexion Angle (degrees)')
+                self.ax.set_title('Real-time Flexion vs Varus/Valgus')
+                self.ax.grid(True, alpha=0.3)
+                self.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
+                self.ax.set_xlim(-50, 50)
+                self.ax.set_ylim(-10, 120)
             
-            # Re-setup the plot
-            self.ax.set_xlabel('Varus/Valgus Displacement')
-            self.ax.set_ylabel('Flexion Angle (degrees)')
-            self.ax.set_title('Real-time Flexion vs Varus/Valgus')
-            self.ax.grid(True, alpha=0.3)
+            # Only add the newest data point
+            color = constants.SALMON if var_val_displacement > 0 else constants.LIMEGREEN
             
-            # Add vertical line at x=0 for reference
-            self.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
+            # Draw horizontal line from 0 to displacement value for new point
+            line, = self.ax.plot([0, var_val_displacement], [flexion_angle, flexion_angle], 
+                                color=color, linewidth=2, alpha=0.7)
             
-            # Draw horizontal bars from center (x=0) to displacement value
-            for i, (displacement, flexion) in enumerate(zip(self.varus_valgus_data, self.flexion_data)):
-                # Color based on displacement direction
-                color = 'red' if displacement > 0 else 'blue'
-                alpha = 0.3 + 0.4 * (i / max(1, len(self.varus_valgus_data) - 1))  # Fade older bars
+            # Add current point (red dot) - remove previous current point if it exists
+            if hasattr(self, 'current_point') and self.current_point:
+                self.current_point.remove()
+            
+            self.current_point, = self.ax.plot(var_val_displacement, flexion_angle, 'ro', 
+                                            markersize=8, zorder=10)
+            
+            # Add current bar highlight - remove previous highlight if it exists
+            if hasattr(self, 'current_highlight') and self.current_highlight:
+                self.current_highlight.remove()
                 
-                # Draw horizontal line from 0 to displacement value
-                self.ax.plot([0, displacement], [flexion, flexion], 
-                            color=color, linewidth=2, alpha=alpha)
-            
-            # Update current point (red dot)
-            self.ax.plot(var_val_displacement, flexion_angle, 'ro', markersize=8, zorder=10)
-            
-            # Highlight current bar with thicker line
             current_color = 'red' if var_val_displacement > 0 else 'blue'
-            self.ax.plot([0, var_val_displacement], [flexion_angle, flexion_angle], 
-                        color=current_color, linewidth=4, alpha=0.8, zorder=5)
-            
-            # Auto-scale axes if needed
-            if len(self.varus_valgus_data) > 10:
-                margin = 5
-                x_min, x_max = min(self.varus_valgus_data), max(self.varus_valgus_data)
-                y_min, y_max = min(self.flexion_data), max(self.flexion_data)
-                
-                # Ensure the x-axis includes zero and some margin
-                x_range = max(abs(x_min), abs(x_max))
-                self.ax.set_xlim(-x_range - margin, x_range + margin)
-                self.ax.set_ylim(y_min - margin, y_max + margin)
-            else:
-                # Set initial axis limits
-                self.ax.set_xlim(-20, 20)
-                self.ax.set_ylim(0, 120)
+            self.current_highlight, = self.ax.plot([0, var_val_displacement], [flexion_angle, flexion_angle], 
+                                                color=current_color, linewidth=4, alpha=0.8, zorder=5)
             
             self.draw()
     

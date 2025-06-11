@@ -17,7 +17,7 @@ class UpdateVisualization():
         # Add class variables to store landmark positions for angle calculations
     tibia_landmarks = {}
     femur_landmarks = {}
-    current_knee_angles = {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0, 'anterior_posterior': 0.0, 'medial_lateral': 0.0, 'proximal_distal': 0.0, 'medial_tibia-femur': 0.0, 'lateral_tibia-femur':0.0}
+    current_knee_angles = {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0, 'anterior_posterior': 0.0, 'medial_lateral': 0.0, 'proximal_distal': 0.0, 'medial_tibia_femur': 0.0, 'lateral_tibia_femur':0.0}
     femurmediallateral = [0,0,0]
     femurproximaldistal = [0, 0, 0]
     femurvarusaxis = [0, 0, 0]
@@ -263,7 +263,7 @@ class UpdateVisualization():
         
         # Create new arrows
         self.force_arrow_shaft, self.force_arrow_head = MeshUtils.create_arrow(
-            tibiaproximal, end_point, color=(1, 0, 0, 1), arrow_size=constants.ARROW_SIZE, shaft_width=constants.SHAFT_WIDTH
+            tibiaproximal, end_point, color=(1, 0, 0, 1), arrow_size=constants.ARROW_SIZE_FORCE, shaft_width=constants.SHAFT_WIDTH
         )
         
         # Add new arrows to view
@@ -292,7 +292,7 @@ class UpdateVisualization():
 
         # Create new arrows
         self.torque_arrow_shaft, self.torque_arrow_head = MeshUtils.create_arrow(
-            tibiaproximal, end_point_torque, color=(0, 0, 1, 1), arrow_size=constants.ARROW_SIZE, shaft_width=constants.SHAFT_WIDTH
+            tibiaproximal, end_point_torque, color=(0, 0, 1, 1), arrow_size=constants.ARROW_SIZE_TORQUE, shaft_width=constants.SHAFT_WIDTH
         )
 
         # Add new arrows to view
@@ -308,7 +308,7 @@ class UpdateVisualization():
         femurlateral= UpdateVisualization.femur_landmarks['femur_lateral']['position']
         tibiamedial= UpdateVisualization.tibia_landmarks['tibia_medial']['position']
         
-        """#remove old axes from the plot
+        #remove old axes from the plot
         if hasattr(self, 'femur_axis_shaft_ml') and self.femur_axis_shaft_ml is not None:
             self.gl_view.removeItem(self.femur_axis_shaft_ml)
 
@@ -343,7 +343,7 @@ class UpdateVisualization():
             self.gl_view.addItem(self.tibia_axis_shaft_pd)
 
         if self.tibia_femur_floating_axis is not None:
-            self.gl_view.addItem(self.tibia_femur_floating_axis)"""
+            self.gl_view.addItem(self.tibia_femur_floating_axis)
 
         # Create/update legend
         UpdateVisualization.create_legend(self)
