@@ -113,13 +113,13 @@ class MplCanvas(FigureCanvas):
 
     def update_varus_valgus_plot(self, flexion_angle, var_val_displacement):
         """Update the varus/valgus vs flexion plot by adding only the newest data point"""
-        """if self.mode == "varus_valgus":
+        if self.mode == "varus_valgus":
             # Add new data point
             self.varus_valgus_data.append(var_val_displacement)
             self.flexion_data.append(flexion_angle)
             
             # Keep only last N points for performance (adjust as needed)
-             max_points = 1000
+            max_points = 1000
             if len(self.varus_valgus_data) > max_points:
                 self.varus_valgus_data = self.varus_valgus_data[-max_points:]
                 self.flexion_data = self.flexion_data[-max_points:]
@@ -136,7 +136,7 @@ class MplCanvas(FigureCanvas):
                 self.ax.grid(True, alpha=0.3)
                 self.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
                 self.ax.set_xlim(-50, 50)
-                self.ax.set_ylim(-10, 120)"""
+                self.ax.set_ylim(-10, 120)
 
 # Add new data point
         self.varus_valgus_data.append(var_val_displacement)
