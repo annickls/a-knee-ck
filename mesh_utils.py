@@ -43,7 +43,7 @@ class MeshUtils:
     
     
     @staticmethod
-    def create_arrow(start_point, end_point, color=(1,0,0,1), arrow_size=15.0, shaft_width=2.0):
+    def create_arrow(start_point, end_point, color=(1,0,0,1), arrow_size=15.0, shaft_width=2.0, mode = 'force'):
         """Create a 3D arrow from start_point to end_point"""
         direction = end_point - start_point
         length = np.linalg.norm(direction)
@@ -51,15 +51,20 @@ class MeshUtils:
             return None, None
             
         direction = direction / length
-        #shaft_length = length * 0.85
-        shaft_length = length * 0.95 # add here something to differentiate between force and torque
+        if mode == 'force':
+            shaft_length = length * constants.ARROW_LENGTH_FACTOR_FORCE
+            head_size_factor = constants.HEAD_SIZE_FACTOR_FORCE
+        else:
+            shaft_length = length * constants.ARROW_LENGTH_FACTOR_TORQUE
+            head_size_factor = constants.HEAD_SIZE_FACTOR_TORQUE
+
         shaft_end = start_point + direction * shaft_length
         shaft_points = np.array([start_point, shaft_end])
         
         shaft = gl.GLLinePlotItem(pos=shaft_points, color=color, width=shaft_width, antialias=True)
         
         try:
-            md = gl.MeshData.cylinder(rows=10, cols=40, radius=[0, arrow_size], length=length*0.15)
+            md = gl.MeshData.cylinder(rows=10, cols=40, radius=[0, arrow_size], length=length*head_size_factor)
             vertices = md.vertexes()
             faces = md.faces()
             

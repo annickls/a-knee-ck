@@ -261,9 +261,15 @@ class UpdateVisualization():
         if hasattr(self, 'force_arrow_head') and self.force_arrow_head is not None:
             self.gl_view.removeItem(self.force_arrow_head)
         
+        
         # Create new arrows
         self.force_arrow_shaft, self.force_arrow_head = MeshUtils.create_arrow(
-            tibiaproximal, end_point, color=(1, 0, 0, 1), arrow_size=constants.ARROW_SIZE_FORCE, shaft_width=constants.SHAFT_WIDTH
+            tibiaproximal, 
+            end_point, 
+            color=(1, 0, 0, 1), 
+            arrow_size=constants.ARROW_SIZE_FORCE, 
+            shaft_width=constants.SHAFT_WIDTH,
+            mode = 'force'
         )
         
         # Add new arrows to view
@@ -292,7 +298,12 @@ class UpdateVisualization():
 
         # Create new arrows
         self.torque_arrow_shaft, self.torque_arrow_head = MeshUtils.create_arrow(
-            tibiaproximal, end_point_torque, color=(0, 0, 1, 1), arrow_size=constants.ARROW_SIZE_TORQUE, shaft_width=constants.SHAFT_WIDTH
+            tibiaproximal, 
+            end_point_torque, 
+            color=constants.DEEPSKYBLUE, 
+            arrow_size=constants.ARROW_SIZE_TORQUE, 
+            shaft_width=constants.SHAFT_WIDTH,
+            mode = 'torque'
         )
 
         # Add new arrows to view
@@ -324,16 +335,26 @@ class UpdateVisualization():
 
         #Femur medial-lateral axis
         self.femur_axis_shaft_ml = MeshUtils.create_tibia_axis(
-            femurmedial, femurmedial + UpdateVisualization.femurmediallateral, color=constants.SALMON, arrow_size=500, shaft_width=2
+            femurmedial, 
+            femurmedial + UpdateVisualization.femurmediallateral, 
+            color=constants.SALMON, 
+            arrow_size=500, shaft_width=2
         )
         #Tibia proximal-distal axis
         self.tibia_axis_shaft_pd = MeshUtils.create_tibia_axis(
-                    tibiaproximal, tibiaproximal + UpdateVisualization.tibiaproximaldistal, color=constants.LIMEGREEN, arrow_size=500, shaft_width=2
-                )
+            tibiaproximal, 
+            tibiaproximal + UpdateVisualization.tibiaproximaldistal, 
+            color=constants.LIMEGREEN, 
+            arrow_size=500, shaft_width=2
+        )
         #floating axis (cross product between the other two axes)
         self.tibia_femur_floating_axis = MeshUtils.create_tibia_axis(
-                    tibiaproximal, tibiaproximal + UpdateVisualization.floatingaxis, color=constants.DEEPSKYBLUE, arrow_size=500, shaft_width=2
-                )
+            tibiaproximal, 
+            tibiaproximal + UpdateVisualization.floatingaxis, 
+            color=constants.MEDIUMSLATEBLUE, 
+            arrow_size=500, 
+            shaft_width=2
+        )
 
 
         if self.femur_axis_shaft_ml is not None:
@@ -686,6 +707,9 @@ class UpdateVisualization():
             
             adduction_angle = np.arccos(cos_adduction) * 180.0 / np.pi
             adduction_angle *= sign_adduction
+
+            if adduction_angle < -100:
+                adduction_angle += 180
             
             # 3. INTERNAL/EXTERNAL ROTATION ANGLE
             # Angle between femoral anterior-posterior axis (e3f) and its projection 

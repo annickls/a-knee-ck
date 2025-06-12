@@ -253,17 +253,20 @@ class KneeFlexionExperiment(QMainWindow):
                                 valgus_angle = np.array(valgus_angle)
                                 valgus_angle = np.linalg.norm(valgus_angle)
                                 
-                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, -varus_angle)
-                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, valgus_angle)
+                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, -varus_angle, self.diagram_mode)
+                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, valgus_angle, self.diagram_mode)
+
+                                
                             else:  # rotation mode
                                 # Extract rotation angles from your angles_new dictionary
                                 internal_rotation_angle = angles_new['rotation']
-                                #external_rotation_angle = -internal_rotation_angle 
+                               
                                 
-                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, internal_rotation_angle)
-                                #self.update_varus_valgus_diagram(flexion_angle, external_rotation_angle)
+                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, internal_rotation_angle, self.diagram_mode)
+                               
 
-
+                            
+                            #self.canvas_varus_valgus.draw()
                         
                         # Update force visualization
                         UpdateVisualization.update_bone_forces(self, self.current_data_index)
@@ -582,7 +585,7 @@ class KneeFlexionExperiment(QMainWindow):
         self.lachmann_button.setFixedHeight(constants.BUTTON_HEIGHT)
 
         record_data_label = QLabel("Record Data")
-        record_data_label.setAlignment(Qt.AlignCenter)
+        record_data_label.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
         
         # Image frame
         self.image_frame = QFrame()
@@ -1106,7 +1109,7 @@ class KneeFlexionExperiment(QMainWindow):
         force_label.setStyleSheet("color: red; font-size: 14px;")
         
         torque_label = QLabel("● Torque")
-        torque_label.setStyleSheet("color: blue; font-size: 14px;")
+        torque_label.setStyleSheet("color: deepskyblue; font-size: 14px;")
         
         legend_layout.addWidget(force_label)
         legend_layout.addWidget(torque_label)
@@ -1118,18 +1121,18 @@ class KneeFlexionExperiment(QMainWindow):
         """Toggle between varus/valgus and rotation display modes"""
         if self.diagram_mode == "varus_valgus":
             self.diagram_mode = "rotation"
-            self.diagram_axes_button.setText("click to show varus/valgus")
+            self.diagram_axes_button.setText("click to show medial/lateral joint gaps")
             
             # Update diagram title
             if hasattr(self, 'canvas_varus_valgus'):
                 try:
                     # Clear the plot and reset
                     self.canvas_varus_valgus.ax.clear()
-                    self.canvas_varus_valgus.ax.set_xlabel('Rotation Angle (degrees)')
+                    #self.canvas_varus_valgus.ax.set_xlabel('Rotation Angle (degrees)')
                     self.canvas_varus_valgus.ax.set_ylabel('Flexion Angle (degrees)')
                     self.canvas_varus_valgus.ax.set_title('Real-time Flexion vs Internal/External Rotation')
                     self.canvas_varus_valgus.ax.grid(True, alpha=0.3)
-                    self.canvas_varus_valgus.ax.set_xlim(-50, 50)  # Adjust range as needed for rotation
+                    self.canvas_varus_valgus.ax.set_xlim(-60, 60)  # Adjust range as needed for rotation
                     self.canvas_varus_valgus.ax.set_ylim(-10, 120)
                     self.canvas_varus_valgus.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
                     
@@ -1137,25 +1140,25 @@ class KneeFlexionExperiment(QMainWindow):
                     self.canvas_varus_valgus.varus_valgus_data = []
                     self.canvas_varus_valgus.flexion_data = []
                     
-                    self.canvas_varus_valgus.draw()
+                    #self.canvas_varus_valgus.draw()
                     
                 except Exception as e:
                     print(f"Error updating plot to rotation mode: {e}")
                     
         else:
             self.diagram_mode = "varus_valgus"
-            self.diagram_axes_button.setText("click to show rotation")
+            self.diagram_axes_button.setText("click to show joint rotation")
             
             # Update diagram title back to varus/valgus
             if hasattr(self, 'canvas_varus_valgus'):
                 try:
                     # Clear the plot and reset
                     self.canvas_varus_valgus.ax.clear()
-                    self.canvas_varus_valgus.ax.set_xlabel('Varus/Valgus Displacement')
+                    #self.canvas_varus_valgus.ax.set_xlabel('test1')
                     self.canvas_varus_valgus.ax.set_ylabel('Flexion Angle (degrees)')
                     self.canvas_varus_valgus.ax.set_title('Real-time Flexion vs Varus/Valgus')
                     self.canvas_varus_valgus.ax.grid(True, alpha=0.3)
-                    self.canvas_varus_valgus.ax.set_xlim(-50, 50)
+                    self.canvas_varus_valgus.ax.set_xlim(-60, 60)
                     self.canvas_varus_valgus.ax.set_ylim(-10, 120)
                     self.canvas_varus_valgus.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
                     
@@ -1163,7 +1166,7 @@ class KneeFlexionExperiment(QMainWindow):
                     self.canvas_varus_valgus.varus_valgus_data = []
                     self.canvas_varus_valgus.flexion_data = []
                     
-                    self.canvas_varus_valgus.draw()
+                    #self.canvas_varus_valgus.draw()
                     
                 except Exception as e:
                     print(f"Error updating plot to varus/valgus mode: {e}")

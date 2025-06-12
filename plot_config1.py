@@ -26,9 +26,9 @@ class MplCanvas(FigureCanvas):
         super().__init__(self.fig)
         self.fig.tight_layout()
 
-        if mode == "varus_valgus":
+        if mode == "varus_valgus" or mode == "rotation":
             self.ax = self.fig.add_subplot(111)
-            self.ax.set_xlabel('Varus/Valgus Displacement')
+            self.ax.set_xlabel('x-axis')
             self.ax.set_ylabel('Flexion Angle (degrees)')
             self.ax.set_title('Real-time Flexion vs Varus/Valgus')
             self.ax.grid(True, alpha=0.3)
@@ -36,7 +36,7 @@ class MplCanvas(FigureCanvas):
             self.fig.subplots_adjust(left=0.15, bottom=0.15, right = 0.95, top =0.90)
             
             # Set initial axis limits
-            self.ax.set_xlim(-20, 20)  # Adjust range as needed
+            self.ax.set_xlim(-60, 60)  # Adjust range as needed
             self.ax.set_ylim(0, 120)   # Adjust range as needed
             
             # Add vertical line at x=0 for reference
@@ -49,6 +49,7 @@ class MplCanvas(FigureCanvas):
             # Store data for plotting
             self.varus_valgus_data = []
             self.flexion_data = []
+            self.testvariable = 0
     
     def _setup_position_plot(self):
         """Setup the tibia position path plot"""
@@ -111,39 +112,16 @@ class MplCanvas(FigureCanvas):
         self.force_comp_text = self.axes_force.text2D(0.32, 0.95, "", transform=self.axes_force.transAxes, fontsize=8)
         self.torque_comp_text = self.axes_torque.text2D(0.4, 0.95, "", transform=self.axes_torque.transAxes, fontsize=8)
 
-    def update_varus_valgus_plot(self, flexion_angle, var_val_displacement):
+    def update_varus_valgus_plot(self, flexion_angle, var_val_displacement, mode):
         """Update the varus/valgus vs flexion plot by adding only the newest data point"""
-        if self.mode == "varus_valgus":
-            # Add new data point
-            self.varus_valgus_data.append(var_val_displacement)
-            self.flexion_data.append(flexion_angle)
-            
-            # Keep only last N points for performance (adjust as needed)
-            max_points = 1000
-            if len(self.varus_valgus_data) > max_points:
-                self.varus_valgus_data = self.varus_valgus_data[-max_points:]
-                self.flexion_data = self.flexion_data[-max_points:]
-                # If we hit the limit, we need to redraw everything
-                self._redraw_full_plot(flexion_angle, var_val_displacement)
-                return
-            
-            # For the first point, setup the plot
-            if len(self.varus_valgus_data) == 1:
-                self.ax.clear()
-                self.ax.set_xlabel('Varus/Valgus Displacement')
-                self.ax.set_ylabel('Flexion Angle (degrees)')
-                self.ax.set_title('Real-time Flexion vs Varus/Valgus')
-                self.ax.grid(True, alpha=0.3)
-                self.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
-                self.ax.set_xlim(-50, 50)
-                self.ax.set_ylim(-10, 120)
 
-# Add new data point
-        self.varus_valgus_data.append(var_val_displacement)
-        self.flexion_data.append(flexion_angle)
+        # Add new data point
+        #self.varus_valgus_data.append(var_val_displacement)
+        #self.flexion_data.append(flexion_angle)
+        self.testvariable +=1
         
         # Keep only last N points for performance (adjust as needed)
-        """ max_points = 1000
+        """max_points = 1000
         if len(self.varus_valgus_data) > max_points:
             self.varus_valgus_data = self.varus_valgus_data[-max_points:]
             self.flexion_data = self.flexion_data[-max_points:]
@@ -152,39 +130,47 @@ class MplCanvas(FigureCanvas):
             return"""
         
         # For the first point, setup the plot
-        if len(self.varus_valgus_data) == 1:
+        #if len(self.varus_valgus_data) == 1:
+        if self.testvariable == 1:
             self.ax.clear()
-            self.ax.set_xlabel('Varus/Valgus Displacement')
+            self.ax.set_xlabel('test2')
             self.ax.set_ylabel('Flexion Angle (degrees)')
             self.ax.set_title('Real-time Flexion vs Varus/Valgus')
             self.ax.grid(True, alpha=0.3)
             self.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
-            self.ax.set_xlim(-50, 50)
+            self.ax.set_xlim(-60, 60)
             self.ax.set_ylim(-10, 120)
+
+        if mode == "varus_valgus":
+            self.ax.set_xlabel('medial joint gap          lateral joint gap')
+        else:
+            self.ax.set_xlabel('external rotation         internal rotation')
+        
+        # Only add the newest data point
+        color = constants.SALMON if var_val_displacement > 0 else constants.LIMEGREEN
+        
+        # Draw horizontal line from 0 to displacement value for new point
+        self.line, = self.ax.plot([0, var_val_displacement], [flexion_angle, flexion_angle], 
+                            color=color, linewidth=2, alpha=0.7)
+        
+
+        
+        # Add current point (red dot) - remove previous current point if it exists
+        if hasattr(self, 'current_point') and self.current_point:
+            self.current_point.remove()
+        
+        self.current_point, = self.ax.plot(var_val_displacement, flexion_angle, 'ro', 
+                                        markersize=8, zorder=10)
+        
+        # Add current bar highlight - remove previous highlight if it exists
+        if hasattr(self, 'current_highlight') and self.current_highlight:
+            self.current_highlight.remove()
             
-            # Only add the newest data point
-            color = constants.SALMON if var_val_displacement > 0 else constants.LIMEGREEN
-            
-            # Draw horizontal line from 0 to displacement value for new point
-            line, = self.ax.plot([0, var_val_displacement], [flexion_angle, flexion_angle], 
-                                color=color, linewidth=2, alpha=0.7)
-            
-            # Add current point (red dot) - remove previous current point if it exists
-            if hasattr(self, 'current_point') and self.current_point:
-                self.current_point.remove()
-            
-            self.current_point, = self.ax.plot(var_val_displacement, flexion_angle, 'ro', 
-                                            markersize=8, zorder=10)
-            
-            # Add current bar highlight - remove previous highlight if it exists
-            if hasattr(self, 'current_highlight') and self.current_highlight:
-                self.current_highlight.remove()
-                
-            current_color = 'red' if var_val_displacement > 0 else 'blue'
-            self.current_highlight, = self.ax.plot([0, var_val_displacement], [flexion_angle, flexion_angle], 
-                                                color=current_color, linewidth=4, alpha=0.8, zorder=5)
-            
-            self.draw()
+        current_color = 'red' if var_val_displacement > 0 else 'blue'
+        self.current_highlight, = self.ax.plot([0, var_val_displacement], [flexion_angle, flexion_angle], 
+                                            color=current_color, linewidth=4, alpha=0.8, zorder=5)
+        
+        self.draw()
     
     def update_tibia_position_path(self, tibia_pos_x, tibia_pos_y, tibia_pos_z, time_array):
         """Update the tibia position path visualization"""
