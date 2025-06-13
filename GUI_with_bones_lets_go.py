@@ -245,16 +245,13 @@ class KneeFlexionExperiment(QMainWindow):
                             flexion_angle = angles_new['flexion']
 
                             if self.diagram_mode == "varus_valgus":
-                                varus_angle = angles_new['lateral_tibia_femur']
-                                varus_angle = np.array(varus_angle)
-                                varus_angle = np.linalg.norm(varus_angle)
                                 
-                                valgus_angle = angles_new['medial_tibia_femur']
-                                valgus_angle = np.array(valgus_angle)
-                                valgus_angle = np.linalg.norm(valgus_angle)
+                                lateral_joint_gap = angles_new['lateral_tibia_femur']
+                                medial_joint_gap = angles_new['medial_tibia_femur']
                                 
-                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, -varus_angle, self.diagram_mode)
-                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, valgus_angle, self.diagram_mode)
+                                
+                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, lateral_joint_gap, self.diagram_mode)
+                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, -medial_joint_gap, self.diagram_mode)
 
                                 
                             else:  # rotation mode
@@ -449,7 +446,7 @@ class KneeFlexionExperiment(QMainWindow):
 
         # Create your GLViewWidget
         self.gl_view = gl.GLViewWidget()
-        self.gl_view.setCameraPosition(distance=constants.DISTANCE_BONE_VIZ, elevation=30, azimuth=-55)
+        self.gl_view.setCameraPosition(distance=constants.DISTANCE_BONE_VIZ, elevation=10, azimuth=90) #55 ausgangsposition
         self.gl_view.setMinimumHeight(600)
         # Add axes for reference
         self.axes = ColoredGLAxisItem(size=(100, 100, 100))  # defined colors
@@ -479,10 +476,10 @@ class KneeFlexionExperiment(QMainWindow):
         diagram_layout = QVBoxLayout()
 
         # Add title for the diagram
-        diagram_label = QLabel("Flexion vs Varus/Valgus")
-        diagram_label.setAlignment(Qt.AlignCenter)
-        diagram_label.setFont(QFont("Arial", 12, QFont.Bold))
-        diagram_layout.addWidget(diagram_label)
+        #diagram_label = QLabel("Flexion vs Varus/Valgus")
+        #diagram_label.setAlignment(Qt.AlignCenter)
+        #diagram_label.setFont(QFont("Arial", 12, QFont.Bold))
+        #diagram_layout.addWidget(diagram_label)
 
         # Create matplotlib canvas for the dynamic diagram
         self.canvas_varus_valgus = MplCanvas(width=6, height=7, mode="varus_valgus")
@@ -938,7 +935,7 @@ class KneeFlexionExperiment(QMainWindow):
             self.gl_view.addItem(self.femur_mesh)
 
             # Configure the main camera view
-            self.gl_view.setCameraPosition(distance=constants.DISTANCE_BONE_VIZ, elevation=30, azimuth=45)
+            #self.gl_view.setCameraPosition(distance=constants.DISTANCE_BONE_VIZ, elevation=30, azimuth=45)
 
 
             # Configure lighting direction - this is the key part
@@ -1130,7 +1127,7 @@ class KneeFlexionExperiment(QMainWindow):
                     self.canvas_varus_valgus.ax.clear()
                     #self.canvas_varus_valgus.ax.set_xlabel('Rotation Angle (degrees)')
                     self.canvas_varus_valgus.ax.set_ylabel('Flexion Angle (degrees)')
-                    self.canvas_varus_valgus.ax.set_title('Real-time Flexion vs Internal/External Rotation')
+                    self.canvas_varus_valgus.ax.set_title('Internal/External Rotation')
                     self.canvas_varus_valgus.ax.grid(True, alpha=0.3)
                     self.canvas_varus_valgus.ax.set_xlim(-60, 60)  # Adjust range as needed for rotation
                     self.canvas_varus_valgus.ax.set_ylim(-10, 120)
@@ -1156,7 +1153,7 @@ class KneeFlexionExperiment(QMainWindow):
                     self.canvas_varus_valgus.ax.clear()
                     #self.canvas_varus_valgus.ax.set_xlabel('test1')
                     self.canvas_varus_valgus.ax.set_ylabel('Flexion Angle (degrees)')
-                    self.canvas_varus_valgus.ax.set_title('Real-time Flexion vs Varus/Valgus')
+                    self.canvas_varus_valgus.ax.set_title('medial/lateral joint gap')
                     self.canvas_varus_valgus.ax.grid(True, alpha=0.3)
                     self.canvas_varus_valgus.ax.set_xlim(-60, 60)
                     self.canvas_varus_valgus.ax.set_ylim(-10, 120)

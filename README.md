@@ -87,9 +87,3 @@ The system follows a modular design:
 - All visualization updates are handled asynchronously
 - CSV recording can be started/stopped via ROS2 services
 - Force/torque sensor supports zeroing for calibration"""
-
-# Write the README file
-with open('README.md', 'w') as f:
-    f.write(readme_content)
-
-print("README.md file created successfully!")

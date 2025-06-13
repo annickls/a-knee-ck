@@ -31,7 +31,7 @@ class MplCanvas(FigureCanvas):
             self.ax = self.fig.add_subplot(111)
             self.ax.set_xlabel('x-axis')
             self.ax.set_ylabel('Flexion Angle (degrees)')
-            self.ax.set_title('Real-time Flexion vs Varus/Valgus')
+            #self.ax.set_title('Real-time Flexion vs Varus/Valgus')
             self.ax.grid(True, alpha=0.3)
 
             self.fig.subplots_adjust(left=0.15, bottom=0.15, right = 0.95, top =0.90)
@@ -51,9 +51,7 @@ class MplCanvas(FigureCanvas):
             self.varus_valgus_data = []
             self.flexion_data = []
             self.testvariable = 0
-            self.line_collection = None
-            self.segments = []
-            self.colors = []
+     
     
     def _setup_position_plot(self):
         """Setup the tibia position path plot"""
@@ -120,8 +118,8 @@ class MplCanvas(FigureCanvas):
         """Update the varus/valgus vs flexion plot by adding only the newest data point"""
 
         # Add new data point
-        self.varus_valgus_data.append(var_val_displacement)
-        self.flexion_data.append(flexion_angle)
+        #self.varus_valgus_data.append(var_val_displacement)
+        #self.flexion_data.append(flexion_angle)
         self.testvariable +=1
         
         # Keep only last N points for performance (adjust as needed)
@@ -137,42 +135,43 @@ class MplCanvas(FigureCanvas):
         #if len(self.varus_valgus_data) == 1:
         if self.testvariable == 1:
             self.ax.clear()
-            self.segments = []
-            self.colors = []
-            self.ax.set_xlabel('test2')
+            self.ax.set_xlabel('x-axis')
             self.ax.set_ylabel('Flexion Angle (degrees)')
-            self.ax.set_title('Real-time Flexion vs Varus/Valgus')
+            self.ax.set_title('medial/lateral joint gap')
             self.ax.grid(True, alpha=0.3)
             self.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
             self.ax.set_xlim(-60, 60)
             self.ax.set_ylim(-10, 120)
-            self.line_collection = LineCollection([], linewidths=2, alpha=0.7)
-            self.ax.add_collection(self.line_collection)
 
-            # Create line collection
-            self.line_collection = LineCollection([], linewidths=2, alpha=0.7)
-            self.ax.add_collection(self.line_collection)
-
-         # Add the new segment and color
-        self.segments.append([[0, flexion_angle], [var_val_displacement, flexion_angle]])
+        if mode == "varus_valgus":
+            self.ax.set_xlabel('medial joint gap          lateral joint gap')
+            self.ax.set_xlim(-40, 40)
+        else:
+            self.ax.set_xlabel('external rotation         internal rotation')
+            self.ax.set_xlim(-60, 60)
+        
+        # Only add the newest data point
         color = constants.SALMON if var_val_displacement > 0 else constants.LIMEGREEN
-        self.colors.append(color)
         
-        # Update the collection with all segments
-        self.line_collection.set_segments(self.segments)
-        self.line_collection.set_colors(self.colors)
+        # Draw horizontal line from 0 to displacement value for new point
+        self.line, = self.ax.plot([0, var_val_displacement], [flexion_angle, flexion_angle], 
+                            color=color, linewidth=2, alpha=0.7)
         
-        # Update current point
+
+        
+        # Add current point (red dot) - remove previous current point if it exists
         if hasattr(self, 'current_point') and self.current_point:
             self.current_point.remove()
-        self.current_point, = self.ax.plot(var_val_displacement, flexion_angle, 'ro',
+        
+        self.current_point, = self.ax.plot(var_val_displacement, flexion_angle, 'ro', 
                                         markersize=8, zorder=10)
         
-        # Update current highlight
+        # Add current bar highlight - remove previous highlight if it exists
         if hasattr(self, 'current_highlight') and self.current_highlight:
             self.current_highlight.remove()
+            
         current_color = 'red' if var_val_displacement > 0 else 'blue'
-        self.current_highlight, = self.ax.plot([0, var_val_displacement], [flexion_angle, flexion_angle],
+        self.current_highlight, = self.ax.plot([0, var_val_displacement], [flexion_angle, flexion_angle], 
                                             color=current_color, linewidth=4, alpha=0.8, zorder=5)
         
         self.draw()

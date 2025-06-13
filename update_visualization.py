@@ -17,7 +17,14 @@ class UpdateVisualization():
         # Add class variables to store landmark positions for angle calculations
     tibia_landmarks = {}
     femur_landmarks = {}
-    current_knee_angles = {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0, 'anterior_posterior': 0.0, 'medial_lateral': 0.0, 'proximal_distal': 0.0, 'medial_tibia_femur': 0.0, 'lateral_tibia_femur':0.0}
+    current_knee_angles = {'flexion': 0.0, 
+                           'adduction': 0.0, 
+                           'rotation': 0.0, 
+                           'anterior_posterior': 0.0, 
+                           'medial_lateral': 0.0, 
+                           'proximal_distal': 0.0, 
+                           'medial_joint_gap': 0.0, 
+                           'lateral_joint_gap':0.0}
     femurmediallateral = [0,0,0]
     femurproximaldistal = [0, 0, 0]
     femurvarusaxis = [0, 0, 0]
@@ -707,9 +714,19 @@ class UpdateVisualization():
             
             adduction_angle = np.arccos(cos_adduction) * 180.0 / np.pi
             adduction_angle *= sign_adduction
-
-            if adduction_angle < -100:
+            
+            if int(flexion_angle) == 90:
+                adduction_angle = UpdateVisualization.current_knee_angles['adduction']
+                print("adduction angle")
+                print(adduction_angle)
+            elif int(flexion_angle) >= 90:
                 adduction_angle += 180
+
+            if int(adduction_angle) > 300:
+                adduction_angle -=360
+
+            #if adduction_angle < -50:
+            #    adduction_angle += 180
             
             # 3. INTERNAL/EXTERNAL ROTATION ANGLE
             # Angle between femoral anterior-posterior axis (e3f) and its projection 
@@ -729,6 +746,16 @@ class UpdateVisualization():
             
             rotation_angle = np.arccos(cos_rotation) * 180.0 / np.pi
             rotation_angle *= sign_rotation
+
+            if int(flexion_angle) == 90:
+                rotation_angle = UpdateVisualization.current_knee_angles['rotation']
+                print("rotation angle")
+                print (rotation_angle)
+            elif int(flexion_angle) >= 90:
+                rotation_angle += 180
+
+            if int(rotation_angle) > 300:
+                rotation_angle -=360
             
             # ============= TRANSLATION CALCULATIONS =============
         
@@ -752,7 +779,9 @@ class UpdateVisualization():
 
             #===========Clalculation distances femur condyles - tibia plateau medial and lateral========
             medial_tibia_femur = femur_medial - tibia_medial
+            medial_joint_gap = np.dot(medial_tibia_femur, e2t) / np.linalg.norm(e2t)
             lateral_tibia_femur = femur_lateral - tibia_lateral
+            lateral_joint_gap = np.dot(lateral_tibia_femur, e2t) / np.linalg.norm(e2t)
 
             # Store results for debugging/visualization
             UpdateVisualization.knee_angles = {
@@ -765,8 +794,8 @@ class UpdateVisualization():
                 'anterior_posterior': anterior_posterior,
                 'medial_lateral': medial_lateral,
                 'proximal_distal': proximal_distal,
-                'medial_tibia_femur': medial_tibia_femur,
-                'lateral_tibia_femur': lateral_tibia_femur
+                'medial_tibia_femur': medial_joint_gap,
+                'lateral_tibia_femur': lateral_joint_gap
             }
             
             return {
@@ -776,8 +805,8 @@ class UpdateVisualization():
                 'anterior_posterior': anterior_posterior,
                 'medial_lateral': medial_lateral,
                 'proximal_distal': proximal_distal,
-                'medial_tibia_femur': medial_tibia_femur,
-                'lateral_tibia_femur': lateral_tibia_femur
+                'medial_tibia_femur': medial_joint_gap,
+                'lateral_tibia_femur': lateral_joint_gap
             }
             
         except Exception as e:

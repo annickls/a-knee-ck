@@ -17,7 +17,7 @@ tibia_fileName = "tibia_new.stl"
 TIBIA = os.path.join(current_folder, "data_for_gui", tibia_fileName)
 
 #camera settings bone visualization
-DISTANCE_BONE_VIZ = 2000
+DISTANCE_BONE_VIZ = 700
 SCALE_FACTOR_ARROW = 20
 
 
