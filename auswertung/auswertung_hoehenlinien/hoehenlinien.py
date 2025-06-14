@@ -60,7 +60,7 @@ def apply_moving_average(data, window_size=3, method='simple'):
         smoothed_data['flexion'] = data['flexion'].rolling(
             window=window_size, center=True, min_periods=1
         ).mean()
-        smoothed_data['tx'] = data['tx'].rolling(
+        smoothed_data['tjx'] = data['tjx'].rolling(
             window=window_size, center=True, min_periods=1
         ).mean()
         
@@ -97,14 +97,14 @@ def apply_moving_average(data, window_size=3, method='simple'):
         
         smoothed_data['rotation'] = weighted_average(data['rotation'], window_size)
         smoothed_data['flexion'] = weighted_average(data['flexion'], window_size)
-        smoothed_data['tx'] = weighted_average(data['tx'], window_size)
+        smoothed_data['tjx'] = weighted_average(data['tjx'], window_size)
         
     elif method == 'exponential':
         # Exponential moving average
         alpha = 2.0 / (window_size + 1)
         smoothed_data['rotation'] = data['rotation'].ewm(alpha=alpha, adjust=False).mean()
         smoothed_data['flexion'] = data['flexion'].ewm(alpha=alpha, adjust=False).mean()
-        smoothed_data['tx'] = data['tx'].ewm(alpha=alpha, adjust=False).mean()
+        smoothed_data['tjx'] = data['tjx'].ewm(alpha=alpha, adjust=False).mean()
     
     return smoothed_data
 
@@ -123,23 +123,32 @@ except FileNotFoundError:
 
 # Extract the relevant columns
 tx = df.iloc[:, 6]  # Tx column (5th column, 0-indexed)
-rotation = df.iloc[:, 23]  # Rotation column (24th column, 0-indexed)
+ty = df.iloc[:, 7]
+tz = df.iloc[:, 8]
+fx = df.iloc[:, 3]
+fy = df.iloc[:, 4]
+fz = df.iloc[:, 5]
+
+tjx = tx + fz * 0.043 - fy * 0.226 #claculation for torque in the knee joint
+
 flexion = df.iloc[:, 21]  # Flexion column (22nd column, 0-indexed)
+rotation = df.iloc[:, 23]  # Rotation column (24th column, 0-indexed)
+
 
 # Debug: Check the data distribution first
 print(f"\nData distribution analysis:")
-print(f"Tx range: {tx.min():.4f} to {tx.max():.4f}")
+print(f"tjx range: {tjx.min():.4f} to {tjx.max():.4f}")
 print(f"Rotation range: {rotation.min():.2f} to {rotation.max():.2f}")
 print(f"Flexion range: {flexion.min():.2f} to {flexion.max():.2f}")
 
-# Create bins for Tx (torque)
-bin_size = 0.3
-tx_min = tx.min()
-tx_max = tx.max()
-tx_bins = np.arange(tx_min, tx_max + bin_size, bin_size)
+# Create bins for tjx (torque)
+bin_size = 0.4
+tjx_min = tjx.min()
+tjx_max = tjx.max()
+tjx_bins = np.arange(tjx_min, tjx_max + bin_size, bin_size)
 
 # Create bins for flexion angles (for averaging)
-flexion_bin_size = 2.0  # degrees - adjust this for more/less smoothing
+flexion_bin_size = 0.5  # degrees - adjust this for more/less smoothing
 flexion_min = flexion.min()
 flexion_max = flexion.max()
 flexion_bins = np.arange(flexion_min, flexion_max + flexion_bin_size, flexion_bin_size)
@@ -150,8 +159,8 @@ SMOOTHING_FACTOR = 2  # Multiplier for interpolation points (1 = no extra points
 MIN_POINTS_FOR_SMOOTHING = 2  # Minimum points needed before applying interpolation
 
 # Moving average parameters
-MOVING_AVERAGE_WINDOW = 5  # Size of moving average window (must be odd)
-MOVING_AVERAGE_METHOD = 'simple'  # Options: 'simple', 'weighted', 'exponential'
+MOVING_AVERAGE_WINDOW = 13  # Size of moving average window (must be odd)
+MOVING_AVERAGE_METHOD = 'weighted'  # Options: 'simple', 'weighted', 'exponential'
 APPLY_MOVING_AVERAGE = True  # Set to False to disable moving average
 
 print(f"\nSmoothing parameters:")
@@ -162,28 +171,28 @@ print(f"Moving average: {'Enabled' if APPLY_MOVING_AVERAGE else 'Disabled'}")
 if APPLY_MOVING_AVERAGE:
     print(f"Moving average window: {MOVING_AVERAGE_WINDOW}")
     print(f"Moving average method: {MOVING_AVERAGE_METHOD}")
-print(f"Tx bins: {len(tx_bins)-1} bins from {tx_min:.3f} to {tx_max:.3f}")
+print(f"tjx bins: {len(tjx_bins)-1} bins from {tjx_min:.3f} to {tjx_max:.3f}")
 print(f"Flexion bins: {len(flexion_bins)-1} bins from {flexion_min:.2f} to {flexion_max:.2f}")
 
 # Assign bin indices
-tx_bin_indices = pd.cut(tx, tx_bins, include_lowest=True, labels=False)
+tjx_bin_indices = pd.cut(tjx, tjx_bins, include_lowest=True, labels=False)
 flexion_bin_indices = pd.cut(flexion, flexion_bins, include_lowest=True, labels=False)
 
 # Create bin centers
-bin_centers = (tx_bins[:-1] + tx_bins[1:]) / 2
-tx_bin_centers = bin_centers[tx_bin_indices.astype(int)]
+bin_centers = (tjx_bins[:-1] + tjx_bins[1:]) / 2
+tjx_bin_centers = bin_centers[tjx_bin_indices.astype(int)]
 
 flexion_bin_centers = (flexion_bins[:-1] + flexion_bins[1:]) / 2
 flexion_bin_centers_mapped = flexion_bin_centers[flexion_bin_indices.astype(int)]
 
 # Create DataFrame with bin indices and centers
 data_df = pd.DataFrame({
-    'tx_bin': tx_bin_indices,
+    'tjx_bin': tjx_bin_indices,
     'flexion_bin': flexion_bin_indices,
     'rotation': rotation,
     'flexion': flexion,
-    'tx': tx,
-    'tx_bin_center': tx_bin_centers,
+    'tjx': tjx,
+    'tjx_bin_center': tjx_bin_centers,
     'flexion_bin_center': flexion_bin_centers_mapped
 })
 
@@ -201,31 +210,31 @@ print(f"Calculating weighted averages using {WEIGHT_TYPE} weighting...")
 # Calculate weighted averages
 weighted_groups = []
 
-for (tx_bin_idx, flexion_bin_idx), group in data_df.groupby(['tx_bin', 'flexion_bin']):
+for (tjx_bin_idx, flexion_bin_idx), group in data_df.groupby(['tjx_bin', 'flexion_bin']):
     if len(group) < 1:
         continue
     
     # Calculate weights based on distance from torque bin center
-    tx_weights = calculate_bin_weights(
-        group['tx'].values, 
-        group['tx_bin_center'].values,
+    tjx_weights = calculate_bin_weights(
+        group['tjx'].values, 
+        group['tjx_bin_center'].values,
         WEIGHT_TYPE, 
         SIGMA_FACTOR
     )
     
     # Calculate weighted averages
-    total_weight = np.sum(tx_weights)
+    total_weight = np.sum(tjx_weights)
     if total_weight > 0:
-        weighted_rotation = np.sum(group['rotation'].values * tx_weights) / total_weight
-        weighted_flexion = np.sum(group['flexion'].values * tx_weights) / total_weight
-        weighted_tx = np.sum(group['tx'].values * tx_weights) / total_weight
+        weighted_rotation = np.sum(group['rotation'].values * tjx_weights) / total_weight
+        weighted_flexion = np.sum(group['flexion'].values * tjx_weights) / total_weight
+        weighted_tjx = np.sum(group['tjx'].values * tjx_weights) / total_weight
         
         weighted_groups.append({
-            'tx_bin': tx_bin_idx,
+            'tjx_bin': tjx_bin_idx,
             'flexion_bin': flexion_bin_idx,
             'rotation': weighted_rotation,
             'flexion': weighted_flexion,
-            'tx': weighted_tx,
+            'tjx': weighted_tjx,
             'n_points': len(group),
             'effective_n': total_weight
         })
@@ -236,16 +245,16 @@ grouped_data = pd.DataFrame(weighted_groups)
 print(f"Weighted grouped data points: {len(grouped_data)}")
 
 # Create a colormap
-n_tx_bins = len(tx_bins) - 1
-colors = plt.cm.viridis(np.linspace(0, 1, n_tx_bins))
+n_tjx_bins = len(tjx_bins) - 1
+colors = plt.cm.viridis(np.linspace(0, 1, n_tjx_bins))
 
 # Create the plot
 fig, ax = plt.subplots(figsize=(14, 10))
 
 plotted_lines = 0
-for tx_bin_idx in range(n_tx_bins):
-    # Get data for this tx bin
-    bin_data = grouped_data[grouped_data['tx_bin'] == tx_bin_idx].copy()
+for tjx_bin_idx in range(n_tjx_bins):
+    # Get data for this tjx bin
+    bin_data = grouped_data[grouped_data['tjx_bin'] == tjx_bin_idx].copy()
     
     if len(bin_data) < 1:  # Need at least 1 point
         continue
@@ -255,7 +264,7 @@ for tx_bin_idx in range(n_tx_bins):
     
     # Apply moving average if enabled
     if APPLY_MOVING_AVERAGE and len(bin_data) >= 3:
-        print(f"Applying moving average to Tx bin {tx_bin_idx} ({len(bin_data)} points)...")
+        print(f"Applying moving average to tjx bin {tjx_bin_idx} ({len(bin_data)} points)...")
         bin_data = apply_moving_average(bin_data, MOVING_AVERAGE_WINDOW, MOVING_AVERAGE_METHOD)
     
     # Separate positive, negative, and zero rotation values
@@ -292,31 +301,31 @@ for tx_bin_idx in range(n_tx_bins):
                     
                     # Plot the smooth line
                     ax.plot(x_smooth, y_smooth, 
-                           color=colors[tx_bin_idx], 
+                           color=colors[tjx_bin_idx], 
                            linewidth=2.5, 
                            alpha=0.8)
                     
                 except Exception as e:
-                    print(f"Smoothing failed for bin {tx_bin_idx} {subset_name}: {e}")
+                    print(f"Smoothing failed for bin {tjx_bin_idx} {subset_name}: {e}")
                     # Fall back to simple line plot
                     ax.plot(x_values, y_values, 
-                           color=colors[tx_bin_idx], 
+                           color=colors[tjx_bin_idx], 
                            linewidth=2.5, 
                            alpha=0.8)
             else:
                 # Simple line plot for bins with few points
                 ax.plot(x_values, y_values, 
-                       color=colors[tx_bin_idx], 
+                       color=colors[tjx_bin_idx], 
                        linewidth=2.5, 
                        alpha=0.8)
         
         # Plot the actual averaged points
-        marker_size = 50 if marker_style == 's' else 40
+        marker_size = 2 if marker_style == 's' else 15
         edge_color = 'black' if marker_style == 's' else 'white'
-        edge_width = 1.5 if marker_style == 's' else 1
+        edge_width = 0.5 if marker_style == 's' else 0.2
         
         ax.scatter(x_values, y_values, 
-                  c=[colors[tx_bin_idx]], 
+                  c=[colors[tjx_bin_idx]], 
                   alpha=0.9, s=marker_size, marker=marker_style,
                   edgecolors=edge_color, linewidth=edge_width, zorder=5)
         
@@ -331,18 +340,18 @@ for tx_bin_idx in range(n_tx_bins):
     
     if total_count > 0:
         # Create legend entry
-        tx_range_start = tx_bins[tx_bin_idx]
-        tx_range_end = tx_bins[tx_bin_idx + 1]
-        tx_middle = (tx_range_start + tx_range_end) / 2
+        tjx_range_start = tjx_bins[tjx_bin_idx]
+        tjx_range_end = tjx_bins[tjx_bin_idx + 1]
+        tjx_middle = (tjx_range_start + tjx_range_end) / 2
         
         # Add moving average info to legend if enabled
-        legend_label = f'Tx: {tx_middle:.3f} (n={total_count}: +{pos_count}/-{neg_count}/0{zero_count})'
+        legend_label = f'tjx: {tjx_middle:.3f} (n={total_count}: +{pos_count}/-{neg_count}/0{zero_count})'
         if APPLY_MOVING_AVERAGE:
             legend_label += f' [MA-{MOVING_AVERAGE_METHOD[:3]}]'
         
         # Add a dummy scatter for legend
         ax.scatter([], [], 
-                  c=[colors[tx_bin_idx]], 
+                  c=[colors[tjx_bin_idx]], 
                   label=legend_label,
                   s=60)
         
@@ -360,7 +369,7 @@ ax.axvline(x=0, color='black', linestyle='--', alpha=0.5, linewidth=1)
 # Set labels and title
 ax.set_xlabel('Rotation (degrees)', fontsize=12)
 ax.set_ylabel('Flexion (degrees)', fontsize=12)
-title = 'Flexion vs Rotation Contour Lines\n(Averaged by Torque Tx and Flexion Bins'
+title = 'Flexion vs Rotation Contour Lines\n(Averaged by Torque tjx and Flexion Bins'
 if APPLY_MOVING_AVERAGE:
     title += f' + {MOVING_AVERAGE_METHOD.title()} Moving Average)'
 else:
@@ -387,15 +396,15 @@ print(f"\nFinal statistics:")
 print(f"Total original data points: {len(df)}")
 print(f"Valid data points after binning: {len(data_df)}")
 print(f"Averaged data points: {len(grouped_data)}")
-print(f"Tx bins with data: {plotted_lines}")
-print(f"Average points per Tx bin: {len(grouped_data) / max(1, plotted_lines):.1f}")
+print(f"tjx bins with data: {plotted_lines}")
+print(f"Average points per tjx bin: {len(grouped_data) / max(1, plotted_lines):.1f}")
 if APPLY_MOVING_AVERAGE:
     print(f"Moving average applied: {MOVING_AVERAGE_METHOD} with window size {MOVING_AVERAGE_WINDOW}")
 
 # Show bin distribution
 print(f"\nBin distribution:")
-bin_counts = grouped_data['tx_bin'].value_counts().sort_index()
-for tx_bin_idx, count in bin_counts.items():
-    tx_range_start = tx_bins[int(tx_bin_idx)]
-    tx_range_end = tx_bins[int(tx_bin_idx) + 1]
-    print(f"Tx bin {int(tx_bin_idx)} ({tx_range_start:.3f}-{tx_range_end:.3f}): {count} averaged points")
+bin_counts = grouped_data['tjx_bin'].value_counts().sort_index()
+for tjx_bin_idx, count in bin_counts.items():
+    tjx_range_start = tjx_bins[int(tjx_bin_idx)]
+    tjx_range_end = tjx_bins[int(tjx_bin_idx) + 1]
+    print(f"tjx bin {int(tjx_bin_idx)} ({tjx_range_start:.3f}-{tjx_range_end:.3f}): {count} averaged points")
