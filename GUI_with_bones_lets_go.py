@@ -34,6 +34,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from PyQt5.QtCore import QPropertyAnimation, QEasingCurve, pyqtProperty
 from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsProxyWidget
+from scipy import interpolate
 
 class KneeFlexionExperiment(QMainWindow):
     def __init__(self):
@@ -475,15 +476,32 @@ class KneeFlexionExperiment(QMainWindow):
         # Right side - Dynamic diagram section
         diagram_layout = QVBoxLayout()
 
-        # Add title for the diagram
-        #diagram_label = QLabel("Flexion vs Varus/Valgus")
-        #diagram_label.setAlignment(Qt.AlignCenter)
-        #diagram_label.setFont(QFont("Arial", 12, QFont.Bold))
-        #diagram_layout.addWidget(diagram_label)
-
         # Create matplotlib canvas for the dynamic diagram
         self.canvas_varus_valgus = MplCanvas(width=6, height=7, mode="varus_valgus")
         diagram_layout.addWidget(self.canvas_varus_valgus)
+
+        # Add contour calculation button
+        self.contour_button = QPushButton("Calculate Contour Plot")
+        self.contour_button.clicked.connect(self.calculate_and_plot_contours)
+        self.contour_button.setMinimumHeight(40)
+        self.contour_button.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                font-size: 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QPushButton:pressed {
+                background-color: #3d8b40;
+            }
+        """)
+        diagram_layout.addWidget(self.contour_button)
+        
 
         # Add both sections to horizontal layout
         bone_and_diagram_layout.addLayout(bone_viz_layout, 2)  # Give bone viz more space (ratio 2:1)
@@ -1170,6 +1188,364 @@ class KneeFlexionExperiment(QMainWindow):
         
         print(f"Diagram mode switched to: {self.diagram_mode}")
 
+    def calculate_and_plot_contours(self):
+        """
+        Calculate and display the contour plot in the varus_valgus canvas.
+        This method integrates your existing contour calculation code.
+        """
+        try:
+           
+            #file_path = r'C:\files_Annick\Studium Unterlagen\Master\masterarbeit\a-knee-ck\20250610_180026_0deg_neutral.csv'
+            # Get the newest CSV file from the recorded_data folder
+            recorded_data_folder = r'C:\files_Annick\Studium Unterlagen\Master\masterarbeit\a-knee-ck\recorded_data'
+            
+            # Find all CSV files in the folder
+            csv_files = []
+            for file in os.listdir(recorded_data_folder):
+                if file.endswith('.csv'):
+                    file_path = os.path.join(recorded_data_folder, file)
+                    # Get file modification time
+                    mtime = os.path.getmtime(file_path)
+                    csv_files.append((file_path, mtime))
+            
+            if not csv_files:
+                print(f"No CSV files found in folder: {recorded_data_folder}")
+                return
+            
+            # Sort by modification time (newest first) and get the newest file
+            csv_files.sort(key=lambda x: x[1], reverse=True)
+            file_path = csv_files[0][0]
+            
+            print(f"Using newest CSV file: {os.path.basename(file_path)}")
+
+            # Load data
+            df = pd.read_csv(file_path, comment='#')
+            print(f"Successfully loaded data from: {file_path}")
+            print(f"Data shape: {df.shape}")
+            
+            # Extract the relevant columns (same as your original code)
+            tx = df.iloc[:, 6]  # Tx column
+            ty = df.iloc[:, 7]
+            tz = df.iloc[:, 8]
+            fx = df.iloc[:, 3]
+            fy = df.iloc[:, 4]
+            fz = df.iloc[:, 5]
+            
+            tjx = tx + fz * 0.043 - fy * 0.226  # calculation for torque in the knee joint
+            flexion = df.iloc[:, 21]  # Flexion column
+            rotation = df.iloc[:, 23]  # Rotation column
+            
+            # Configuration parameters (you can make these class attributes for easy modification)
+            bin_size = 0.4
+            flexion_bin_size = 0.5
+            INTERPOLATION_KIND = 'linear'
+            SMOOTHING_FACTOR = 2
+            MIN_POINTS_FOR_SMOOTHING = 2
+            MOVING_AVERAGE_WINDOW = 13
+            MOVING_AVERAGE_METHOD = 'weighted'
+            APPLY_MOVING_AVERAGE = True
+            WEIGHT_TYPE = 'gaussian'
+            SIGMA_FACTOR = 0.2
+            
+            # Create bins for tjx (torque)
+            tjx_min = tjx.min()
+            tjx_max = tjx.max()
+            tjx_bins = np.arange(tjx_min, tjx_max + bin_size, bin_size)
+            
+            # Create bins for flexion angles
+            flexion_min = flexion.min()
+            flexion_max = flexion.max()
+            flexion_bins = np.arange(flexion_min, flexion_max + flexion_bin_size, flexion_bin_size)
+            
+            # Assign bin indices
+            tjx_bin_indices = pd.cut(tjx, tjx_bins, include_lowest=True, labels=False)
+            flexion_bin_indices = pd.cut(flexion, flexion_bins, include_lowest=True, labels=False)
+            
+            # Create bin centers
+            bin_centers = (tjx_bins[:-1] + tjx_bins[1:]) / 2
+            tjx_bin_centers = bin_centers[tjx_bin_indices.astype(int)]
+            
+            flexion_bin_centers = (flexion_bins[:-1] + flexion_bins[1:]) / 2
+            flexion_bin_centers_mapped = flexion_bin_centers[flexion_bin_indices.astype(int)]
+            
+            # Create DataFrame with bin indices and centers
+            data_df = pd.DataFrame({
+                'tjx_bin': tjx_bin_indices,
+                'flexion_bin': flexion_bin_indices,
+                'rotation': rotation,
+                'flexion': flexion,
+                'tjx': tjx,
+                'tjx_bin_center': tjx_bin_centers,
+                'flexion_bin_center': flexion_bin_centers_mapped
+            })
+            
+            # Remove rows with NaN bin indices
+            data_df = data_df.dropna()
+            
+            # Calculate weighted averages using your existing function
+            weighted_groups = []
+            
+            for (tjx_bin_idx, flexion_bin_idx), group in data_df.groupby(['tjx_bin', 'flexion_bin']):
+                if len(group) < 1:
+                    continue
+                
+                # Calculate weights based on distance from torque bin center
+                tjx_weights = self.calculate_bin_weights(
+                    group['tjx'].values, 
+                    group['tjx_bin_center'].values,
+                    WEIGHT_TYPE, 
+                    SIGMA_FACTOR,
+                    bin_size
+                )
+                
+                # Calculate weighted averages
+                total_weight = np.sum(tjx_weights)
+                if total_weight > 0:
+                    weighted_rotation = np.sum(group['rotation'].values * tjx_weights) / total_weight
+                    weighted_flexion = np.sum(group['flexion'].values * tjx_weights) / total_weight
+                    weighted_tjx = np.sum(group['tjx'].values * tjx_weights) / total_weight
+                    
+                    weighted_groups.append({
+                        'tjx_bin': tjx_bin_idx,
+                        'flexion_bin': flexion_bin_idx,
+                        'rotation': weighted_rotation,
+                        'flexion': weighted_flexion,
+                        'tjx': weighted_tjx,
+                        'n_points': len(group),
+                        'effective_n': total_weight
+                    })
+            
+            # Convert to DataFrame
+            grouped_data = pd.DataFrame(weighted_groups)
+            
+            # Clear the existing plot
+            self.canvas_varus_valgus.ax.clear()
+            
+            # Create colormap
+            n_tjx_bins = len(tjx_bins) - 1
+            colors = plt.cm.viridis(np.linspace(0, 1, n_tjx_bins))
+            
+            # Plot the contour lines
+            plotted_lines = 0
+            for tjx_bin_idx in range(n_tjx_bins):
+                # Get data for this tjx bin
+                bin_data = grouped_data[grouped_data['tjx_bin'] == tjx_bin_idx].copy()
+                
+                if len(bin_data) < 1:
+                    continue
+                
+                # Sort by flexion for smooth line connection
+                bin_data = bin_data.sort_values('flexion')
+                
+                # Apply moving average if enabled
+                if APPLY_MOVING_AVERAGE and len(bin_data) >= 3:
+                    bin_data = self.apply_moving_average(bin_data, MOVING_AVERAGE_WINDOW, MOVING_AVERAGE_METHOD)
+                
+                # Plot the data
+                self.plot_contour_subset(bin_data, tjx_bin_idx, colors, tjx_bins, 
+                                    INTERPOLATION_KIND, SMOOTHING_FACTOR, MIN_POINTS_FOR_SMOOTHING)
+                plotted_lines += 1
+            
+            # Configure the plot
+            x_range = max(abs(rotation.min()), abs(rotation.max())) * 1.1
+            self.canvas_varus_valgus.ax.set_xlim(-x_range, x_range)
+            self.canvas_varus_valgus.ax.axvline(x=0, color='black', linestyle='--', alpha=0.5, linewidth=1)
+            
+            # Set labels and title
+            self.canvas_varus_valgus.ax.set_xlabel('Rotation (degrees)', fontsize=12)
+            self.canvas_varus_valgus.ax.set_ylabel('Flexion (degrees)', fontsize=12)
+            title = 'Flexion vs Rotation Contour Lines\n(Averaged by Torque tjx and Flexion Bins'
+            if APPLY_MOVING_AVERAGE:
+                title += f' + {MOVING_AVERAGE_METHOD.title()} Moving Average)'
+            else:
+                title += ')'
+            self.canvas_varus_valgus.ax.set_title(title, fontsize=14)
+            
+            # Add grid and legend
+            self.canvas_varus_valgus.ax.grid(True, alpha=0.3)
+            
+            # Refresh the canvas
+            self.canvas_varus_valgus.draw()
+            
+            print(f"Contour plot generated successfully with {plotted_lines} lines")
+            
+        except FileNotFoundError:
+            print(f"File not found: {file_path}")
+            # You might want to show a QMessageBox here to inform the user
+        except Exception as e:
+            print(f"Error generating contour plot: {e}")
+            # You might want to show a QMessageBox here to inform the user
+
+    def calculate_bin_weights(self, values, bin_centers, weight_type='gaussian', sigma_factor=0.3, bin_size=0.4):
+        """
+        Calculate weights for values within bins, giving higher weight to values 
+        closer to bin centers.
+        """
+        weights = np.ones_like(values)
+        
+        for i, (val, center) in enumerate(zip(values, bin_centers)):
+            distance = abs(val - center)
+            
+            if weight_type == 'gaussian':
+                sigma = bin_size * sigma_factor
+                weights[i] = np.exp(-(distance**2) / (2 * sigma**2))
+                
+            elif weight_type == 'triangular':
+                max_distance = bin_size / 2
+                weights[i] = max(0, 1 - distance / max_distance)
+                
+            elif weight_type == 'quadratic':
+                max_distance = bin_size / 2
+                if distance <= max_distance:
+                    weights[i] = 1 - (distance / max_distance)**2
+                else:
+                    weights[i] = 0
+        
+        return weights
+
+    def apply_moving_average(self, data, window_size=3, method='simple'):
+        """
+        Apply moving average to smooth the data.
+        """
+        from scipy import interpolate
+        
+        if len(data) < window_size:
+            return data.copy()
+        
+        # Ensure window size is odd for centered window
+        if window_size % 2 == 0:
+            window_size += 1
+        
+        smoothed_data = data.copy()
+        
+        if method == 'simple':
+            smoothed_data['rotation'] = data['rotation'].rolling(
+                window=window_size, center=True, min_periods=1
+            ).mean()
+            smoothed_data['flexion'] = data['flexion'].rolling(
+                window=window_size, center=True, min_periods=1
+            ).mean()
+            smoothed_data['tjx'] = data['tjx'].rolling(
+                window=window_size, center=True, min_periods=1
+            ).mean()
+            
+        elif method == 'weighted':
+            def weighted_average(series, window_size):
+                weights = np.bartlett(window_size)
+                weights = weights / weights.sum()
+                
+                result = series.copy()
+                half_window = window_size // 2
+                
+                for i in range(len(series)):
+                    start_idx = max(0, i - half_window)
+                    end_idx = min(len(series), i + half_window + 1)
+                    window_data = series.iloc[start_idx:end_idx]
+                    
+                    if len(window_data) < window_size:
+                        if i < half_window:
+                            used_weights = weights[-(len(window_data)):]
+                        else:
+                            used_weights = weights[:len(window_data)]
+                        used_weights = used_weights / used_weights.sum()
+                    else:
+                        used_weights = weights
+                    
+                    result.iloc[i] = np.average(window_data, weights=used_weights)
+                
+                return result
+            
+            smoothed_data['rotation'] = weighted_average(data['rotation'], window_size)
+            smoothed_data['flexion'] = weighted_average(data['flexion'], window_size)
+            smoothed_data['tjx'] = weighted_average(data['tjx'], window_size)
+            
+        elif method == 'exponential':
+            alpha = 2.0 / (window_size + 1)
+            smoothed_data['rotation'] = data['rotation'].ewm(alpha=alpha, adjust=False).mean()
+            smoothed_data['flexion'] = data['flexion'].ewm(alpha=alpha, adjust=False).mean()
+            smoothed_data['tjx'] = data['tjx'].ewm(alpha=alpha, adjust=False).mean()
+        
+        return smoothed_data
+
+    def plot_contour_subset(self, bin_data, tjx_bin_idx, colors, tjx_bins, 
+                        interpolation_kind, smoothing_factor, min_points_for_smoothing):
+        """
+        Helper method to plot a subset of contour data.
+        """
+        from scipy import interpolate
+        
+        # Separate positive, negative, and zero rotation values
+        positive_data = bin_data[bin_data['rotation'] > 0].copy()
+        negative_data = bin_data[bin_data['rotation'] < 0].copy()
+        zero_data = bin_data[bin_data['rotation'] == 0].copy()
+        
+        def plot_subset(subset_data, marker_style='o'):
+            if len(subset_data) < 1:
+                return 0
+            
+            subset_data = subset_data.sort_values('flexion')
+            x_values = subset_data['rotation'].values
+            y_values = subset_data['flexion'].values
+            
+            # Plot line if we have enough points
+            if len(subset_data) >= 2:
+                if len(subset_data) >= min_points_for_smoothing:
+                    try:
+                        if smoothing_factor > 1:
+                            y_smooth = np.linspace(y_values.min(), y_values.max(), 
+                                                len(y_values) * smoothing_factor)
+                        else:
+                            y_smooth = y_values
+                        
+                        f = interpolate.interp1d(y_values, x_values, kind=interpolation_kind, 
+                                            bounds_error=False, fill_value='extrapolate')
+                        x_smooth = f(y_smooth)
+                        
+                        self.canvas_varus_valgus.ax.plot(x_smooth, y_smooth, 
+                                                        color=colors[tjx_bin_idx], 
+                                                        linewidth=2.5, alpha=0.8)
+                        
+                    except Exception as e:
+                        print(f"Smoothing failed for bin {tjx_bin_idx}: {e}")
+                        self.canvas_varus_valgus.ax.plot(x_values, y_values, 
+                                                        color=colors[tjx_bin_idx], 
+                                                        linewidth=2.5, alpha=0.8)
+                else:
+                    self.canvas_varus_valgus.ax.plot(x_values, y_values, 
+                                                    color=colors[tjx_bin_idx], 
+                                                    linewidth=2.5, alpha=0.8)
+            
+            # Plot the actual averaged points
+            marker_size = 2 if marker_style == 's' else 15
+            edge_color = 'black' if marker_style == 's' else 'white'
+            edge_width = 0.5 if marker_style == 's' else 0.2
+            
+            self.canvas_varus_valgus.ax.scatter(x_values, y_values, 
+                                                c=[colors[tjx_bin_idx]], 
+                                                alpha=0.9, s=marker_size, marker=marker_style,
+                                                edgecolors=edge_color, linewidth=edge_width, zorder=5)
+            
+            return len(subset_data)
+        
+        # Plot each subset
+        pos_count = plot_subset(positive_data, 'o')
+        neg_count = plot_subset(negative_data, 'o') 
+        zero_count = plot_subset(zero_data, 's')
+        
+        total_count = pos_count + neg_count + zero_count
+        
+        if total_count > 0:
+            # Create legend entry
+            tjx_range_start = tjx_bins[tjx_bin_idx]
+            tjx_range_end = tjx_bins[tjx_bin_idx + 1]
+            tjx_middle = (tjx_range_start + tjx_range_end) / 2
+            
+            legend_label = f'tjx: {tjx_middle:.3f} (n={total_count})'
+            
+            # Add a dummy scatter for legend
+            self.canvas_varus_valgus.ax.scatter([], [], 
+                                                c=[colors[tjx_bin_idx]], 
+                                                label=legend_label, s=60)
             
 
 
