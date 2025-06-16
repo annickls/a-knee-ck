@@ -148,7 +148,7 @@ class MplCanvas(FigureCanvas):
             self.ax.set_xlim(-40, 40)
         else:
             self.ax.set_xlabel('external rotation         internal rotation')
-            self.ax.set_xlim(-60, 60)
+            self.ax.set_xlim(-80, 80)
         
         # Only add the newest data point
         color = constants.SALMON if var_val_displacement > 0 else constants.LIMEGREEN
@@ -160,15 +160,15 @@ class MplCanvas(FigureCanvas):
 
         
         # Add current point (red dot) - remove previous current point if it exists
-        #if hasattr(self, 'current_point') and self.current_point:
-            #self.current_point.remove()
+        if hasattr(self, 'current_point') and self.current_point:
+            self.current_point.remove()
         
         self.current_point, = self.ax.plot(var_val_displacement, flexion_angle, 'ro', 
                                         markersize=8, zorder=10)
         
         # Add current bar highlight - remove previous highlight if it exists
-        #if hasattr(self, 'current_highlight') and self.current_highlight:
-        #    self.current_highlight.remove()
+        if hasattr(self, 'current_highlight') and self.current_highlight:
+            self.current_highlight.remove()
             
         current_color = 'red' if var_val_displacement > 0 else 'blue'
         self.current_highlight, = self.ax.plot([0, var_val_displacement], [flexion_angle, flexion_angle], 

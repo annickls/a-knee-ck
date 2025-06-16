@@ -2,7 +2,7 @@ import os
 import numpy as np
 
 # experiment parameters
-HOLD_TIME = 10 #seconds to hold knee positions
+HOLD_TIME = 20 #seconds to hold knee positions
 LACHMANN_TIME = 15 # seconds for lachmann test
 FLEXION_ANGLES = [0, 30, 60, 90, 120]
 
@@ -61,4 +61,4 @@ BUTTON_HEIGHT = 60
 root_folder = os.path.dirname(current_folder)
 DATA_PREVIOUS_TEST = "/home/annick/GUI/data_for_gui/print_data.F_sensor_temp_data_7.txt"
 DATA_CSV = os.path.join(root_folder, "knee_eval_ws", "data.csv")
-DATA_CSV = "data_new.csv"
+#DATA_CSV = "data_new.csv"
