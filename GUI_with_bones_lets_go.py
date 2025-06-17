@@ -86,6 +86,8 @@ class KneeFlexionExperiment(QMainWindow):
         self.axes_valgus_on = 0
 
         self.diagram_mode = "varus_valgus"  # Can be "varus_valgus" or "rotation"
+        
+        self.diagram_start_mode = "stop"
 
         
         # Ensure directory exists for data files
@@ -240,28 +242,28 @@ class KneeFlexionExperiment(QMainWindow):
                             #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m3")
                             #UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_m4")
 
+                            
+                            if self.diagram_start_mode == "start":
+                                angles_new = UpdateVisualization.get_current_knee_angles()
+                                flexion_angle = angles_new['flexion']
 
-                           
-                            angles_new = UpdateVisualization.get_current_knee_angles()
-                            flexion_angle = angles_new['flexion']
+                                if self.diagram_mode == "varus_valgus":
+                                    
+                                    lateral_joint_gap = angles_new['lateral_tibia_femur']
+                                    medial_joint_gap = angles_new['medial_tibia_femur']
+                                    
+                                    
+                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, lateral_joint_gap, self.diagram_mode)
+                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, -medial_joint_gap, self.diagram_mode)
 
-                            if self.diagram_mode == "varus_valgus":
-                                
-                                lateral_joint_gap = angles_new['lateral_tibia_femur']
-                                medial_joint_gap = angles_new['medial_tibia_femur']
-                                
-                                
-                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, lateral_joint_gap, self.diagram_mode)
-                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, -medial_joint_gap, self.diagram_mode)
-
-                                
-                            else:  # rotation mode
-                                # Extract rotation angles from your angles_new dictionary
-                                internal_rotation_angle = angles_new['rotation']
-                               
-                                
-                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, internal_rotation_angle, self.diagram_mode)
-                               
+                                    
+                                else:  # rotation mode
+                                    # Extract rotation angles from your angles_new dictionary
+                                    internal_rotation_angle = angles_new['rotation']
+                                    
+                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, internal_rotation_angle, self.diagram_mode)
+                            else:
+                                test = 0
 
                             
                             #self.canvas_varus_valgus.draw()
@@ -620,8 +622,19 @@ class KneeFlexionExperiment(QMainWindow):
 
         #test button to change axes in diagram
         self.diagram_axes_button = QPushButton("click to show rotation")
-        self.diagram_axes_button.setFixedHeight(constants.BUTTON_HEIGHT)
+        self.diagram_axes_button.setFixedHeight(constants.BUTTON_HEIGHT_2)
         self.diagram_axes_button.clicked.connect(self.toggle_diagram_axes)
+
+        # start stop plotting
+        self.diagram_start_stop_button = QPushButton("start plot")
+        self.diagram_start_stop_button.setFixedHeight(constants.BUTTON_HEIGHT_2)
+        self.diagram_start_mode = "stop"
+        self.diagram_start_stop_button.clicked.connect(self.start_stop_diagram)
+
+        #button to record data
+        self.record_individual_button = QPushButton("Record Data")
+        self.record_individual_button.setFixedHeight(constants.BUTTON_HEIGHT_2)
+        self.record_individual_button.clicked.connect(self.record_individual)
         
         # Layout arrangement
         subsub_layout = QHBoxLayout()
@@ -641,6 +654,8 @@ class KneeFlexionExperiment(QMainWindow):
         right_layout.addWidget(self.lachmann_button, 8, 0)
         right_layout.addWidget(self.start_buttoncsv, 9,0, 2, 1)
         right_layout.addWidget(self.diagram_axes_button, 10,0, 2, 1)
+        right_layout.addWidget(self.diagram_start_stop_button, 11,0, 2, 1)
+        right_layout.addWidget(self.record_individual_button, 12,0, 2, 1)
 
         
         right_widget.setLayout(right_layout)
@@ -911,7 +926,12 @@ class KneeFlexionExperiment(QMainWindow):
         elif self.current_angle_index >= (len(constants.FLEXION_ANGLES) - 1) and self.external_rot_button.isEnabled() == False:
             self.next_button.setEnabled(False) # End of regular experiment - enable Lachmann test
 
- 
+    def record_individual(self):
+        self.remaining_time = constants.HOLD_TIME
+        self.rotation_progress.setValue(constants.HOLD_TIME)
+        self.seconds_timer.start(1000)  
+        self.start_recording(f"individual") # Start recording data
+
     def load_femur(self):
         try:
             # Load femur STL
@@ -1149,7 +1169,7 @@ class KneeFlexionExperiment(QMainWindow):
                     self.canvas_varus_valgus.ax.set_ylabel('Flexion Angle (degrees)')
                     self.canvas_varus_valgus.ax.set_title('Internal/External Rotation')
                     self.canvas_varus_valgus.ax.grid(True, alpha=0.3)
-                    self.canvas_varus_valgus.ax.set_xlim(-60, 60)  # Adjust range as needed for rotation
+                    self.canvas_varus_valgus.ax.set_xlim(-40, 40)  # Adjust range as needed for rotation
                     self.canvas_varus_valgus.ax.set_ylim(-10, 120)
                     self.canvas_varus_valgus.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
                     
@@ -1189,6 +1209,14 @@ class KneeFlexionExperiment(QMainWindow):
                     print(f"Error updating plot to varus/valgus mode: {e}")
         
         print(f"Diagram mode switched to: {self.diagram_mode}")
+
+    def start_stop_diagram(self):
+        if self.diagram_start_mode == "stop":
+            self.diagram_start_mode = "start"
+            self.diagram_start_stop_button.setText("stop plot")  # Update button text   
+        else:
+            self.diagram_start_mode = "stop"
+            self.diagram_start_stop_button.setText("start plot")  # Update button text
 
     def calculate_and_plot_contours(self):
         """
@@ -1245,10 +1273,7 @@ class KneeFlexionExperiment(QMainWindow):
             
             
             # Configuration parameters (you can make these class attributes for easy modification)
-            if self.diagram_mode == 'rotation':    
-                bin_size = 0.3
-            else:
-                bin_size = 0.1
+            bin_number = 8
             flexion_bin_size = 0.5
             INTERPOLATION_KIND = 'linear'
             SMOOTHING_FACTOR = 2
@@ -1259,16 +1284,21 @@ class KneeFlexionExperiment(QMainWindow):
             WEIGHT_TYPE = 'gaussian'
             SIGMA_FACTOR = 0.2
             
-            # Create bins for tjx (torque)
+            # Create bins for tjx and tjy (torque)
             tjx_min = tjx.min()
             tjx_max = tjx.max()
-            tjx_bins = np.arange(tjx_min, tjx_max + bin_size, bin_size)
-          
-
-
-            # Create bins for tjy (torque)
             tjy_min = tjy.min()
             tjy_max = tjy.max()
+
+            if self.diagram_mode == 'rotation':    
+                bin_size = 0.42
+            else:
+                bin_size = 0.25
+
+            
+            
+            
+            tjx_bins = np.arange(tjx_min, tjx_max + bin_size, bin_size)
             tjy_bins = np.arange(tjy_min, tjy_max + bin_size, bin_size)
             
 
@@ -1466,7 +1496,7 @@ class KneeFlexionExperiment(QMainWindow):
                 # Configure the plot
                 #x_range = max(abs(rotation.min()), abs(rotation.max())) * 1.1
                 #self.canvas_varus_valgus.ax.set_xlim(-x_range, x_range)
-                self.canvas_varus_valgus.ax.set_xlim(-50, 50)
+                self.canvas_varus_valgus.ax.set_xlim(-30, 30)
                 self.canvas_varus_valgus.ax.axvline(x=0, color='black', linestyle='--', alpha=0.5, linewidth=1)
                 
                 # Set labels and title

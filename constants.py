@@ -2,7 +2,7 @@ import os
 import numpy as np
 
 # experiment parameters
-HOLD_TIME = 20 #seconds to hold knee positions
+HOLD_TIME = 40 #seconds to hold knee positions
 LACHMANN_TIME = 15 # seconds for lachmann test
 FLEXION_ANGLES = [0, 30, 60, 90, 120]
 
@@ -56,6 +56,7 @@ DODGERBLUE = (0.118, 0.565, 1.0, 1.0)
 
 # buttons
 BUTTON_HEIGHT = 60
+BUTTON_HEIGHT_2 = 40
 
 # data
 root_folder = os.path.dirname(current_folder)
