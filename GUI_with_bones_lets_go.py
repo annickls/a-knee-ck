@@ -35,6 +35,11 @@ from mpl_toolkits.mplot3d import Axes3D
 from PyQt5.QtCore import QPropertyAnimation, QEasingCurve, pyqtProperty
 from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsProxyWidget
 from scipy import interpolate
+from PyQt5.QtWidgets import QPushButton, QFileDialog, QMessageBox
+from PyQt5.QtCore import Qt
+import matplotlib.pyplot as plt
+
+
 
 class KneeFlexionExperiment(QMainWindow):
     def __init__(self):
@@ -504,6 +509,11 @@ class KneeFlexionExperiment(QMainWindow):
             }
         """)
         diagram_layout.addWidget(self.contour_button)
+
+        self.save_plot_button = QPushButton("Save Plot")
+        self.save_plot_button.clicked.connect(self.save_current_plot)
+
+        diagram_layout.addWidget(self.save_plot_button)
         
 
         # Add both sections to horizontal layout
@@ -1638,6 +1648,26 @@ class KneeFlexionExperiment(QMainWindow):
                 smoothed_data['tjy'] = data['tjy'].ewm(alpha=alpha, adjust=False).mean()
         
         return smoothed_data
+    def save_current_plot(self):
+        """Automatically save plot with timestamp"""
+        try:
+            save_dir = "saved_plots"
+            os.makedirs(save_dir, exist_ok=True)
+            
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = os.path.join(save_dir, f"varus_valgus_plot_{timestamp}.png")
+            
+            self.canvas_varus_valgus.figure.savefig(
+                filename,
+                dpi=300,
+                bbox_inches='tight',
+                facecolor='white'
+            )
+            
+            print(f"Plot auto-saved as {filename}")
+            
+        except Exception as e:
+            print(f"Auto-save failed: {str(e)}")
 
     def plot_contour_subset(self, bin_data, tjx_bin_idx, colors, tjx_bins, 
                         interpolation_kind, smoothing_factor, min_points_for_smoothing):

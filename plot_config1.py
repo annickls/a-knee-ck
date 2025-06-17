@@ -5,6 +5,7 @@ from OpenGL.GL import glBegin, glEnd, glVertex3f, glColor4f, GL_LINES, GL_LINE_S
 import constants
 import numpy as np
 from matplotlib.collections import LineCollection
+from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
 
 class MplCanvas(FigureCanvas):
     """Matplotlib canvas class for embedding plots in Qt that can display either current or historical force/torque data"""
@@ -175,6 +176,7 @@ class MplCanvas(FigureCanvas):
                                             color=current_color, linewidth=4, alpha=0.8, zorder=5)
         
         self.draw()
+
     
     def update_tibia_position_path(self, tibia_pos_x, tibia_pos_y, tibia_pos_z, time_array):
         """Update the tibia position path visualization"""
