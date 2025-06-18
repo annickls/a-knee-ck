@@ -1275,12 +1275,15 @@ class KneeFlexionExperiment(QMainWindow):
             
             flexion = df.iloc[:, 21]  # Flexion column
             tjx = tx + fz * 0.043 - fy * 0.226  # calculation for torque in the knee joint
+            #tjx = -tz - fx * 0.043 - fy * 0.226  # calculation for torque in the knee joint
             rotation = df.iloc[:, 23]  # Rotation column
-            tjy = ty - fx *0.043 - fy * 0.077
+            #tjy = ty - fx *0.043 - fy * 0.077
+            tjy = -tx + fz *0.043 - fy * 0.077
             medial_joint_gap = df.iloc[:, 27]  # Medial_Joint_Gap column
             lateral_joint_gap = df.iloc[:, 28]  # Lateral_Joint_Gap column
                 
-            
+            #tjx = tx + ty+ tz
+            #tjy = tx + ty+ tz
             
             # Configuration parameters (you can make these class attributes for easy modification)
             bin_number = 8
@@ -1302,8 +1305,10 @@ class KneeFlexionExperiment(QMainWindow):
 
             if self.diagram_mode == 'rotation':    
                 bin_size = 0.42
+                #bin_size = 0.15
             else:
                 bin_size = 0.25
+                bin_size = 0.5
 
             
             
