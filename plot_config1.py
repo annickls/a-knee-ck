@@ -146,7 +146,7 @@ class MplCanvas(FigureCanvas):
 
         if mode == "varus_valgus":
             self.ax.set_xlabel('medial joint gap          lateral joint gap')
-            self.ax.set_xlim(-40, 40)
+            self.ax.set_xlim(-50, 50)
         else:
             self.ax.set_xlabel('external rotation         internal rotation')
             self.ax.set_xlim(-80, 80)

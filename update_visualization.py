@@ -320,7 +320,7 @@ class UpdateVisualization():
             self.gl_view.addItem(self.torque_arrow_head)
 
 
-        # visualize important axes for grood and suntay
+        """# visualize important axes for grood and suntay
         femurdistal= UpdateVisualization.femur_landmarks['femur_distal']['position']
         femurmedial= UpdateVisualization.femur_landmarks['femur_medial']['position']
         femurlateral= UpdateVisualization.femur_landmarks['femur_lateral']['position']
@@ -336,9 +336,6 @@ class UpdateVisualization():
         if hasattr(self, 'tibia_femur_floating_axis') and self.tibia_femur_floating_axis  is not None:
             self.gl_view.removeItem(self.tibia_femur_floating_axis)
 
-
-       
-    
 
         #Femur medial-lateral axis
         self.femur_axis_shaft_ml = MeshUtils.create_tibia_axis(
@@ -371,7 +368,7 @@ class UpdateVisualization():
             self.gl_view.addItem(self.tibia_axis_shaft_pd)
 
         if self.tibia_femur_floating_axis is not None:
-            self.gl_view.addItem(self.tibia_femur_floating_axis)
+            self.gl_view.addItem(self.tibia_femur_floating_axis)"""
 
         # Create/update legend
         UpdateVisualization.create_legend(self)
@@ -549,8 +546,8 @@ class UpdateVisualization():
             
             self.joint_angles_text.setText(
                     f"Joint Angles: \n Flexion: {int(angles['flexion'])}°\n "
-                    f"Varus (+) / Valgus (-): {int(angles['adduction'])}°\n "
-                    f"Int (+) and Ext (-) Rotation: {int(angles['rotation'])}°"
+                    f"Varus (-) / Valgus (+): {int(angles['adduction'])}°\n "
+                    f"Int (-) and Ext (+) Rotation: {int(angles['rotation'])}°"
                 )
             
             self.joint_translations_text.setText(
@@ -676,108 +673,77 @@ class UpdateVisualization():
                 # ============= ANGLE CALCULATIONS =============
             
             # 1. FLEXION/EXTENSION ANGLE
-            # Angle between tibial long axis (e2t) and its projection onto the plane 
-            # perpendicular to the femoral flexion-extension axis (e1f)
-            
-            # Project e2t onto the plane perpendicular to e1f
-            e2t_projected = e2t - np.dot(e2t, e1f) * e1f
-            e2t_projected = e2t_projected / np.linalg.norm(e2t_projected)
-            
-            # The reference direction in the femoral coordinate system (e2f)
-            # Calculate angle between the projected tibial axis and femoral long axis
-            cos_flexion = np.dot(e2f, e2t_projected)
-            cos_flexion = np.clip(cos_flexion, -1.0, 1.0)  # Prevent numerical errors
-            
-            # Determine sign using cross product
-            cross_flex = np.cross(e2f, e2t_projected)
-            sign_flexion = np.sign(np.dot(cross_flex, e1f))
-            
-            flexion_angle = np.arccos(cos_flexion) * 180.0 / np.pi
-            flexion_angle *= sign_flexion
+
+            dot_product = np.dot(e3f,floating_axis)
+            magnitude_e3f = np.linalg.norm(e3f)
+            magnitude_floating_axis = np.linalg.norm(floating_axis)
+            cos_flexion = dot_product / (magnitude_e3f*magnitude_floating_axis)
+            #flexion_sign = np.cross(floating_axis, e2f)
+            flexion = math.acos(cos_flexion)
+            flexion_angle = flexion* 180.0 / np.pi
+
+            """dot_product = np.dot(-floating_axis,e2f)
+            magnitude_e2f = np.linalg.norm(e2f)
+            magnitude_floating_axis = np.linalg.norm(floating_axis)
+            sin_flexion = dot_product / (magnitude_floating_axis * magnitude_e2f)
+            flexion = math.asin(sin_flexion)
+            flexion_angle = flexion* 180.0 / np.pi"""
             
             
             # 2. ABDUCTION/ADDUCTION ANGLE  
-            # Angle between femoral long axis (e2f) and its projection onto the plane
-            # perpendicular to the floating axis
-            
-            # Project e2f onto the plane perpendicular to floating axis
-            e2f_projected = e2f - np.dot(e2f, floating_axis) * floating_axis
-            e2f_projected = e2f_projected / np.linalg.norm(e2f_projected)
-            
-            # Calculate angle between projected femoral axis and tibial long axis
-            cos_adduction = np.dot(e2f_projected, e2t)
-            cos_adduction = np.clip(cos_adduction, -1.0, 1.0)
-            
-            # Determine sign using cross product
-            cross_add = np.cross(e2t, e2f_projected)
-            sign_adduction = np.sign(np.dot(cross_add, floating_axis))
-            
-            adduction_angle = np.arccos(cos_adduction) * 180.0 / np.pi
-            adduction_angle *= sign_adduction
-            
-            if 89 < int(flexion_angle) < 91:
-                adduction_angle = UpdateVisualization.current_knee_angles['adduction']
-            elif int(flexion_angle) >= 91:
-                
-                if sign_adduction <0:
-                    adduction_angle += 180
-                else:
-                    adduction_angle -= 180
 
-
+            dot_product = np.dot(e1f, e2t)
+            magnitude_e1f = np.linalg.norm(e1f)
+            magnitude_e2t = np.linalg.norm(e2t)
+            cos_adduction = dot_product / (magnitude_e1f * magnitude_e2t )
+            adduction = math.acos(cos_adduction)
+            adduction_angle = (adduction -(np.pi/2))* 180.0 / np.pi
             
             # 3. INTERNAL/EXTERNAL ROTATION ANGLE
-            # Angle between femoral anterior-posterior axis (e3f) and its projection 
-            # onto the plane perpendicular to the tibial long axis (e2t)
-            
-            # Project e3f onto the plane perpendicular to e2t
-            e3f_projected = e3f - np.dot(e3f, e2t) * e2t
-            e3f_projected = e3f_projected / np.linalg.norm(e3f_projected)
-            
-            # Calculate angle between projected femoral AP axis and tibial AP axis
-            cos_rotation = np.dot(e3f_projected, e3t)
-            cos_rotation = np.clip(cos_rotation, -1.0, 1.0)
-            
-            # Determine sign using cross product
-            cross_rot = np.cross(e3t, e3f_projected)
-            sign_rotation = np.sign(np.dot(cross_rot, e2t))
-            
-            rotation_angle = np.arccos(cos_rotation) * 180.0 / np.pi
-            rotation_angle *= sign_rotation
 
-            if 85 < int(flexion_angle) < 95:
-                rotation_angle = UpdateVisualization.current_knee_angles['rotation']
-            elif int(flexion_angle) >= 95:
-                if sign_rotation <0:
-                    rotation_angle += 180
-                else:
-                    rotation_angle -= 180
-            
+            dot_product = np.dot(floating_axis, e1t)
+            magnitude_e1t = np.linalg.norm(e1t)
+            magnitude_floating_axis = np.linalg.norm(floating_axis)
+            sin_rotation = dot_product / (magnitude_e1t * magnitude_floating_axis )
+            rotation = math.asin(-sin_rotation)
+            rotation_angle = rotation * 180.0 / np.pi
+
+
             # ============= TRANSLATION CALCULATIONS =============
         
             # Calculate translation vector from tibia origin to femur origin
             translation_vector = femur_origin - tibia_origin
             
-            # Project translation onto Grood & Suntay axes (consistent with rotation definitions)
-            
-            # Medial-Lateral translation: along femoral flexion-extension axis (e1f)
-            # (+ = medial, - = lateral)  
-            medial_lateral = np.dot(translation_vector, e1f)
-            
+            # Project translation onto Grood & Suntay axes 
             # Anterior-Posterior translation: along floating axis
             # (+ = anterior, - = posterior)
             anterior_posterior = -np.dot(translation_vector, floating_axis)
+
+            # Medial-Lateral translation: along femoral flexion-extension axis (e1f)
+            # (+ = medial, - = lateral)  get's influenced by adduction angle
+            s1 = np.dot(translation_vector, e1f)
+            s3 = np.dot(translation_vector, e2t)
+            medial_lateral = s1 + s3 * math.cos(adduction)
             
             # Proximal-Distal translation: along tibial long axis (e2t)
-            # (+ = proximal, - = distal)
-            proximal_distal = np.dot(translation_vector, e2t)
+            # (+ = proximal, - = distal) also gets influenced by adduction angle
+            proximal_distal = -(-s3 -s1 *math.cos(adduction))
             
 
             #===========Clalculation distances femur condyles - tibia plateau medial and lateral========
+            # medial
             medial_tibia_femur = femur_medial - tibia_medial
-            medial_joint_gap = np.dot(medial_tibia_femur, e2t) / np.linalg.norm(e2t)
+            m1 = np.dot(medial_tibia_femur, e1f)
+            #m3 = np.dot(medial_tibia_femur, e2t) / np.linalg.norm(e2t)
+            m3 = np.dot(medial_tibia_femur, e2t)
+            medial_joint_gap = -(-m3 - m1 * math.cos(adduction))
+            
+            #lateral
             lateral_tibia_femur = femur_lateral - tibia_lateral
-            lateral_joint_gap = np.dot(lateral_tibia_femur, e2t) / np.linalg.norm(e2t)
+            l1 = np.dot(lateral_tibia_femur, e1f)
+            #l3 = np.dot(lateral_tibia_femur, e2t) / np.linalg.norm(e2t)
+            l3 = np.dot(lateral_tibia_femur, e2t)
+            lateral_joint_gap = -(-l3 - l1 *math.cos(adduction))
 
             # Store results for debugging/visualization
             UpdateVisualization.knee_angles = {

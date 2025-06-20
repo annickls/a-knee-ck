@@ -411,13 +411,13 @@ class KneeFlexionExperiment(QMainWindow):
         self.tab1 = QWidget()
         self.tab2 = QWidget()
         self.tab3 = QWidget()
-        self.tab4 = QWidget()
+        #self.tab4 = QWidget()
          
         # Add tabs to the tab widget
         self.tabs.addTab(self.tab1, "current data")
         self.tabs.addTab(self.tab2, "force && torque history")
         self.tabs.addTab(self.tab3, "bone visualization")
-        self.tabs.addTab(self.tab4, "position path")
+        #self.tabs.addTab(self.tab4, "position path")
 
         # first tab
         tab1_layout = QVBoxLayout()
@@ -543,11 +543,11 @@ class KneeFlexionExperiment(QMainWindow):
 
 
            # second tab
-        tab4_layout = QVBoxLayout()
+        #tab4_layout = QVBoxLayout()
         # Create matplotlib visualization
-        self.canvas_path = MplCanvas(width=4, height=8, mode="history")
-        tab4_layout.addWidget(self.canvas_path)
-        self.tab4.setLayout(tab4_layout)
+        #self.canvas_path = MplCanvas(width=4, height=8, mode="history")
+        #tab4_layout.addWidget(self.canvas_path)
+        #self.tab4.setLayout(tab4_layout)
 
         
 
@@ -1266,19 +1266,26 @@ class KneeFlexionExperiment(QMainWindow):
             print(f"Data shape: {df.shape}")
             
             # Extract the relevant columns (same as your original code)
-            tx = df.iloc[:, 6]  # Tx column
-            ty = df.iloc[:, 7]
-            tz = df.iloc[:, 8]
-            fx = df.iloc[:, 3]
-            fy = df.iloc[:, 4]
-            fz = df.iloc[:, 5]
+            tx = df.iloc[:, 4]  # Tx column
+            ty = df.iloc[:, 5]
+            tz = df.iloc[:, 6]
+            fx = df.iloc[:, 1]
+            fy = df.iloc[:, 2]
+            fz = df.iloc[:, 3]
+
+            delta_x = 0.077
+            delta_y = 0.043
+            delta_z = 0.226
             
             flexion = df.iloc[:, 21]  # Flexion column
-            tjx = tx + fz * 0.043 - fy * 0.226  # calculation for torque in the knee joint
-            #tjx = -tz - fx * 0.043 - fy * 0.226  # calculation for torque in the knee joint
+            #tjx = tx + fz * 0.043 - fy * 0.226  # calculation for torque in the knee joint
+            tjx = -tz - fx * delta_y - fy * delta_x  # calculation for torque in the knee joint
+
+            tjx =  tz + fx * delta_y + fy * delta_x
             rotation = df.iloc[:, 23]  # Rotation column
             #tjy = ty - fx *0.043 - fy * 0.077
-            tjy = -tx + fz *0.043 - fy * 0.077
+            tjy = tx - fz * delta_y + fy * delta_z
+            
             medial_joint_gap = df.iloc[:, 27]  # Medial_Joint_Gap column
             lateral_joint_gap = df.iloc[:, 28]  # Lateral_Joint_Gap column
                 
@@ -1304,18 +1311,18 @@ class KneeFlexionExperiment(QMainWindow):
             tjy_max = tjy.max()
 
             if self.diagram_mode == 'rotation':    
-                bin_size = 0.42
+                bin_size = 0.2
                 #bin_size = 0.15
+                #bin_size = 0.01
             else:
                 bin_size = 0.25
                 bin_size = 0.5
+                #bin_size = 0.1
 
-            
-            
+
             
             tjx_bins = np.arange(tjx_min, tjx_max + bin_size, bin_size)
             tjy_bins = np.arange(tjy_min, tjy_max + bin_size, bin_size)
-            
 
             
             # Create bins for flexion angles
@@ -1511,7 +1518,7 @@ class KneeFlexionExperiment(QMainWindow):
                 # Configure the plot
                 #x_range = max(abs(rotation.min()), abs(rotation.max())) * 1.1
                 #self.canvas_varus_valgus.ax.set_xlim(-x_range, x_range)
-                self.canvas_varus_valgus.ax.set_xlim(-30, 30)
+                self.canvas_varus_valgus.ax.set_xlim(-40, 40)
                 self.canvas_varus_valgus.ax.axvline(x=0, color='black', linestyle='--', alpha=0.5, linewidth=1)
                 
                 # Set labels and title
