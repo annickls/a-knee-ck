@@ -608,30 +608,30 @@ class UpdateVisualization():
                 return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
             temp_femur = temp_femur / np.linalg.norm(temp_femur)
             
-            # e3f: femoral anterior-posterior axis (perpendicular to e1f and temp_femur)
-            e3f = np.cross(e1f, temp_femur)
-            if np.linalg.norm(e3f) < 1e-10:
+            # e2f: femoral anterior-posterior axis (perpendicular to e1f and temp_femur)
+            e2f = np.cross(e1f, temp_femur)
+            if np.linalg.norm(e2f) < 1e-10:
                 print("Warning: Femur coordinate system is degenerate")
                 return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
-            e3f = e3f / np.linalg.norm(e3f)
-
-            UpdateVisualization.femurvarusaxis = e3f
-            
-            # e2f: femoral long axis (corrected, perpendicular to e3f and e1f)
-            e2f = np.cross(e3f, e1f)
             e2f = e2f / np.linalg.norm(e2f)
+
+            UpdateVisualization.femurvarusaxis = e2f
+            
+            # e3f: femoral long axis (corrected, perpendicular to e3f and e1f)
+            e3f = np.cross(e2f, e1f)
+            e3f = e3f / np.linalg.norm(e3f)
 
             UpdateVisualization.femurproximaldistal = e2f
             
             # Tibial coordinate system
-            # e2t: tibial long axis (proximal - distal direction)
-            e2t = tibia_proximal - tibia_distal
-            if np.linalg.norm(e2t) < 1e-10:
+            # e3t: tibial long axis (proximal - distal direction)
+            e3t = tibia_proximal - tibia_distal
+            if np.linalg.norm(e3t) < 1e-10:
                 print("Warning: Tibia proximal-distal vector is too small")
                 return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
-            e2t = e2t / np.linalg.norm(e2t)
+            e3t = e3t / np.linalg.norm(e3t)
 
-            UpdateVisualization.tibiaproximaldistal = e2t
+            UpdateVisualization.tibiaproximaldistal = e3t
             
             # Temporary tibial medial-lateral axis
             temp_tibia = tibia_lateral - tibia_medial
@@ -642,23 +642,23 @@ class UpdateVisualization():
 
             
             
-            # e3t: tibial anterior-posterior axis
-            e3t = np.cross(temp_tibia, e2t)
-            if np.linalg.norm(e3t) < 1e-10:
+            # e2t: tibial anterior-posterior axis
+            e2t = np.cross(temp_tibia, e3t)
+            if np.linalg.norm(e2t) < 1e-10:
                 print("Warning: Tibia coordinate system is degenerate")
                 return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
-            e3t = e3t / np.linalg.norm(e3t)
+            e2t = e2t / np.linalg.norm(e3t)
             
             UpdateVisualization.tibiavarusaxis = e3t
 
             # e1t: tibial medial-lateral axis (corrected)
-            e1t = np.cross(e2t, e3t)
+            e1t = np.cross(e3t, e2t)
             e1t = e1t / np.linalg.norm(e1t)
 
             UpdateVisualization.tibiamediallateral = e1t
             
             # Calculate floating axis (common perpendicular to e1f and e2t)
-            floating_axis = np.cross(e1f, e2t)
+            floating_axis = np.cross(e1f, e3t)
             if np.linalg.norm(floating_axis) < 1e-10:
                 print("Warning: Floating axis is degenerate")
                 return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
@@ -674,10 +674,10 @@ class UpdateVisualization():
             
             # 1. FLEXION/EXTENSION ANGLE
 
-            dot_product = np.dot(e3f,floating_axis)
-            magnitude_e3f = np.linalg.norm(e3f)
+            dot_product = np.dot(e2f,floating_axis)
+            magnitude_e2f = np.linalg.norm(e2f)
             magnitude_floating_axis = np.linalg.norm(floating_axis)
-            cos_flexion = dot_product / (magnitude_e3f*magnitude_floating_axis)
+            cos_flexion = dot_product / (magnitude_e2f*magnitude_floating_axis)
             #flexion_sign = np.cross(floating_axis, e2f)
             flexion = math.acos(cos_flexion)
             flexion_angle = flexion* 180.0 / np.pi
@@ -692,10 +692,10 @@ class UpdateVisualization():
             
             # 2. ABDUCTION/ADDUCTION ANGLE  
 
-            dot_product = np.dot(e1f, e2t)
+            dot_product = np.dot(e1f, e3t)
             magnitude_e1f = np.linalg.norm(e1f)
-            magnitude_e2t = np.linalg.norm(e2t)
-            cos_adduction = dot_product / (magnitude_e1f * magnitude_e2t )
+            magnitude_e3t = np.linalg.norm(e3t)
+            cos_adduction = dot_product / (magnitude_e1f * magnitude_e3t )
             adduction = math.acos(cos_adduction)
             adduction_angle = (adduction -(np.pi/2))* 180.0 / np.pi
             
@@ -722,10 +722,10 @@ class UpdateVisualization():
             # Medial-Lateral translation: along femoral flexion-extension axis (e1f)
             # (+ = medial, - = lateral)  get's influenced by adduction angle
             s1 = np.dot(translation_vector, e1f)
-            s3 = np.dot(translation_vector, e2t)
+            s3 = np.dot(translation_vector, e3t)
             medial_lateral = s1 + s3 * math.cos(adduction)
             
-            # Proximal-Distal translation: along tibial long axis (e2t)
+            # Proximal-Distal translation: along tibial long axis (e3t)
             # (+ = proximal, - = distal) also gets influenced by adduction angle
             proximal_distal = -(-s3 -s1 *math.cos(adduction))
             
@@ -735,14 +735,14 @@ class UpdateVisualization():
             medial_tibia_femur = femur_medial - tibia_medial
             m1 = np.dot(medial_tibia_femur, e1f)
             #m3 = np.dot(medial_tibia_femur, e2t) / np.linalg.norm(e2t)
-            m3 = np.dot(medial_tibia_femur, e2t)
+            m3 = np.dot(medial_tibia_femur, e3t)
             medial_joint_gap = -(-m3 - m1 * math.cos(adduction))
             
             #lateral
             lateral_tibia_femur = femur_lateral - tibia_lateral
             l1 = np.dot(lateral_tibia_femur, e1f)
             #l3 = np.dot(lateral_tibia_femur, e2t) / np.linalg.norm(e2t)
-            l3 = np.dot(lateral_tibia_femur, e2t)
+            l3 = np.dot(lateral_tibia_femur, e3t)
             lateral_joint_gap = -(-l3 - l1 *math.cos(adduction))
 
             # Store results for debugging/visualization
