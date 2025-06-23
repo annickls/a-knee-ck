@@ -678,15 +678,23 @@ class UpdateVisualization():
             magnitude_e2f = np.linalg.norm(e2f)
             magnitude_floating_axis = np.linalg.norm(floating_axis)
             cos_flexion = dot_product / (magnitude_e2f*magnitude_floating_axis)
-            #flexion_sign = np.cross(floating_axis, e2f)
+            #determine sign
+            helper_sign_flexion = np.dot(floating_axis, e3f)
+            magnitude_e3f = np.linalg.norm(e3f)
+            sin_flexion = helper_sign_flexion / (magnitude_floating_axis * magnitude_e3f)
+            flexion_sign_sin= math.asin(-sin_flexion)
+            if flexion_sign_sin > 0:
+                flexion_sign = 1
+            else:
+                flexion_sign = -1
             flexion = math.acos(cos_flexion)
-            flexion_angle = flexion* 180.0 / np.pi
+            flexion_angle = flexion_sign * flexion * 180.0 / np.pi
 
-            """dot_product = np.dot(-floating_axis,e2f)
-            magnitude_e2f = np.linalg.norm(e2f)
+            """dot_product = np.dot(floating_axis,e3f)
+            magnitude_e3f = np.linalg.norm(e3f)
             magnitude_floating_axis = np.linalg.norm(floating_axis)
-            sin_flexion = dot_product / (magnitude_floating_axis * magnitude_e2f)
-            flexion = math.asin(sin_flexion)
+            sin_flexion = dot_product / (magnitude_floating_axis * magnitude_e3f)
+            flexion = math.asin(-sin_flexion)
             flexion_angle = flexion* 180.0 / np.pi"""
             
             

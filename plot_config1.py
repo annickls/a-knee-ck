@@ -31,15 +31,15 @@ class MplCanvas(FigureCanvas):
         if mode == "varus_valgus" or mode == "rotation":
             self.ax = self.fig.add_subplot(111)
             self.ax.set_xlabel('x-axis')
-            self.ax.set_ylabel('Flexion Angle (degrees)')
+            self.ax.set_ylabel('Flexion Angle [°]')
             #self.ax.set_title('Real-time Flexion vs Varus/Valgus')
             self.ax.grid(True, alpha=0.3)
 
             self.fig.subplots_adjust(left=0.15, bottom=0.15, right = 0.95, top =0.90)
             
             # Set initial axis limits
-            self.ax.set_xlim(-60, 60)  # Adjust range as needed
-            self.ax.set_ylim(0, 120)   # Adjust range as needed
+            self.ax.set_xlim(-constants.X_LIM_ROT, constants.X_LIM_ROT)  # Adjust range as needed
+            self.ax.set_ylim(constants.Y_MIN_FLEX, constants.Y_MAX_FLEX)   # Adjust range as needed
             
             # Add vertical line at x=0 for reference
             self.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
@@ -137,19 +137,19 @@ class MplCanvas(FigureCanvas):
         if self.testvariable == 1:
             self.ax.clear()
             self.ax.set_xlabel('x-axis')
-            self.ax.set_ylabel('Flexion Angle (degrees)')
-            self.ax.set_title('medial/lateral joint gap')
+            self.ax.set_ylabel('alexion angle [°]')
+            self.ax.set_title('medial/lateral joint gap [mm]')
             self.ax.grid(True, alpha=0.3)
             self.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
-            self.ax.set_xlim(-60, 60)
-            self.ax.set_ylim(-10, 120)
+            self.ax.set_xlim(-constants.X_LIM_ROT, constants.X_LIM_ROT)
+            self.ax.set_ylim(constants.Y_MIN_FLEX, constants.Y_MAX_FLEX)
 
         if mode == "varus_valgus":
             self.ax.set_xlabel('medial joint gap          lateral joint gap')
-            self.ax.set_xlim(-50, 50)
+            self.ax.set_xlim(-constants.X_LIM_VAL, constants.X_LIM_VAL)
         else:
             self.ax.set_xlabel('external rotation         internal rotation')
-            self.ax.set_xlim(-80, 80)
+            self.ax.set_xlim(-constants.X_LIM_ROT, constants.X_LIM_ROT)
         
         # Only add the newest data point
         color = constants.SALMON if var_val_displacement > 0 else constants.LIMEGREEN

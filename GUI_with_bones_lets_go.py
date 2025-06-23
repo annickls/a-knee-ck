@@ -456,7 +456,7 @@ class KneeFlexionExperiment(QMainWindow):
         # Create your GLViewWidget
         self.gl_view = gl.GLViewWidget()
         self.gl_view.setCameraPosition(distance=constants.DISTANCE_BONE_VIZ, elevation=10, azimuth=90) #55 ausgangsposition
-        self.gl_view.setMinimumHeight(600)
+        self.gl_view.setMinimumHeight(580)
         # Add axes for reference
         self.axes = ColoredGLAxisItem(size=(100, 100, 100))  # defined colors
         self.gl_view.addItem(self.axes)
@@ -541,14 +541,6 @@ class KneeFlexionExperiment(QMainWindow):
         tab3_layout.addLayout(bone_and_diagram_layout)
         self.tab3.setLayout(tab3_layout)
 
-
-           # second tab
-        #tab4_layout = QVBoxLayout()
-        # Create matplotlib visualization
-        #self.canvas_path = MplCanvas(width=4, height=8, mode="history")
-        #tab4_layout.addWidget(self.canvas_path)
-        #self.tab4.setLayout(tab4_layout)
-
         
 
         left_layout.addWidget(self.tabs)
@@ -617,8 +609,8 @@ class KneeFlexionExperiment(QMainWindow):
         
         # Image frame
         self.image_frame = QFrame()
-        self.image_frame.setLineWidth(2)
-        self.image_frame.setMinimumSize(300, 250)
+        #self.image_frame.setLineWidth(2)
+        #self.image_frame.setMinimumSize(300, 250)
         image_layout = QVBoxLayout()
         self.image_label = QLabel()
         #self.image_label.setAlignment(Qt.AlignCenter)
@@ -795,7 +787,7 @@ class KneeFlexionExperiment(QMainWindow):
         self.torque_history = []
         self.current_data_index = 0
         
-        try:
+        """try:
             pixmap = QPixmap(f"KW{self.current_angle}.jpg")
             
             
@@ -805,7 +797,7 @@ class KneeFlexionExperiment(QMainWindow):
                 pixmap = pixmap.scaled(self.image_frame.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation) # Scale the image 
                 self.image_label.setPixmap(pixmap)
         except Exception as e:
-            self.image_label.setText(f"Error loading image: {str(e)}")
+            self.image_label.setText(f"Error loading image: {str(e)}")"""
         
         # Set experiment running flag
         self.experiment_running = True
@@ -1175,12 +1167,11 @@ class KneeFlexionExperiment(QMainWindow):
                 try:
                     # Clear the plot and reset
                     self.canvas_varus_valgus.ax.clear()
-                    #self.canvas_varus_valgus.ax.set_xlabel('Rotation Angle (degrees)')
-                    self.canvas_varus_valgus.ax.set_ylabel('Flexion Angle (degrees)')
-                    self.canvas_varus_valgus.ax.set_title('Internal/External Rotation')
+                    self.canvas_varus_valgus.ax.set_ylabel('Flexion Angle [°]')
+                    self.canvas_varus_valgus.ax.set_title('Internal/External Rotation [°]')
                     self.canvas_varus_valgus.ax.grid(True, alpha=0.3)
-                    self.canvas_varus_valgus.ax.set_xlim(-40, 40)  # Adjust range as needed for rotation
-                    self.canvas_varus_valgus.ax.set_ylim(-10, 120)
+                    self.canvas_varus_valgus.ax.set_xlim(-constants.X_LIM_VAL, constants.X_LIM_VAL)  
+                    self.canvas_varus_valgus.ax.set_ylim(constants.Y_MIN_FLEX, constants.Y_MAX_FLEX)
                     self.canvas_varus_valgus.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
                     
                     # Clear the stored data arrays
@@ -1202,11 +1193,11 @@ class KneeFlexionExperiment(QMainWindow):
                     # Clear the plot and reset
                     self.canvas_varus_valgus.ax.clear()
                     #self.canvas_varus_valgus.ax.set_xlabel('test1')
-                    self.canvas_varus_valgus.ax.set_ylabel('Flexion Angle (degrees)')
-                    self.canvas_varus_valgus.ax.set_title('medial/lateral joint gap')
+                    self.canvas_varus_valgus.ax.set_ylabel('Flexion Angle [°]')
+                    self.canvas_varus_valgus.ax.set_title('medial/lateral joint gap [mm]')
                     self.canvas_varus_valgus.ax.grid(True, alpha=0.3)
-                    self.canvas_varus_valgus.ax.set_xlim(-60, 60)
-                    self.canvas_varus_valgus.ax.set_ylim(-10, 120)
+                    self.canvas_varus_valgus.ax.set_xlim(-constants.X_LIM_ROT, constants.X_LIM_ROT)
+                    self.canvas_varus_valgus.ax.set_ylim(constants.Y_MIN_FLEX, constants.Y_MAX_FLEX)
                     self.canvas_varus_valgus.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
                     
                     # Clear the stored data arrays
@@ -1235,11 +1226,8 @@ class KneeFlexionExperiment(QMainWindow):
         """
         
         try:
-        
-            #file_path = r'C:\files_Annick\Studium Unterlagen\Master\masterarbeit\a-knee-ck\20250610_180026_0deg_neutral.csv'
-            # Get the newest CSV file from the recorded_data folder
-            #recorded_data_folder = r'C:\files_Annick\Studium Unterlagen\Master\masterarbeit\a-knee-ck\recorded_data'
-            recorded_data_folder = r'/home/annick/a-knee-ck/recorded_data'
+            #recorded_data_folder = r'/home/annick/a-knee-ck/recorded_data'
+            recorded_data_folder = constants.RECORDED
             
             # Find all CSV files in the folder
             csv_files = []
@@ -1278,10 +1266,8 @@ class KneeFlexionExperiment(QMainWindow):
             delta_z = 0.226
             
             flexion = df.iloc[:, 21]  # Flexion column
-            #tjx = tx + fz * 0.043 - fy * 0.226  # calculation for torque in the knee joint
-            tjx = -tz - fx * delta_y - fy * delta_x  # calculation for torque in the knee joint
+            tjx = tz - fy * delta_x + fx * delta_y - tx
 
-            tjx =  tz + fx * delta_y + fy * delta_x
             rotation = df.iloc[:, 23]  # Rotation column
             #tjy = ty - fx *0.043 - fy * 0.077
             tjy = tx - fz * delta_y + fy * delta_z
@@ -1293,16 +1279,16 @@ class KneeFlexionExperiment(QMainWindow):
             #tjy = tx + ty+ tz
             
             # Configuration parameters (you can make these class attributes for easy modification)
-            bin_number = 8
-            flexion_bin_size = 0.5
-            INTERPOLATION_KIND = 'linear'
-            SMOOTHING_FACTOR = 2
-            MIN_POINTS_FOR_SMOOTHING = 2
-            MOVING_AVERAGE_WINDOW = 13
-            MOVING_AVERAGE_METHOD = 'weighted'
-            APPLY_MOVING_AVERAGE = True
-            WEIGHT_TYPE = 'gaussian'
-            SIGMA_FACTOR = 0.2
+            
+            flexion_bin_size = constants.FLEXION_BIN_SIZE
+            INTERPOLATION_KIND = constants.INTERPOLATION_KIND 
+            SMOOTHING_FACTOR = constants.SMOOTHING_FACTOR 
+            MIN_POINTS_FOR_SMOOTHING = constants.MIN_POINTS_FOR_SMOOTHING
+            MOVING_AVERAGE_WINDOW = constants.MOVING_AVERAGE_WINDOW
+            MOVING_AVERAGE_METHOD = constants.MOVING_AVERAGE_METHOD
+            APPLY_MOVING_AVERAGE = constants.APPLY_MOVING_AVERAGE
+            WEIGHT_TYPE = constants.WEIGHT_TYPE
+            SIGMA_FACTOR = constants.SIGMA_FACTOR
             
             # Create bins for tjx and tjy (torque)
             tjx_min = tjx.min()
@@ -1311,13 +1297,18 @@ class KneeFlexionExperiment(QMainWindow):
             tjy_max = tjy.max()
 
             if self.diagram_mode == 'rotation':    
-                bin_size = 0.2
-                #bin_size = 0.15
-                #bin_size = 0.01
+                #bin_size = 0.2
+                desired_bins = constants.BINS_ROT
+                tjx_range_temp = tjx_max - tjx_min
+                bin_size_temp = tjx_range_temp / desired_bins
+                bin_size = round(bin_size_temp, 1)
             else:
-                bin_size = 0.25
-                bin_size = 0.5
-                #bin_size = 0.1
+                #bin_size = 0.5
+                desired_bins = constants.BINS_VAR
+                tjy_range_temp = tjy_max - tjy_min
+                bin_size_temp = tjy_range_temp / desired_bins
+                bin_size = round(bin_size_temp, 1)
+
 
 
             
@@ -1453,11 +1444,22 @@ class KneeFlexionExperiment(QMainWindow):
             plotted_lines = 0
             if self.diagram_mode == 'rotation':
                 for tjx_bin_idx in range(n_tjx_bins):
+
+                    # Calculate the torque middle value for this bin
+                    tjx_range_start = tjx_bins[tjx_bin_idx]
+                    tjx_range_end = tjx_bins[tjx_bin_idx + 1]
+                    tjx_middle = (tjx_range_start + tjx_range_end) / 2
+                    
+                    # Skip bins where torque middle is between -0.1 and 0.1
+                    if -0.35 < tjx_middle < 0.2:
+                        continue
+                    
                     # Get data for this tjx bin
                     bin_data = grouped_data[grouped_data['tjx_bin'] == tjx_bin_idx].copy()
                     
-                    if len(bin_data) < 1:
+                    if len(bin_data) < 10:
                         continue
+
                     
                     # Sort by flexion for smooth line connection
                     bin_data = bin_data.sort_values('flexion')
@@ -1477,8 +1479,8 @@ class KneeFlexionExperiment(QMainWindow):
                 self.canvas_varus_valgus.ax.axvline(x=0, color='black', linestyle='--', alpha=0.5, linewidth=1)
                 
                 # Set labels and title
-                self.canvas_varus_valgus.ax.set_xlabel('Internal Rotation      External Rotation', fontsize=12)
-                self.canvas_varus_valgus.ax.set_ylabel('Flexion (degrees)', fontsize=12)
+                self.canvas_varus_valgus.ax.set_xlabel('Internal Rotation [°]      External Rotation [°]', fontsize=12)
+                self.canvas_varus_valgus.ax.set_ylabel('Flexion [°]', fontsize=12)
                 title = 'Rotation Torque Contour Lines'
                 """if APPLY_MOVING_AVERAGE:
                     title += f' + {MOVING_AVERAGE_METHOD.title()} Moving Average)'
@@ -1500,8 +1502,9 @@ class KneeFlexionExperiment(QMainWindow):
                     # Get data for this tjx bin
                     bin_data = grouped_data[grouped_data['tjy_bin'] == tjy_bin_idx].copy()
                     
-                    if len(bin_data) < 1:
+                    if len(bin_data) < 10:
                         continue
+
                     
                     # Sort by flexion for smooth line connection
                     bin_data = bin_data.sort_values('flexion')
@@ -1516,14 +1519,13 @@ class KneeFlexionExperiment(QMainWindow):
                     plotted_lines += 1
             
                 # Configure the plot
-                #x_range = max(abs(rotation.min()), abs(rotation.max())) * 1.1
-                #self.canvas_varus_valgus.ax.set_xlim(-x_range, x_range)
-                self.canvas_varus_valgus.ax.set_xlim(-40, 40)
+                x_range = max(abs(medial_joint_gap.max()), abs(lateral_joint_gap.max())) * 1.1
+                self.canvas_varus_valgus.ax.set_xlim(-x_range, x_range)
                 self.canvas_varus_valgus.ax.axvline(x=0, color='black', linestyle='--', alpha=0.5, linewidth=1)
                 
                 # Set labels and title
-                self.canvas_varus_valgus.ax.set_xlabel('Medial Joint Gap      Lateral Joint Gap', fontsize=12)
-                self.canvas_varus_valgus.ax.set_ylabel('Flexion (degrees)', fontsize=12)
+                self.canvas_varus_valgus.ax.set_xlabel('Medial Joint Gap [mm]     Lateral Joint Gap [mm]', fontsize=12)
+                self.canvas_varus_valgus.ax.set_ylabel('Flexion [°]', fontsize=12)
                 title = 'Joint Gap Torque Contour Lines'
               
                 self.canvas_varus_valgus.ax.set_title(title, fontsize=12)

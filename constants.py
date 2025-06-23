@@ -16,24 +16,24 @@ FEMUR = os.path.join(current_folder, "data_for_gui", femur_fileName)
 tibia_fileName = "tibia_new.stl"
 TIBIA = os.path.join(current_folder, "data_for_gui", tibia_fileName)
 
-#camera settings bone visualization
-DISTANCE_BONE_VIZ = 700
-SCALE_FACTOR_ARROW = 20
+# recorded data
+RECORDED = os.path.join(current_folder, "recorded_data")
 
 
-#landmarks of femur and tibia for grood & suntay calculations
+
+#landmarks of femur and tibia for grood & suntay calculations 
+#knee model
 FEMUR_LATERAL = np.array([110.0960693359375, -108.0730972290039, 1385.2410888671875])
 FEMUR_MEDIAL = np.array([96.95680236816406,-164.77444458007812,1386.5252685546875])
 FEMUR_PROXIMAL= np.array([75,-130,935])
 FEMUR_DISTAL = np.array([83.05928802490234,-130.9730682373047,1373.7659912109375])
-
 TIBIA_LATERAL = np.array([80,-105,1401.037])
 TIBIA_MEDIAL= np.array([69.4353256225586,-142.4228515625,1407.4371337890625])
 TIBIA_PROXIMAL = np.array([66.03421783447266,-120.49935913085938,1400.6976318359375])
 TIBIA_DISTAL = np.array([56.0771484375,-104.6276626586914,1806.37841796875])
 
 
-# plot settings
+# 3D plot settings
 AXIS_FACTOR = 0.5
 AXIS_LINEWIDTH = 0.85
 HISTORY_SIZE = 100
@@ -46,6 +46,28 @@ ARROW_SIZE_TORQUE = 6.0
 ARROW_LENGTH_FACTOR_TORQUE = 5.0
 HEAD_SIZE_FACTOR_TORQUE = 0.5
 SHAFT_WIDTH = 2.0
+DISTANCE_BONE_VIZ = 700
+SCALE_FACTOR_ARROW = 20
+
+#2D plot settings
+X_LIM_VAL = 40
+X_LIM_ROT = 50
+Y_MAX_FLEX = 120
+Y_MIN_FLEX = -10
+
+
+# interpolation and other plot adjustments
+BINS_ROT = 9
+BINS_VAR = 5
+FLEXION_BIN_SIZE = 0.5
+INTERPOLATION_KIND = 'linear'
+SMOOTHING_FACTOR = 2
+MIN_POINTS_FOR_SMOOTHING = 2
+MOVING_AVERAGE_WINDOW = 13
+MOVING_AVERAGE_METHOD = 'weighted'
+APPLY_MOVING_AVERAGE = True
+WEIGHT_TYPE = 'gaussian'
+SIGMA_FACTOR = 0.2
 
 # colors
 SALMON =  (0.980, 0.502, 0.447, 1.0)
