@@ -1,1 +1,0 @@
-# Timestamp, Flexion, Adduction, Rotation, Translation_ap, Translation_ml, Translation_pd, Tx, Ty, Tz, Fx, Fy, Fz

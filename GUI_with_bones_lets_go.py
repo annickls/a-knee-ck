@@ -1,43 +1,36 @@
 import sys
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
-from mpl_toolkits.mplot3d import Axes3D
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QPushButton, 
-                            QVBoxLayout, QHBoxLayout, QWidget, QFrame, 
-                            QProgressBar, QGridLayout, QSplitter, QTabWidget, QSlider, QGroupBox, QTextEdit, QDialog, QDialogButtonBox)
-from PyQt5.QtGui import QPixmap, QFont
-from PyQt5.QtCore import Qt, QTimer
-import matplotlib.cm as cm
-import pyqtgraph.opengl as gl
+import pandas as pd
+import csv
+import warnings
 from stl import mesh
-from pyqtgraph.Qt import QtGui
 import os
 import time
 import datetime
-from OpenGL.GL import glBegin, glEnd, glVertex3f, glColor4f, GL_LINES, GL_LINE_SMOOTH, glEnable, glHint, GL_LINE_SMOOTH_HINT, GL_NICEST
+from scipy import interpolate
+from scipy.spatial.transform import Rotation as R
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+import matplotlib.cm as cm
+from mpl_toolkits.mplot3d import Axes3D
 import pyqtgraph.opengl as gl
+from pyqtgraph.Qt import QtGui
+from PyQt5.QtGui import QPixmap, QFont
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QPushButton, 
+                            QVBoxLayout, QHBoxLayout, QWidget, QFrame, 
+                            QProgressBar, QGridLayout, QSplitter, QTabWidget, 
+                            QSlider, QGroupBox, QTextEdit, QDialog, QDialogButtonBox)
+#from OpenGL.GL import glBegin, glEnd, glVertex3f, glColor4f, GL_LINES, GL_LINE_SMOOTH, glEnable, glHint, GL_LINE_SMOOTH_HINT, GL_NICEST
+
+
+# custom
 import constants
-import pandas as pd
-import numpy as np
-import csv
 from pathlib import Path
-import logging
 from plot_config1 import MplCanvas, ColoredGLAxisItem
 from mesh_utils import MeshUtils
 from update_visualization import UpdateVisualization
-import warnings
-import numpy as np
-from scipy.spatial.transform import Rotation as R
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from PyQt5.QtCore import QPropertyAnimation, QEasingCurve, pyqtProperty
-from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsProxyWidget
-from scipy import interpolate
-from PyQt5.QtWidgets import QPushButton, QFileDialog, QMessageBox
-from PyQt5.QtCore import Qt
-import matplotlib.pyplot as plt
 
 
 
@@ -98,7 +91,6 @@ class KneeFlexionExperiment(QMainWindow):
         # Ensure directory exists for data files
         os.makedirs("recorded_data", exist_ok=True)
         
-
     def toggle_monitoring(self):
         if not self.monitoring:
         # Start monitoring real data
@@ -134,10 +126,6 @@ class KneeFlexionExperiment(QMainWindow):
             self.start_buttoncsv.setText("Start Recieving Data")
             print("--- Real-Time Data Recieving Stopped ---")
             self.experiment_running = False  # Disable updates when not monitoring
-
-
-           
-    
 
     def read_csv_data(self):
         csv_file = Path(self.csv_path)
@@ -694,7 +682,6 @@ class KneeFlexionExperiment(QMainWindow):
         # Current test type
         self.current_test_type = 'none'
 
-
     def update_visualization_timer(self):
         """Called by timer to update visualization"""
         if self.experiment_running and len(self.forces) > 0:
@@ -929,8 +916,8 @@ class KneeFlexionExperiment(QMainWindow):
             self.next_button.setEnabled(False) # End of regular experiment - enable Lachmann test
 
     def record_individual(self):
-        self.remaining_time = constants.HOLD_TIME
-        self.rotation_progress.setValue(constants.HOLD_TIME)
+        self.remaining_time = constants.HOLD_INDIVIDUAL
+        self.rotation_progress.setValue(constants.HOLD_INDIVIDUAL)
         self.seconds_timer.start(1000)  
         self.start_recording(f"individual") # Start recording data
 
@@ -1020,7 +1007,6 @@ class KneeFlexionExperiment(QMainWindow):
             traceback.print_exc()
             self.load_femur_button.setText("Error")
   
-
     def load_tibia(self):
         try:
             # Load tibia STL
@@ -1129,7 +1115,6 @@ class KneeFlexionExperiment(QMainWindow):
             import traceback
             traceback.print_exc()
             self.load_tibia_button.setText("Error")
-
 
     def update_varus_valgus_diagram(self, flexion_angle, var_val_displacement):
         """Call this method to update the dynamic diagram with new data"""
@@ -1545,7 +1530,6 @@ class KneeFlexionExperiment(QMainWindow):
             print(f"Error generating contour plot: {e}")
             # You might want to show a QMessageBox here to inform the user
 
-
     def calculate_bin_weights(self, values, bin_centers, weight_type='gaussian', sigma_factor=0.3, bin_size=0.4):
         """
         Calculate weights for values within bins, giving higher weight to values 
@@ -1662,6 +1646,7 @@ class KneeFlexionExperiment(QMainWindow):
                 smoothed_data['tjy'] = data['tjy'].ewm(alpha=alpha, adjust=False).mean()
         
         return smoothed_data
+    
     def save_current_plot(self):
         """Automatically save plot with timestamp"""
         try:

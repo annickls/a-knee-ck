@@ -2,7 +2,8 @@ import os
 import numpy as np
 
 # experiment parameters
-HOLD_TIME = 40 #seconds to hold knee positions
+HOLD_TIME = 15 #seconds to hold knee positions
+HOLD_INDIVIDUAL = 30 #seconds for individual data recording
 LACHMANN_TIME = 15 # seconds for lachmann test
 FLEXION_ANGLES = [0, 30, 60, 90, 120]
 
@@ -19,6 +20,11 @@ TIBIA = os.path.join(current_folder, "data_for_gui", tibia_fileName)
 # recorded data
 RECORDED = os.path.join(current_folder, "recorded_data")
 
+# data reading
+root_folder = os.path.dirname(current_folder)
+DATA_PREVIOUS_TEST = "/home/annick/GUI/data_for_gui/print_data.F_sensor_temp_data_7.txt"
+DATA_CSV = os.path.join(root_folder, "knee_eval_ws", "data.csv")
+#DATA_CSV = "data_new.csv"
 
 
 #landmarks of femur and tibia for grood & suntay calculations 
@@ -80,8 +86,3 @@ DODGERBLUE = (0.118, 0.565, 1.0, 1.0)
 BUTTON_HEIGHT = 60
 BUTTON_HEIGHT_2 = 40
 
-# data
-root_folder = os.path.dirname(current_folder)
-DATA_PREVIOUS_TEST = "/home/annick/GUI/data_for_gui/print_data.F_sensor_temp_data_7.txt"
-DATA_CSV = os.path.join(root_folder, "knee_eval_ws", "data.csv")
-#DATA_CSV = "data_new.csv"
