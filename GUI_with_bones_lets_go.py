@@ -22,8 +22,6 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QPushButton,
                             QVBoxLayout, QHBoxLayout, QWidget, QFrame, 
                             QProgressBar, QGridLayout, QSplitter, QTabWidget, 
                             QSlider, QGroupBox, QTextEdit, QDialog, QDialogButtonBox)
-#from OpenGL.GL import glBegin, glEnd, glVertex3f, glColor4f, GL_LINES, GL_LINE_SMOOTH, glEnable, glHint, GL_LINE_SMOOTH_HINT, GL_NICEST
-
 
 # custom
 import constants
@@ -220,6 +218,8 @@ class KneeFlexionExperiment(QMainWindow):
                             UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_lateral")
                             UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_proximal")
                             UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_distal")
+
+                            UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_center_medial")
                         
                         if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
                             MeshUtils.update_mesh_with_data(self.tibia_mesh, tibia_position, tibia_quaternion)
@@ -989,16 +989,19 @@ class KneeFlexionExperiment(QMainWindow):
             femur_lateral = constants.FEMUR_LATERAL
             femur_proximal = constants.FEMUR_PROXIMAL
             femur_distal = constants.FEMUR_DISTAL
+            femur_center_medial = constants.TEST_POINT_MEDIAL
 
             femur_medial_rot = rotation@(femur_medial+translation)
             femur_lateral_rot = rotation@(femur_lateral+translation)
             femur_proximal_rot = rotation@(femur_proximal+translation)
             femur_distal_rot = rotation@(femur_distal+translation)
+            femur_center_medial_rot = rotation@(femur_center_medial+translation)
 
             UpdateVisualization.add_landmark(self, femur_medial_rot, "femur_medial")
             UpdateVisualization.add_landmark(self, femur_lateral_rot, "femur_lateral")
             UpdateVisualization.add_landmark(self, femur_proximal_rot, "femur_proximal")
             UpdateVisualization.add_landmark(self, femur_distal_rot, "femur_distal")
+            UpdateVisualization.add_landmark(self, femur_center_medial_rot, "femur_center_medial")
             
          
         except Exception as e:

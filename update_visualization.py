@@ -11,6 +11,7 @@ import numpy as np
 from mesh_utils import MeshUtils
 from PyQt5.QtCore import Qt, QTimer
 import math
+from mpl_toolkits.mplot3d import Axes3D
 
 
 class UpdateVisualization():
@@ -588,6 +589,7 @@ class UpdateVisualization():
             femur_lateral = UpdateVisualization.femur_landmarks['femur_lateral']['position']
             femur_proximal = UpdateVisualization.femur_landmarks['femur_proximal']['position']
             femur_distal = UpdateVisualization.femur_landmarks['femur_distal']['position']
+            femur_center_medial = UpdateVisualization.femur_landmarks['femur_center_medial']['position']
             
             
             # Define coordinate systems according to Grood and Suntay
@@ -689,13 +691,6 @@ class UpdateVisualization():
                 flexion_sign = -1
             flexion = math.acos(cos_flexion)
             flexion_angle = flexion_sign * flexion * 180.0 / np.pi
-
-            """dot_product = np.dot(floating_axis,e3f)
-            magnitude_e3f = np.linalg.norm(e3f)
-            magnitude_floating_axis = np.linalg.norm(floating_axis)
-            sin_flexion = dot_product / (magnitude_floating_axis * magnitude_e3f)
-            flexion = math.asin(-sin_flexion)
-            flexion_angle = flexion* 180.0 / np.pi"""
             
             
             # 2. ABDUCTION/ADDUCTION ANGLE  
@@ -739,12 +734,20 @@ class UpdateVisualization():
             
 
             #===========Clalculation distances femur condyles - tibia plateau medial and lateral========
+            # define spheres for medial and lateral femur condyles
+            center_medial, radius_medial = UpdateVisualization.define_sphere_with_constraints(constants.CENTER_AXIS_MEDIAL, constants.SURFACE_MEDIAL_1, constants.SURFACE_MEDIAL_2)
+            center_lateral, radius_lateral = UpdateVisualization.define_sphere_with_constraints(constants.CENTER_AXIS_LATERAL, constants.SURFACE_LATERAL_1, constants.SURFACE_LATERAL_2)
+
+            
+            radius_medial = 20
+            
             # medial
-            medial_tibia_femur = femur_medial - tibia_medial
+            #medial_tibia_femur = femur_medial - tibia_medial
+            medial_tibia_femur = femur_center_medial - tibia_medial
             m1 = np.dot(medial_tibia_femur, e1f)
-            #m3 = np.dot(medial_tibia_femur, e2t) / np.linalg.norm(e2t)
             m3 = np.dot(medial_tibia_femur, e3t)
-            medial_joint_gap = -(-m3 - m1 * math.cos(adduction))
+            medial_joint_gap = -(-m3 - m1 * math.cos(adduction)) -radius_medial
+   
             
             #lateral
             lateral_tibia_femur = femur_lateral - tibia_lateral
@@ -752,6 +755,8 @@ class UpdateVisualization():
             #l3 = np.dot(lateral_tibia_femur, e2t) / np.linalg.norm(e2t)
             l3 = np.dot(lateral_tibia_femur, e3t)
             lateral_joint_gap = -(-l3 - l1 *math.cos(adduction))
+
+            
 
             # Store results for debugging/visualization
             UpdateVisualization.knee_angles = {
@@ -932,3 +937,39 @@ class UpdateVisualization():
         except Exception as e:
             print(f"Error creating legend: {e}")
             main_window.legend_items = []
+
+    
+    def define_sphere_with_constraints(x1, y1, y2):
+        """
+        Berechnet den Kugelmittelpunkt aus drei Punkten auf der Kugeloberfläche.
+        Löst das lineare Gleichungssystem: |center - xi|² = r² für alle Punkte
+        """
+        x1, y1, y2 = np.array(x1, dtype=float), np.array(y1, dtype=float), np.array(y2, dtype=float)
+        
+        # Gleichungssystem: |center - x1|² = |center - y1|² = |center - y2|²
+        # Expandiert: center² - 2*center*x1 + x1² = center² - 2*center*y1 + y1²
+        # Vereinfacht: 2*center*(y1 - x1) = y1² - x1²
+        
+        # Matrix A und Vektor b für A * center = b
+        A = 2 * np.array([
+            y1 - x1,  # Gleichung: |center - x1|² = |center - y1|²
+            y2 - x1   # Gleichung: |center - x1|² = |center - y2|²
+        ])
+        
+        b = np.array([
+            np.dot(y1, y1) - np.dot(x1, x1),  # y1² - x1²
+            np.dot(y2, y2) - np.dot(x1, x1)   # y2² - x1²
+        ])
+        
+        # Löse das Gleichungssystem
+        try:
+            # Für 3D Problem mit 2 Gleichungen -> Least Squares
+            center = np.linalg.lstsq(A, b, rcond=None)[0]
+        except np.linalg.LinAlgError:
+            print("Gleichungssystem nicht lösbar")
+            return None, None
+        
+        # Radius berechnen
+        radius = np.linalg.norm(center - x1)
+        
+        return center, radius

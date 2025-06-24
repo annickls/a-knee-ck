@@ -1,0 +1,35 @@
+  Analysis_Type Flexion_Angle Target_Torque  Data_Points  Actual_Torque_Mean  Actual_Torque_Std  Rotation_Mean  Rotation_Std  
+  Rotation (TJX)            0°          -1.0              8              -0.962              0.072         46.458         2.519
+  Rotation (TJX)            0°          -0.5             32              -0.486              0.060         44.383         3.086
+  Rotation (TJX)            0°           0.5             24               0.448              0.039        -35.920         0.542
+  Rotation (TJX)            0°           1.0              0                 NaN                NaN            NaN           NaN
+  Rotation (TJX)           30°          -1.0             48              -0.991              0.061         41.557         3.258
+  Rotation (TJX)           30°          -0.5             32              -0.529              0.047         43.249         1.861
+  Rotation (TJX)           30°           0.5             36               0.481              0.050        -34.644         0.589
+  Rotation (TJX)           30°           1.0             12               0.920              0.014        -36.211         0.153
+  Rotation (TJX)           60°          -1.0             10              -0.987              0.062         31.285         3.785
+  Rotation (TJX)           60°          -0.5             16              -0.501              0.052         34.666         5.825
+  Rotation (TJX)           60°           0.5             32               0.535              0.037        -34.623         0.428
+  Rotation (TJX)           60°           1.0             16               0.979              0.052        -36.437         0.359
+  Rotation (TJX)           90°          -1.0             26              -1.014              0.063         25.783         2.129
+  Rotation (TJX)           90°          -0.5             36              -0.503              0.059         13.973         4.300
+  Rotation (TJX)           90°           0.5             36               0.538              0.046        -34.415         3.996
+  Rotation (TJX)           90°           1.0             24               0.999              0.060        -38.668         0.952
+
+  Analysis_Type Flexion_Angle Target_Torque  Data_Points  Actual_Torque_Mean  Actual_Torque_Std  edial_Gap_Mean  Medial_Gap_Std  Lateral_Gap_Mean  Lateral_Gap_Std
+Joint Gaps (TJY)            0°          -1.0             38              -0.999              0.057           5.745           3.036             8.164            2.451
+Joint Gaps (TJY)            0°          -0.5             24              -0.484              0.058           4.284           3.297             8.685            4.372
+Joint Gaps (TJY)            0°           0.5              2               0.527              0.000          12.388           0.000            17.652            0.000
+Joint Gaps (TJY)            0°           1.0              0                 NaN                NaN             NaN             NaN               NaN              NaN
+Joint Gaps (TJY)           30°          -1.0             30              -1.004              0.068           0.335           1.290             2.975            1.615
+Joint Gaps (TJY)           30°          -0.5              8              -0.465              0.069           0.935           1.388             6.648            1.621
+Joint Gaps (TJY)           30°           0.5             14               0.465              0.037          -2.431           1.425             5.069            0.662
+Joint Gaps (TJY)           30°           1.0              0                 NaN                NaN             NaN             NaN               NaN              NaN
+Joint Gaps (TJY)           60°          -1.0             40              -1.023              0.054           2.542           1.874             4.117            1.719
+Joint Gaps (TJY)           60°          -0.5             12              -0.504              0.059           2.157           1.739             8.312            0.991
+Joint Gaps (TJY)           60°           0.5             10               0.507              0.050           0.320           1.967             8.458            3.632
+Joint Gaps (TJY)           60°           1.0             16               0.994              0.050          -0.179           1.642            10.610            2.666
+Joint Gaps (TJY)           90°          -1.0             28              -1.009              0.060          16.559           5.578            13.169            3.156
+Joint Gaps (TJY)           90°          -0.5             74              -0.501              0.053          14.642           3.313            24.701            5.927
+Joint Gaps (TJY)           90°           0.5             10               0.504              0.066           6.482           2.619            15.734            4.699
+Joint Gaps (TJY)           90°           1.0              2               0.953              0.000           3.802           0.000            13.194            0.000

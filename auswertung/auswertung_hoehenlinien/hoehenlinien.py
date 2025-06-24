@@ -109,8 +109,9 @@ def apply_moving_average(data, window_size=3, method='simple'):
     return smoothed_data
 
 # Read the data
-#file_path = '/home/annick/a-knee-ck/auswertung/auswertung_hoehenlinien/20250610_180026_0deg_neutral.csv'
-file_path = r'C:\files_Annick\Studium Unterlagen\Master\masterarbeit\a-knee-ck\auswertung\auswertung_hoehenlinien\20250610_180026_0deg_neutral.csv'
+file_path = '/home/annick/a-knee-ck/auswertung/auswertung_hoehenlinien/20250610_180026_0deg_neutral.csv'
+#file_path = r'C:\files_Annick\Studium Unterlagen\Master\masterarbeit\a-knee-ck\auswertung\auswertung_hoehenlinien\20250610_180026_0deg_neutral.csv'
+
 
 try:
     df = pd.read_csv(file_path, comment='#')

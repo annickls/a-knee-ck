@@ -1,0 +1,236 @@
+=== KNEE DATA DIAGNOSTIC REPORT ===
+
+Data shape: (1320, 31)
+Columns: ['# Timestamp', 'Fx', 'Fy', 'Fz', 'Tx', 'Ty', 'Tz', 'FemurPosX', 'FemurPosY', 'FemurPosZ', 'FemurQuatW', 'FemurQuatX', 'FemurQuatY', 'FemurQuatZ', 'TibiaPosX', 'TibiaPosY', 'TibiaPosZ', 'TibiaQuatW', 'TibiaQuatX', 'TibiaQuatY', 'TibiaQuatZ', 'Flexion', 'Adduction', 'Rotation', 'Anterior_Posterior', 'Medial_Lateral', 'Proximal_Distal', 'Medial_Joint_Gap', 'Lateral_Joint_Gap', 'TJX', 'TJY']
+
+=== Flexion Analysis ===
+Range: -14.998 to 103.491
+Mean: 54.659
+Std: 36.581
+Non-null values: 1320/1320
+
+=== Tx Analysis ===
+Range: -1.345 to 0.813
+Mean: -0.214
+Std: 0.423
+Non-null values: 1320/1320
+
+=== TJX Analysis ===
+Range: -1.525 to 1.673
+Mean: -0.041
+Std: 0.720
+Non-null values: 1320/1320
+
+=== TJY Analysis ===
+Range: -2.327 to 1.360
+Mean: -0.616
+Std: 0.710
+Non-null values: 1320/1320
+
+=== Rotation Analysis ===
+Range: -40.219 to 49.559
+Mean: -0.915
+Std: 33.939
+Non-null values: 1320/1320
+
+=== Medial_Joint_Gap Analysis ===
+Range: -7.853 to 22.738
+Mean: 6.806
+Std: 7.562
+Non-null values: 1320/1320
+
+=== Lateral_Joint_Gap Analysis ===
+Range: -0.112 to 29.344
+Mean: 10.870
+Std: 7.282
+Non-null values: 1320/1320
+
+=== FLEXION ANGLE BINS ===
+Data points per flexion angle:
+  0°: 244 data points
+  30°: 312 data points
+  60°: 266 data points
+  90°: 498 data points
+  120°: 0 data points
+
+=== TJX (Rotation Torque) ANALYSIS ===
+TJX range: -1.525 to 1.673 Nm
+TJX mean: -0.041 Nm
+TJX std: 0.720 Nm
+
+=== TJY (Joint Gap Torque) ANALYSIS ===
+TJY range: -2.327 to 1.360 Nm
+TJY mean: -0.616 Nm
+TJY std: 0.710 Nm
+
+=== TORQUE (Tx) ANALYSIS ===
+Torque range: -1.345 to 0.813 Nm
+Data points per torque range:
+  -0.5-0 Nm: 522 data points
+  0-0.5 Nm: 356 data points
+  -1.0--0.5 Nm: 344 data points
+  0.5-1.0 Nm: 68 data points
+  Other: 30 data points
+
+=== FLEXION vs TORQUE CROSS-TABULATION ===
+Torque_Range  -0.5-0 Nm  -1.0--0.5 Nm  0-0.5 Nm  0.5-1.0 Nm  Other   All
+Flexion_Bin                                                             
+0°                  156            14        74           0      0   244
+30°                 114            64       132           2      0   312
+60°                  32           116        66          52      0   266
+90°                 220           150        84          14     30   498
+All                 522           344       356          68     30  1320
+
+=== ROTATION ANALYSIS ===
+Internal rotation (negative): 666 data points
+  Range: -40.219 to -1.379°
+  Mean: -32.844°
+External rotation (positive): 654 data points
+  Range: 0.697 to 49.559°
+  Mean: 31.599°
+
+=== MEDIAL_JOINT_GAP ANALYSIS ===
+Range: -7.853 to 22.738 mm
+Mean: 6.806 mm
+Std: 7.562 mm
+
+=== LATERAL_JOINT_GAP ANALYSIS ===
+Range: -0.112 to 29.344 mm
+Mean: 10.870 mm
+Std: 7.282 mm
+
+=== SAMPLE DATA BY FLEXION ANGLE ===
+
+0° (n=244):
+  Flexion: 13.836, Tx: -0.220, TJX: 0.096, TJY: -0.757, Rotation: -33.840, Medial_Joint_Gap: 0.360, Lateral_Joint_Gap: 3.242
+  Flexion: 13.836, Tx: -0.220, TJX: 0.096, TJY: -0.757, Rotation: -33.840, Medial_Joint_Gap: 0.360, Lateral_Joint_Gap: 3.242
+  Flexion: 8.324, Tx: -0.175, TJX: 0.076, TJY: -0.642, Rotation: -34.587, Medial_Joint_Gap: 3.353, Lateral_Joint_Gap: 6.695
+
+30° (n=312):
+  Flexion: 44.613, Tx: -0.467, TJX: 0.391, TJY: -1.078, Rotation: -34.384, Medial_Joint_Gap: 2.366, Lateral_Joint_Gap: 3.888
+  Flexion: 44.613, Tx: -0.467, TJX: 0.391, TJY: -1.078, Rotation: -34.384, Medial_Joint_Gap: 2.366, Lateral_Joint_Gap: 3.888
+  Flexion: 38.357, Tx: -0.440, TJX: 0.264, TJY: -1.095, Rotation: -33.227, Medial_Joint_Gap: -1.360, Lateral_Joint_Gap: 1.010
+
+60° (n=266):
+  Flexion: 70.390, Tx: -0.809, TJX: 0.701, TJY: -1.688, Rotation: -34.881, Medial_Joint_Gap: 7.530, Lateral_Joint_Gap: 6.933
+  Flexion: 70.390, Tx: -0.809, TJX: 0.701, TJY: -1.688, Rotation: -34.881, Medial_Joint_Gap: 7.530, Lateral_Joint_Gap: 6.933
+  Flexion: 62.575, Tx: -0.584, TJX: 0.544, TJY: -1.212, Rotation: -34.204, Medial_Joint_Gap: 3.111, Lateral_Joint_Gap: 3.250
+
+90° (n=498):
+  Flexion: 102.100, Tx: -0.057, TJX: -0.021, TJY: -0.216, Rotation: -22.817, Medial_Joint_Gap: 20.838, Lateral_Joint_Gap: 18.630
+  Flexion: 102.100, Tx: -0.057, TJX: -0.021, TJY: -0.216, Rotation: -22.817, Medial_Joint_Gap: 20.838, Lateral_Joint_Gap: 18.630
+  Flexion: 102.246, Tx: -0.060, TJX: -0.019, TJY: -0.235, Rotation: -22.498, Medial_Joint_Gap: 20.902, Lateral_Joint_Gap: 18.599
+
+================================================================================
+TJX/TJY TORQUE RANGE-BASED ANALYSIS
+================================================================================
+TJX = TZ - FY * 0.077 + FX * 0.043 - TX (used for rotation analysis)
+TJY = TX - FZ * 0.043 + FY * 0.226 (used for joint gap analysis)
+================================================================================
+
+Detailed TJX/TJY Torque Range Analysis:
+(Each row shows mean values for data within Target_Torque ± 0.1 Nm)
+Rotation analysis uses TJX, Joint gap analysis uses TJY
+--------------------------------------------------------------------------------------------------------------------------------------------
+   Analysis_Type Flexion_Angle Target_Torque Torque_Range  Data_Points  Actual_Torque_Mean  Actual_Torque_Std  Rotation_Mean  Rotation_Std  Medial_Gap_Mean  Medial_Gap_Std  Lateral_Gap_Mean  Lateral_Gap_Std
+  Rotation (TJX)            0°          -1.0 -1.1 to -0.9            8              -0.962              0.072         46.458         2.519            5.115           5.157            12.801            5.195
+Joint Gaps (TJY)            0°          -1.0 -1.1 to -0.9           38              -0.999              0.057        -35.202         0.812            5.745           3.036             8.164            2.451
+  Rotation (TJX)            0°          -0.5 -0.6 to -0.4           32              -0.486              0.060         44.383         3.086            7.808           5.933            14.380            4.930
+Joint Gaps (TJY)            0°          -0.5 -0.6 to -0.4           24              -0.484              0.058         -9.355        37.346            4.284           3.297             8.685            4.372
+  Rotation (TJX)            0°           0.0  -0.1 to 0.1           12               0.054              0.061        -35.122         0.903            4.538           2.468             7.489            2.527
+Joint Gaps (TJY)            0°           0.0  -0.1 to 0.1           24              -0.005              0.051         45.557         2.904            7.123           5.332            14.804            4.580
+  Rotation (TJX)            0°           0.5   0.4 to 0.6           24               0.448              0.039        -35.920         0.542            6.166           2.051             9.046            1.935
+Joint Gaps (TJY)            0°           0.5   0.4 to 0.6            2               0.527              0.000         46.585         0.000           12.388           0.000            17.652            0.000
+  Rotation (TJX)            0°           1.0   0.9 to 1.1            0                 NaN                NaN            NaN           NaN              NaN             NaN               NaN              NaN
+Joint Gaps (TJY)            0°           1.0   0.9 to 1.1            0                 NaN                NaN            NaN           NaN              NaN             NaN               NaN              NaN
+  Rotation (TJX)           30°          -1.0 -1.1 to -0.9           48              -0.991              0.061         41.557         3.258           -2.595           1.755             4.975            1.099
+Joint Gaps (TJY)           30°          -1.0 -1.1 to -0.9           30              -1.004              0.068        -34.444         1.417            0.335           1.290             2.975            1.615
+  Rotation (TJX)           30°          -0.5 -0.6 to -0.4           32              -0.529              0.047         43.249         1.861           -1.724           1.905             5.841            1.598
+Joint Gaps (TJY)           30°          -0.5 -0.6 to -0.4            8              -0.465              0.069          4.964        41.898            0.935           1.388             6.648            1.621
+  Rotation (TJX)           30°           0.0  -0.1 to 0.1            8              -0.006              0.061        -28.898         3.347           -2.221           0.818             1.820            0.519
+Joint Gaps (TJY)           30°           0.0  -0.1 to 0.1           52               0.002              0.061         41.210         4.570           -3.034           2.303             5.154            1.585
+  Rotation (TJX)           30°           0.5   0.4 to 0.6           36               0.481              0.050        -34.644         0.589            0.071           1.181             2.692            1.736
+Joint Gaps (TJY)           30°           0.5   0.4 to 0.6           14               0.465              0.037         39.741         2.832           -2.431           1.425             5.069            0.662
+  Rotation (TJX)           30°           1.0   0.9 to 1.1           12               0.920              0.014        -36.211         0.153            0.032           0.608             1.450            0.852
+Joint Gaps (TJY)           30°           1.0   0.9 to 1.1            0                 NaN                NaN            NaN           NaN              NaN             NaN               NaN              NaN
+  Rotation (TJX)           60°          -1.0 -1.1 to -0.9           10              -0.987              0.062         31.285         3.785            0.810           1.560            10.948            3.675
+Joint Gaps (TJY)           60°          -1.0 -1.1 to -0.9           40              -1.023              0.054        -34.698         2.051            2.542           1.874             4.117            1.719
+  Rotation (TJX)           60°          -0.5 -0.6 to -0.4           16              -0.501              0.052         34.666         5.825            1.222           1.744             8.688            3.334
+Joint Gaps (TJY)           60°          -0.5 -0.6 to -0.4           12              -0.504              0.059         25.913         7.360            2.157           1.739             8.312            0.991
+  Rotation (TJX)           60°           0.0  -0.1 to 0.1            2              -0.080              0.000        -26.296         0.000            0.163           0.000             3.319            0.000
+Joint Gaps (TJY)           60°           0.0  -0.1 to 0.1            8               0.011              0.073         34.110         4.454           -0.621           0.337             6.723            0.617
+  Rotation (TJX)           60°           0.5   0.4 to 0.6           32               0.535              0.037        -34.623         0.428            3.776           2.805             4.149            2.400
+Joint Gaps (TJY)           60°           0.5   0.4 to 0.6           10               0.507              0.050         33.466         3.550            0.320           1.967             8.458            3.632
+  Rotation (TJX)           60°           1.0   0.9 to 1.1           16               0.979              0.052        -36.437         0.359            2.582           2.267             2.376            2.133
+Joint Gaps (TJY)           60°           1.0   0.9 to 1.1           16               0.994              0.050         34.512         3.960           -0.179           1.642            10.610            2.666
+  Rotation (TJX)           90°          -1.0 -1.1 to -0.9           26              -1.014              0.063         25.783         2.129            7.402           3.348            17.399            5.060
+Joint Gaps (TJY)           90°          -1.0 -1.1 to -0.9           28              -1.009              0.060        -16.305        16.839           16.559           5.578            13.169            3.156
+  Rotation (TJX)           90°          -0.5 -0.6 to -0.4           36              -0.503              0.059         13.973         4.300           10.584           3.182            20.836            5.663
+Joint Gaps (TJY)           90°          -0.5 -0.6 to -0.4           74              -0.501              0.053         10.708        14.716           14.642           3.313            24.701            5.927
+  Rotation (TJX)           90°           0.0  -0.1 to 0.1          126               0.006              0.036          2.176        19.037           16.756           3.002            23.118            6.024
+Joint Gaps (TJY)           90°           0.0  -0.1 to 0.1           28               0.009              0.057         18.656         4.697            9.645           3.612            19.674            5.568
+  Rotation (TJX)           90°           0.5   0.4 to 0.6           36               0.538              0.046        -34.415         3.996           16.741           3.802            12.656            2.291
+Joint Gaps (TJY)           90°           0.5   0.4 to 0.6           10               0.504              0.066         23.274         6.850            6.482           2.619            15.734            4.699
+  Rotation (TJX)           90°           1.0   0.9 to 1.1           24               0.999              0.060        -38.668         0.952           16.542           3.713            13.164            1.770
+Joint Gaps (TJY)           90°           1.0   0.9 to 1.1            2               0.953              0.000         29.972         0.000            3.802           0.000            13.194            0.000
+  Rotation (TJX)          120°          -1.0 -1.1 to -0.9            0                 NaN                NaN            NaN           NaN              NaN             NaN               NaN              NaN
+Joint Gaps (TJY)          120°          -1.0 -1.1 to -0.9            0                 NaN                NaN            NaN           NaN              NaN             NaN               NaN              NaN
+  Rotation (TJX)          120°          -0.5 -0.6 to -0.4            0                 NaN                NaN            NaN           NaN              NaN             NaN               NaN              NaN
+Joint Gaps (TJY)          120°          -0.5 -0.6 to -0.4            0                 NaN                NaN            NaN           NaN              NaN             NaN               NaN              NaN
+  Rotation (TJX)          120°           0.0  -0.1 to 0.1            0                 NaN                NaN            NaN           NaN              NaN             NaN               NaN              NaN
+Joint Gaps (TJY)          120°           0.0  -0.1 to 0.1            0                 NaN                NaN            NaN           NaN              NaN             NaN               NaN              NaN
+  Rotation (TJX)          120°           0.5   0.4 to 0.6            0                 NaN                NaN            NaN           NaN              NaN             NaN               NaN              NaN
+Joint Gaps (TJY)          120°           0.5   0.4 to 0.6            0                 NaN                NaN            NaN           NaN              NaN             NaN               NaN              NaN
+  Rotation (TJX)          120°           1.0   0.9 to 1.1            0                 NaN                NaN            NaN           NaN              NaN             NaN               NaN              NaN
+Joint Gaps (TJY)          120°           1.0   0.9 to 1.1            0                 NaN                NaN            NaN           NaN              NaN             NaN               NaN              NaN
+
+================================================================================
+PIVOT SUMMARIES BY FLEXION ANGLE AND TORQUE (TJX/TJY)
+================================================================================
+
+Rotation (°) - Rotation (TJX):
+------------------------------------------------------------
+Target_Torque   -0.5   -1.0     0.0     0.5     1.0
+Flexion_Angle                                      
+0°            44.383 46.458 -35.122 -35.920      --
+30°           43.249 41.557 -28.898 -34.644 -36.211
+60°           34.666 31.285 -26.296 -34.623 -36.437
+90°           13.973 25.783   2.176 -34.415 -38.668
+
+Medial Joint Gap (mm) - Joint Gaps (TJY):
+------------------------------------------------------------
+Target_Torque   -0.5   -1.0    0.0    0.5    1.0
+Flexion_Angle                                   
+0°             4.284  5.745  7.123 12.388     --
+30°            0.935  0.335 -3.034 -2.431     --
+60°            2.157  2.542 -0.621  0.320 -0.179
+90°           14.642 16.559  9.645  6.482  3.802
+
+Lateral Joint Gap (mm) - Joint Gaps (TJY):
+------------------------------------------------------------
+Target_Torque   -0.5   -1.0    0.0    0.5    1.0
+Flexion_Angle                                   
+0°             8.685  8.164 14.804 17.652     --
+30°            6.648  2.975  5.154  5.069     --
+60°            8.312  4.117  6.723  8.458 10.610
+90°           24.701 13.169 19.674 15.734 13.194
+
+TJX/TJY torque range analysis saved to 'knee_data_tjx_tjy_ranges.csv'
+
+================================================================================
+EXAMPLE: 90° Flexion, 0.5 Nm Torque (±0.1 Nm range)
+================================================================================
+--- Using TJX for Rotation Analysis ---
+Found 36 data points in TJX range 0.4-0.6 Nm at 90° flexion
+Actual TJX values: 0.433 to 0.599 Nm
+Mean rotation: -34.415°
+Mean medial joint gap: 16.741 mm
+Mean lateral joint gap: 12.656 mm
+
+--- Using TJY for Joint Gap Analysis ---
+Found 10 data points in TJY range 0.4-0.6 Nm at 90° flexion
+Actual TJY values: 0.413 to 0.594 Nm
+Mean medial joint gap: 6.482 mm
+Mean lateral joint gap: 15.734 mm
+Mean rotation: 23.274°
+annick@alex-CELSIUS-W580power:~/a-knee-ck$ 
