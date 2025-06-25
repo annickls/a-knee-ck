@@ -503,7 +503,8 @@ class UpdateVisualization():
             shader='shaded',
             glOptions='translucent'
         )
-        self.gl_view.addItem(landmark_sphere)
+        # add sphere to visualization
+        #self.gl_view.addItem(landmark_sphere)
         landmark_sphere.translate(position[0], position[1], position[2])
         
         # Add Sphere to class to update it later on
@@ -589,7 +590,12 @@ class UpdateVisualization():
             femur_lateral = UpdateVisualization.femur_landmarks['femur_lateral']['position']
             femur_proximal = UpdateVisualization.femur_landmarks['femur_proximal']['position']
             femur_distal = UpdateVisualization.femur_landmarks['femur_distal']['position']
-            femur_center_medial = UpdateVisualization.femur_landmarks['femur_center_medial']['position']
+            femur_center_axis_medial = UpdateVisualization.femur_landmarks['femur_center_axis_medial']['position']
+            femur_center_axis_lateral = UpdateVisualization.femur_landmarks['femur_center_axis_lateral']['position']
+            femur_center_medial_1 = UpdateVisualization.femur_landmarks['femur_center_medial_1']['position']
+            femur_center_medial_2 = UpdateVisualization.femur_landmarks['femur_center_medial_2']['position']
+            femur_center_lateral_1 = UpdateVisualization.femur_landmarks['femur_center_lateral_1']['position']
+            femur_center_lateral_2 = UpdateVisualization.femur_landmarks['femur_center_lateral_2']['position']
             
             
             # Define coordinate systems according to Grood and Suntay
@@ -733,28 +739,39 @@ class UpdateVisualization():
             proximal_distal = -(-s3 -s1 *math.cos(adduction))
             
 
-            #===========Clalculation distances femur condyles - tibia plateau medial and lateral========
+            #===========Clalculation distances femur condyles - tibia plateau medial and lateral======== 
             # define spheres for medial and lateral femur condyles
-            center_medial, radius_medial = UpdateVisualization.define_sphere_with_constraints(constants.CENTER_AXIS_MEDIAL, constants.SURFACE_MEDIAL_1, constants.SURFACE_MEDIAL_2)
-            center_lateral, radius_lateral = UpdateVisualization.define_sphere_with_constraints(constants.CENTER_AXIS_LATERAL, constants.SURFACE_LATERAL_1, constants.SURFACE_LATERAL_2)
+            center_medial, radius_medial = UpdateVisualization.define_sphere_with_constraints(femur_center_axis_medial, femur_center_axis_lateral, femur_center_medial_1, femur_center_medial_2)
+            center_lateral, radius_lateral = UpdateVisualization.define_sphere_with_constraints(femur_center_axis_medial, femur_center_axis_lateral, femur_center_lateral_1, femur_center_lateral_2)
 
             
-            radius_medial = 20
+            #radius_medial = np.linalg.norm(femur_center_medial-femur_center_medial_1)
             
+
             # medial
             #medial_tibia_femur = femur_medial - tibia_medial
-            medial_tibia_femur = femur_center_medial - tibia_medial
+            medial_tibia_femur = center_medial - tibia_medial
             m1 = np.dot(medial_tibia_femur, e1f)
             m3 = np.dot(medial_tibia_femur, e3t)
-            medial_joint_gap = -(-m3 - m1 * math.cos(adduction)) -radius_medial
+            #medial_joint_gap = -(-m3 - m1 * math.cos(adduction)) -radius_medial
+            medial_joint_gap = m3 -radius_medial
+
+            if medial_joint_gap < 0:
+                medial_joint_gap = 0
    
             
-            #lateral
-            lateral_tibia_femur = femur_lateral - tibia_lateral
+            #laterall
+            #lateral_tibia_femur = femur_lateral - tibia_lateral
+            lateral_tibia_femur = center_lateral - tibia_lateral
             l1 = np.dot(lateral_tibia_femur, e1f)
             #l3 = np.dot(lateral_tibia_femur, e2t) / np.linalg.norm(e2t)
             l3 = np.dot(lateral_tibia_femur, e3t)
-            lateral_joint_gap = -(-l3 - l1 *math.cos(adduction))
+            #lateral_joint_gap = -(-l3 - l1 *math.cos(adduction)) -radius_lateral
+            lateral_joint_gap = l3-radius_lateral
+            
+            if lateral_joint_gap < 0:
+                lateral_joint_gap = 0
+
 
             
 
@@ -939,37 +956,62 @@ class UpdateVisualization():
             main_window.legend_items = []
 
     
-    def define_sphere_with_constraints(x1, y1, y2):
+    def define_sphere_with_constraints(x1, x2, y1, y2):
         """
-        Berechnet den Kugelmittelpunkt aus drei Punkten auf der Kugeloberfläche.
-        Löst das lineare Gleichungssystem: |center - xi|² = r² für alle Punkte
+        Calculate the center of a sphere given:
+        - x1, x2: Two points on the axis where the center lies
+        - y1, y2: Two points on the sphere's surface
+        
+        Returns the center point and radius of the sphere.
         """
-        x1, y1, y2 = np.array(x1, dtype=float), np.array(y1, dtype=float), np.array(y2, dtype=float)
+
+        # Convert to numpy arrays for easier vector operations
+        x1, x2, y1, y2 = np.array(x1), np.array(x2), np.array(y1), np.array(y2)
         
-        # Gleichungssystem: |center - x1|² = |center - y1|² = |center - y2|²
-        # Expandiert: center² - 2*center*x1 + x1² = center² - 2*center*y1 + y1²
-        # Vereinfacht: 2*center*(y1 - x1) = y1² - x1²
+        # Direction vector of the x1-x2 axis
+        axis_dir = x2 - x1
+        axis_dir = axis_dir / np.linalg.norm(axis_dir)  # normalize
         
-        # Matrix A und Vektor b für A * center = b
-        A = 2 * np.array([
-            y1 - x1,  # Gleichung: |center - x1|² = |center - y1|²
-            y2 - x1   # Gleichung: |center - x1|² = |center - y2|²
-        ])
+        # Midpoint of y1 and y2
+        midpoint_y = (y1 + y2) / 2
         
-        b = np.array([
-            np.dot(y1, y1) - np.dot(x1, x1),  # y1² - x1²
-            np.dot(y2, y2) - np.dot(x1, x1)   # y2² - x1²
-        ])
+        # Direction vector from y1 to y2
+        y_dir = y2 - y1
         
-        # Löse das Gleichungssystem
-        try:
-            # Für 3D Problem mit 2 Gleichungen -> Least Squares
-            center = np.linalg.lstsq(A, b, rcond=None)[0]
-        except np.linalg.LinAlgError:
-            print("Gleichungssystem nicht lösbar")
-            return None, None
+        # The perpendicular bisector passes through midpoint_y and is perpendicular to y_dir
+        # We need to find where this intersects the x1-x2 axis
         
-        # Radius berechnen
-        radius = np.linalg.norm(center - x1)
+        # Parametric form of the x1-x2 axis: point = x1 + t * axis_dir
+        # Parametric form of perpendicular bisector: point = midpoint_y + s * perp_dir
+        # where perp_dir is any vector perpendicular to y_dir
+        
+        # For the intersection, we need:
+        # x1 + t * axis_dir = midpoint_y + s * perp_dir
+        # But we also know that (center - midpoint_y) must be perpendicular to y_dir
+        # So: (x1 + t * axis_dir - midpoint_y) · y_dir = 0
+        
+        # Solve for t:
+        # (x1 - midpoint_y) · y_dir + t * (axis_dir · y_dir) = 0
+        # t = -((x1 - midpoint_y) · y_dir) / (axis_dir · y_dir)
+        
+        numerator = -np.dot(x1 - midpoint_y, y_dir)
+        denominator = np.dot(axis_dir, y_dir)
+        
+        if abs(denominator) < 1e-10:
+            raise ValueError("The axis is parallel to the y1-y2 line segment. No unique solution.")
+        
+        t = numerator / denominator
+        
+        # Calculate the center
+        center = x1 + t * axis_dir
+        
+        # Calculate the radius (distance from center to either y1 or y2)
+        radius = np.linalg.norm(center - y1)
+        
+        # Verify with y2 (should be the same distance)
+        radius_check = np.linalg.norm(center - y2)
+        
+        if abs(radius - radius_check) > 1e-10:
+            raise ValueError("The calculated center is not equidistant from y1 and y2. Check your input points.")
         
         return center, radius

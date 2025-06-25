@@ -219,7 +219,12 @@ class KneeFlexionExperiment(QMainWindow):
                             UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_proximal")
                             UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_distal")
 
-                            UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_center_medial")
+                            UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_center_axis_medial")
+                            UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_center_axis_lateral")
+                            UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_center_medial_1")
+                            UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_center_medial_2")
+                            UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_center_lateral_1")
+                            UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_center_lateral_2")
                         
                         if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
                             MeshUtils.update_mesh_with_data(self.tibia_mesh, tibia_position, tibia_quaternion)
@@ -250,11 +255,22 @@ class KneeFlexionExperiment(QMainWindow):
                                     self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, -medial_joint_gap, self.diagram_mode)
 
                                     
-                                else:  # rotation mode
+                                elif self.diagram_mode == 'rotation':  # rotation mode
                                     # Extract rotation angles from your angles_new dictionary
-                                    internal_rotation_angle = angles_new['rotation']
+                                    #internal_rotation_angle = angles_new['rotation']
+                                    internal_rotation_angle = angles_new['adduction'] # test for adduction angles
+                                    
                                     
                                     self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, internal_rotation_angle, self.diagram_mode)
+                                else:
+                                    # Extract adductionangles from your angles_new dictionary
+                                    #internal_rotation_angle = angles_new['rotation']
+                                    adduction_angle = angles_new['adduction'] # test for adduction angles
+                                    
+                                    
+                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, adduction_angle, self.diagram_mode)
+                                
+
                             else:
                                 test = 0
 
@@ -264,8 +280,7 @@ class KneeFlexionExperiment(QMainWindow):
                         # Update force visualization
                         UpdateVisualization.update_bone_forces(self, self.current_data_index)
 
-                    elif current_tab == 3:
-                        UpdateVisualization.update_tibia_path(self)
+                    
                     
                     # If recording is active, record this data point
                     if self.recording:
@@ -989,19 +1004,35 @@ class KneeFlexionExperiment(QMainWindow):
             femur_lateral = constants.FEMUR_LATERAL
             femur_proximal = constants.FEMUR_PROXIMAL
             femur_distal = constants.FEMUR_DISTAL
-            femur_center_medial = constants.TEST_POINT_MEDIAL
+            femur_center_axis_medial = constants.CENTER_AXIS_MEDIAL
+            femur_center_axis_lateral = constants.CENTER_AXIS_LATERAL
+            femur_center_medial_1 = constants.SURFACE_MEDIAL_1
+            femur_center_medial_2 = constants.SURFACE_MEDIAL_2
+            femur_center_lateral_1 = constants.SURFACE_LATERAL_1
+            femur_center_lateral_2 = constants.SURFACE_LATERAL_2
 
             femur_medial_rot = rotation@(femur_medial+translation)
             femur_lateral_rot = rotation@(femur_lateral+translation)
             femur_proximal_rot = rotation@(femur_proximal+translation)
             femur_distal_rot = rotation@(femur_distal+translation)
-            femur_center_medial_rot = rotation@(femur_center_medial+translation)
+            femur_center_axis_medial_rot = rotation@(femur_center_axis_medial+translation)
+            femur_center_axis_lateral_rot = rotation@(femur_center_axis_lateral+translation)
+            femur_center_medial_1_rot = rotation@(femur_center_medial_1+translation)
+            femur_center_medial_2_rot = rotation@(femur_center_medial_2+translation)
+            femur_center_lateral_1_rot = rotation@(femur_center_lateral_1+translation)
+            femur_center_lateral_2_rot = rotation@(femur_center_lateral_2+translation)
+
 
             UpdateVisualization.add_landmark(self, femur_medial_rot, "femur_medial")
             UpdateVisualization.add_landmark(self, femur_lateral_rot, "femur_lateral")
             UpdateVisualization.add_landmark(self, femur_proximal_rot, "femur_proximal")
             UpdateVisualization.add_landmark(self, femur_distal_rot, "femur_distal")
-            UpdateVisualization.add_landmark(self, femur_center_medial_rot, "femur_center_medial")
+            UpdateVisualization.add_landmark(self, femur_center_axis_medial_rot, "femur_center_axis_medial")
+            UpdateVisualization.add_landmark(self, femur_center_axis_lateral_rot, "femur_center_axis_lateral")
+            UpdateVisualization.add_landmark(self, femur_center_medial_1_rot, "femur_center_medial_1")
+            UpdateVisualization.add_landmark(self, femur_center_medial_2_rot, "femur_center_medial_2")
+            UpdateVisualization.add_landmark(self, femur_center_lateral_1_rot, "femur_center_lateral_1")
+            UpdateVisualization.add_landmark(self, femur_center_lateral_2_rot, "femur_center_lateral_2")
             
          
         except Exception as e:
@@ -1171,7 +1202,33 @@ class KneeFlexionExperiment(QMainWindow):
                 except Exception as e:
                     print(f"Error updating plot to rotation mode: {e}")
                     
-        else:
+        elif self.diagram_mode == "rotation":
+            self.diagram_mode = "adduction"
+            self.diagram_axes_button.setText("click to show joint adduction")
+            
+            # Update diagram title back to varus/valgus
+            if hasattr(self, 'canvas_varus_valgus'):
+                try:
+                    # Clear the plot and reset
+                    self.canvas_varus_valgus.ax.clear()
+                    #self.canvas_varus_valgus.ax.set_xlabel('test1')
+                    self.canvas_varus_valgus.ax.set_ylabel('Flexion Angle [°]')
+                    self.canvas_varus_valgus.ax.set_title('medial/lateral joint gap [mm]')
+                    self.canvas_varus_valgus.ax.grid(True, alpha=0.3)
+                    self.canvas_varus_valgus.ax.set_xlim(-constants.X_LIM_ROT, constants.X_LIM_ROT)
+                    self.canvas_varus_valgus.ax.set_ylim(constants.Y_MIN_FLEX, constants.Y_MAX_FLEX)
+                    self.canvas_varus_valgus.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
+                    
+                    # Clear the stored data arrays
+                    self.canvas_varus_valgus.varus_valgus_data = []
+                    self.canvas_varus_valgus.flexion_data = []
+                    
+                    #self.canvas_varus_valgus.draw()
+                    
+                except Exception as e:
+                    print(f"Error updating plot to varus/valgus mode: {e}")
+
+        elif self.diagram_mode == "adduction":
             self.diagram_mode = "varus_valgus"
             self.diagram_axes_button.setText("click to show joint rotation")
             
@@ -1182,7 +1239,7 @@ class KneeFlexionExperiment(QMainWindow):
                     self.canvas_varus_valgus.ax.clear()
                     #self.canvas_varus_valgus.ax.set_xlabel('test1')
                     self.canvas_varus_valgus.ax.set_ylabel('Flexion Angle [°]')
-                    self.canvas_varus_valgus.ax.set_title('medial/lateral joint gap [mm]')
+                    self.canvas_varus_valgus.ax.set_title('Adduction angle [°]')
                     self.canvas_varus_valgus.ax.grid(True, alpha=0.3)
                     self.canvas_varus_valgus.ax.set_xlim(-constants.X_LIM_ROT, constants.X_LIM_ROT)
                     self.canvas_varus_valgus.ax.set_ylim(constants.Y_MIN_FLEX, constants.Y_MAX_FLEX)
@@ -1257,8 +1314,9 @@ class KneeFlexionExperiment(QMainWindow):
             tjx = tz - fy * delta_x + fx * delta_y - tx
 
             rotation = df.iloc[:, 23]  # Rotation column
-            #tjy = ty - fx *0.043 - fy * 0.077
             tjy = tx - fz * delta_y + fy * delta_z
+            adduction = df.iloc[:, 22]
+            #tjy = tjx
             
             medial_joint_gap = df.iloc[:, 27]  # Medial_Joint_Gap column
             lateral_joint_gap = df.iloc[:, 28]  # Lateral_Joint_Gap column
