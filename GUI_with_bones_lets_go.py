@@ -5,6 +5,7 @@ import csv
 import warnings
 from stl import mesh
 import os
+import glob
 import time
 import datetime
 from scipy import interpolate
@@ -96,6 +97,15 @@ class KneeFlexionExperiment(QMainWindow):
             self.start_buttoncsv.setText("Stop Real-Time Data")
             print("--- Real-Time Data Monitoring Started ---")
             
+            # Find latest csv file
+            root_folder = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            pattern = os.path.join(root_folder, "knee_eval_ws", "data*.csv")
+            try: 
+                self.csv_path = max(glob.glob(pattern), key=os.path.getmtime)
+            except: 
+                print(f"No file corresponding to the pattern: {pattern}")
+                return
+
             # Initialize file stats
             csv_file = Path(self.csv_path)
             if csv_file.exists():

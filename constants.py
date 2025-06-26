@@ -25,7 +25,7 @@ RECORDED = os.path.join(current_folder, "recorded_data")
 root_folder = os.path.dirname(current_folder)
 DATA_PREVIOUS_TEST = "/home/annick/GUI/data_for_gui/print_data.F_sensor_temp_data_7.txt"
 DATA_CSV = os.path.join(root_folder, "knee_eval_ws", "data.csv")
-DATA_CSV = max(glob.glob(root_folder + "/knee_eval_ws" + "/data*.csv"))
+DATA_CSV = max(glob.glob(root_folder + "/knee_eval_ws" + "/data*.csv"), key=os.path.getmtime)
 #DATA_CSV = "data_new.csv"
 
 
