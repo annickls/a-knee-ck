@@ -3,9 +3,9 @@ import glob
 import numpy as np
 
 # experiment parameters
-HOLD_TIME = 30 #seconds to hold knee positions
-HOLD_INDIVIDUAL = 30 #seconds for individual data recording
-LACHMANN_TIME = 15 # seconds for lachmann test
+HOLD_TIME = 40 #seconds to hold knee positions
+HOLD_INDIVIDUAL = 40 #seconds for individual data recording
+LACHMANN_TIME = 30 # seconds for lachmann test
 FLEXION_ANGLES = [0, 30, 60, 90, 120]
 
 # current folder
@@ -51,6 +51,8 @@ CENTER_AXIS_LATERAL = np.array([89.07107543945312,-84.18157196044922,1376.079956
 #CENTER_AXIS_MEDIAL = np.array([66.45207977294922,-155.77943420410156,1350.2264404296875])
 
 TEST_POINT_MEDIAL = np.array([70,-160,1375])
+TEST_POINT_LATERAL = np.array([84,-100,1365])
+
 
 #calculation torques - distances FT-Dose to Tibia Origin
 DELTA_X = 0.077
@@ -84,7 +86,7 @@ Y_MIN_FLEX = -10
 
 # interpolation and other plot adjustments
 BINS_ROT = 9
-BINS_VAR = 3
+BINS_VAR = 4
 FLEXION_BIN_SIZE = 0.5
 INTERPOLATION_KIND = 'linear'
 SMOOTHING_FACTOR = 2

@@ -36,6 +36,11 @@ class UpdateVisualization():
 
     floatingaxis = [0, 0, 0]
 
+    e1t_store = [0, 0, 0]
+    e2t_store = [0, 0, 0]
+    e3t_store = [0, 0, 0]
+
+
     def update_current_visualization(self, force, torque):
         """Update the force/torque visualization with only the current data."""
         # Force arrow
@@ -596,7 +601,8 @@ class UpdateVisualization():
             femur_center_medial_2 = UpdateVisualization.femur_landmarks['femur_center_medial_2']['position']
             femur_center_lateral_1 = UpdateVisualization.femur_landmarks['femur_center_lateral_1']['position']
             femur_center_lateral_2 = UpdateVisualization.femur_landmarks['femur_center_lateral_2']['position']
-            
+            femur_sphere_center_medial = UpdateVisualization.femur_landmarks['femur_sphere_center_medial']['position']
+            femur_sphere_center_lateral = UpdateVisualization.femur_landmarks['femur_sphere_center_lateral']['position']
             
             # Define coordinate systems according to Grood and Suntay
             
@@ -640,6 +646,7 @@ class UpdateVisualization():
             e3t = e3t / np.linalg.norm(e3t)
 
             UpdateVisualization.tibiaproximaldistal = e3t
+            UpdateVisualization.e3t_store = e3t
             
             # Temporary tibial medial-lateral axis
             temp_tibia = tibia_lateral - tibia_medial
@@ -656,14 +663,16 @@ class UpdateVisualization():
                 print("Warning: Tibia coordinate system is degenerate")
                 return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
             e2t = e2t / np.linalg.norm(e3t)
+            UpdateVisualization.e2t_store = e2t
             
-            UpdateVisualization.tibiavarusaxis = e3t
+            #UpdateVisualization.tibiavarusaxis = e2t
 
             # e1t: tibial medial-lateral axis (corrected)
             e1t = np.cross(e3t, e2t)
             e1t = e1t / np.linalg.norm(e1t)
 
             UpdateVisualization.tibiamediallateral = e1t
+            UpdateVisualization.e1t_store = - e1t
             
             # Calculate floating axis (common perpendicular to e1f and e2t)
             floating_axis = np.cross(e1f, e3t)
@@ -741,10 +750,13 @@ class UpdateVisualization():
 
             #===========Clalculation distances femur condyles - tibia plateau medial and lateral======== 
             # define spheres for medial and lateral femur condyles
-            center_medial, radius_medial = UpdateVisualization.define_sphere_with_constraints(femur_center_axis_medial, femur_center_axis_lateral, femur_center_medial_1, femur_center_medial_2)
-            center_lateral, radius_lateral = UpdateVisualization.define_sphere_with_constraints(femur_center_axis_medial, femur_center_axis_lateral, femur_center_lateral_1, femur_center_lateral_2)
+            #center_medial, radius_medial = UpdateVisualization.define_sphere_with_constraints(femur_center_axis_medial, femur_center_axis_lateral, femur_center_medial_1, femur_center_medial_2)
+            #center_lateral, radius_lateral = UpdateVisualization.define_sphere_with_constraints(femur_center_axis_medial, femur_center_axis_lateral, femur_center_lateral_1, femur_center_lateral_2)
 
-            
+            center_medial = femur_sphere_center_medial 
+            radius_medial = np.linalg.norm(center_medial - UpdateVisualization.femur_landmarks['femur_medial']['position'])
+            center_lateral = femur_sphere_center_lateral
+            radius_lateral= np.linalg.norm(center_lateral - UpdateVisualization.femur_landmarks['femur_lateral']['position'])
             #radius_medial = np.linalg.norm(femur_center_medial-femur_center_medial_1)
             
 
@@ -753,8 +765,8 @@ class UpdateVisualization():
             medial_tibia_femur = center_medial - tibia_medial
             m1 = np.dot(medial_tibia_femur, e1f)
             m3 = np.dot(medial_tibia_femur, e3t)
-            #medial_joint_gap = -(-m3 - m1 * math.cos(adduction)) -radius_medial
-            medial_joint_gap = m3 -radius_medial
+            medial_joint_gap = -(-m3 - m1 * math.cos(adduction)) -radius_medial
+            #medial_joint_gap = m3 -radius_medial
 
             if medial_joint_gap < 0:
                 medial_joint_gap = 0
@@ -766,8 +778,8 @@ class UpdateVisualization():
             l1 = np.dot(lateral_tibia_femur, e1f)
             #l3 = np.dot(lateral_tibia_femur, e2t) / np.linalg.norm(e2t)
             l3 = np.dot(lateral_tibia_femur, e3t)
-            #lateral_joint_gap = -(-l3 - l1 *math.cos(adduction)) -radius_lateral
-            lateral_joint_gap = l3-radius_lateral
+            lateral_joint_gap = -(-l3 - l1 *math.cos(adduction))  - radius_lateral
+            #lateral_joint_gap = l3-radius_lateral
             
             if lateral_joint_gap < 0:
                 lateral_joint_gap = 0
@@ -957,6 +969,8 @@ class UpdateVisualization():
 
     
     def define_sphere_with_constraints(x1, x2, y1, y2):
+
+
         """
         Calculate the center of a sphere given:
         - x1, x2: Two points on the axis where the center lies
@@ -1015,3 +1029,85 @@ class UpdateVisualization():
             raise ValueError("The calculated center is not equidistant from y1 and y2. Check your input points.")
         
         return center, radius
+    
+    def quaternion_to_rotation_matrix(q):
+        """
+        Convert quaternion to rotation matrix.
+        
+        Args:
+            q: quaternion as [w, x, y, z] or [x, y, z, w] - specify your convention
+        
+        Returns:
+            3x3 rotation matrix
+        """
+        # Assuming quaternion format [w, x, y, z] (scalar first)
+        # If your quaternion is [x, y, z, w], swap the indices accordingly
+        w, x, y, z = q
+        
+        # Normalize quaternion
+        norm = np.sqrt(w**2 + x**2 + y**2 + z**2)
+        w, x, y, z = w/norm, x/norm, y/norm, z/norm
+        
+        # Convert to rotation matrix
+        R = np.array([
+            [1 - 2*(y**2 + z**2), 2*(x*y - w*z), 2*(x*z + w*y)],
+            [2*(x*y + w*z), 1 - 2*(x**2 + z**2), 2*(y*z - w*x)],
+            [2*(x*z - w*y), 2*(y*z + w*x), 1 - 2*(x**2 + y**2)]
+        ])
+        
+        return R
+
+    def axes_to_rotation_matrix(x_axis, y_axis, z_axis):
+        """
+        Create rotation matrix from 3 orthogonal axes.
+        
+        Args:
+            x_axis, y_axis, z_axis: 3D numpy arrays representing the axes
+        
+        Returns:
+            3x3 rotation matrix where columns are the normalized axes
+        """
+        # Normalize the axes
+        x_norm = x_axis / np.linalg.norm(x_axis)
+        y_norm = y_axis / np.linalg.norm(y_axis)
+        z_norm = z_axis / np.linalg.norm(z_axis)
+        
+        # Create rotation matrix (axes as columns)
+        R = np.column_stack([x_norm, y_norm, z_norm])
+        
+        return R
+
+
+    def rotation_between_coordinate_systems(FT_quaternion):
+        """
+        Calculate rotation matrix from quaternion-defined coordinate system 
+        to axes-defined coordinate system.
+        
+        Args:
+            quaternion: [w, x, y, z] quaternion
+            x_axis, y_axis, z_axis: 3D arrays defining the target coordinate system
+        
+        Returns:
+            3x3 rotation matrix R such that: point_in_axes_system = R @ point_in_quat_system
+        """
+        x_axis = UpdateVisualization.e1t_store
+        y_axis = UpdateVisualization.e2t_store
+        z_axis = UpdateVisualization.e3t_store
+
+        # Get rotation matrices for both coordinate systems
+        R_quat = UpdateVisualization.quaternion_to_rotation_matrix(FT_quaternion)
+        R_axes = UpdateVisualization.axes_to_rotation_matrix(x_axis, y_axis, z_axis)
+
+        
+        # The transformation from quaternion system to axes system is:
+        # R_total = R_axes @ R_quat.T
+        # This is because R_quat transforms from world to quat system,
+        # so R_quat.T transforms from quat system to world,
+        # and R_axes transforms from world to axes system
+        R_total = R_axes @ R_quat.T
+        #print("test")
+        #print(R_axes)
+        #print(R_quat)
+        #print(R_total)
+        
+        return R_total

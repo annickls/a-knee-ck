@@ -28,7 +28,7 @@ class MplCanvas(FigureCanvas):
         super().__init__(self.fig)
         self.fig.tight_layout()
 
-        if mode == "varus_valgus" or mode == "rotation":
+        if mode == "varus_valgus" or mode == "rotation" or mode =="adduction":
             self.ax = self.fig.add_subplot(111)
             self.ax.set_xlabel('x-axis')
             self.ax.set_ylabel('Flexion Angle [°]')
@@ -137,7 +137,7 @@ class MplCanvas(FigureCanvas):
         if self.testvariable == 1:
             self.ax.clear()
             self.ax.set_xlabel('x-axis')
-            self.ax.set_ylabel('alexion angle [°]')
+            self.ax.set_ylabel('flexion angle [°]')
             self.ax.set_title('medial/lateral joint gap [mm]')
             self.ax.grid(True, alpha=0.3)
             self.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
@@ -147,9 +147,12 @@ class MplCanvas(FigureCanvas):
         if mode == "varus_valgus":
             self.ax.set_xlabel('medial joint gap          lateral joint gap')
             self.ax.set_xlim(-constants.X_LIM_VAL, constants.X_LIM_VAL)
-        else:
+        elif mode == "rotation":
             self.ax.set_xlabel('external rotation         internal rotation')
             self.ax.set_xlim(-constants.X_LIM_ROT, constants.X_LIM_ROT)
+        elif mode == "adduction":
+            self.ax.set_xlabel('abduction        adduction')
+            self.ax.set_xlim(-constants.X_LIM_VAL, constants.X_LIM_VAL)
         
         # Only add the newest data point
         color = constants.SALMON if var_val_displacement > 0 else constants.LIMEGREEN
