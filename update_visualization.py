@@ -50,6 +50,12 @@ class UpdateVisualization():
             if hasattr(self, 'force_arrow_plt'):
                 self.force_arrow_plt.remove()
                 
+            rotation_matrix = np.array([
+                    [0, 1, 0],
+                    [0, 0, 1],
+                    [1, 0, 0]
+                ])
+            force = rotation_matrix@force.T
             # Create a new arrow
             self.force_arrow_plt = self.canvas_current.axes_force.quiver(
                 0, 0, 0, 
@@ -67,6 +73,7 @@ class UpdateVisualization():
             if hasattr(self, 'torque_arrow_plt'):
                 self.torque_arrow_plt.remove()
                 
+            torque = rotation_matrix@torque.T
             # Create a new arrow
             self.torque_arrow_plt = self.canvas_current.axes_torque.quiver(
                 0, 0, 0, 
@@ -258,6 +265,13 @@ class UpdateVisualization():
         # Get current data point
         idx = data_index % len(self.forces)
         force = self.forces[idx].copy()
+
+        rotation_matrix = np.array([
+                    [0, 1, 0],
+                    [0, 0, 1],
+                    [-1, 0, 0]
+                ])
+        force = rotation_matrix@force.T
         
         # Scale forces for better visualization
         force_scaled = force * constants.SCALE_FACTOR_ARROW
@@ -296,6 +310,12 @@ class UpdateVisualization():
         # Get current data point
         idx = data_index % len(self.torques)
         torque = self.torques[idx].copy()
+        torque = rotation_matrix@torque.T
+        tjz = torque[2] + force[1] * constants.DELTA_X + force[0] * constants.DELTA_Y
+        tjx = torque[0] - force[2] * constants.DELTA_Y + force[1] * constants.DELTA_Z
+        torque[2] = tjz
+        torque[0] = tjx
+        
 
          # Scale forces for better visualization
         torque_scaled = torque * constants.SCALE_FACTOR_ARROW
@@ -768,8 +788,8 @@ class UpdateVisualization():
             medial_joint_gap = -(-m3 - m1 * math.cos(adduction)) -radius_medial
             #medial_joint_gap = m3 -radius_medial
 
-            if medial_joint_gap < 0:
-                medial_joint_gap = 0
+            #if medial_joint_gap < 0:
+            #    medial_joint_gap = 0
    
             
             #laterall
@@ -781,8 +801,8 @@ class UpdateVisualization():
             lateral_joint_gap = -(-l3 - l1 *math.cos(adduction))  - radius_lateral
             #lateral_joint_gap = l3-radius_lateral
             
-            if lateral_joint_gap < 0:
-                lateral_joint_gap = 0
+            #if lateral_joint_gap < 0:
+            #    lateral_joint_gap = 0
 
 
             
@@ -831,8 +851,6 @@ class UpdateVisualization():
         UpdateVisualization.tibia_landmarks.clear()
         UpdateVisualization.femur_landmarks.clear()
         UpdateVisualization.current_knee_angles = {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
-
-
 
 
     def add_coordinate_axes(self, position, rotation, name, axis_length=50.0):
@@ -1104,7 +1122,10 @@ class UpdateVisualization():
         # This is because R_quat transforms from world to quat system,
         # so R_quat.T transforms from quat system to world,
         # and R_axes transforms from world to axes system
-        R_total = R_axes @ R_quat.T
+        R_total = R_axes @ (R_quat.T)
+        #R_total = (R_axes @ (R_quat.T)).T
+
+        # (rotation@(femur_vertices_centered.T)).T
         #print("test")
         #print(R_axes)
         #print(R_quat)

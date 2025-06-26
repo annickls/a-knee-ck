@@ -196,8 +196,9 @@ class KneeFlexionExperiment(QMainWindow):
                     self.last_FT_quaternion = FT_quaternion
 
                     rotation = UpdateVisualization.rotation_between_coordinate_systems(FT_quaternion)
-                    force = rotation@force
-                    torque = rotation@torque
+                    force = rotation@force.T
+                    torque = rotation@torque.T
+                    # (rotation@(femur_vertices_centered.T)).T
                     
                     # Store force/torque in arrays
                     if len(self.forces) > 100:  # Keep only last 100 points
