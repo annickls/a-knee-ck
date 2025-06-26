@@ -50,6 +50,12 @@ CENTER_AXIS_LATERAL = np.array([89.07107543945312,-84.18157196044922,1376.079956
 
 TEST_POINT_MEDIAL = np.array([70,-160,1375])
 
+#calculation torques - distances FT-Dose to Tibia Origin
+DELTA_X = 0.077
+DELTA_Y = 0.043
+DELTA_Z = 0.226
+#CENTER_FT = np.array([])
+
 
 # 3D plot settings
 AXIS_FACTOR = 0.5

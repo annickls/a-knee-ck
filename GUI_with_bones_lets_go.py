@@ -1306,9 +1306,14 @@ class KneeFlexionExperiment(QMainWindow):
             fy = df.iloc[:, 2]
             fz = df.iloc[:, 3]
 
-            delta_x = 0.077
-            delta_y = 0.043
-            delta_z = 0.226
+            
+            #delta_ft= constants.CENTER_FT - constants.TIBIA_PROXIMAL
+            delta_x = constants.DELTA_X
+            delta_y = constants.DELTA_Y
+            delta_z = constants.DELTA_Z
+            #delta_x = delta_ft[0]
+            #delta_y = delta_ft[1]
+            #delta_y = delta_ft[2]
             
             flexion = df.iloc[:, 21]  # Flexion column
             tjx = tz - fy * delta_x + fx * delta_y - tx
