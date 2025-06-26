@@ -172,12 +172,18 @@ class KneeFlexionExperiment(QMainWindow):
                     femur_position = np.array([float(parts[14]), float(parts[15]), float(parts[16])])
                     femur_quaternion = np.array([float(parts[20]), float(parts[17]), float(parts[18]), float(parts[19])])
                     # Same reordering for quaternion components
+
+                    #FT position and quaternion
+                    FT_position = np.array([float(parts[20]), float(parts[21]), float(parts[22])])
+                    FT_quaternion = np.array([float(parts[23]), float(parts[24]), float(parts[25]), float(parts[26])])
                     
                     # Store positions and quaternions for other methods to use
                     self.last_femur_position = femur_position
                     self.last_femur_quaternion = femur_quaternion
                     self.last_tibia_position = tibia_position
                     self.last_tibia_quaternion = tibia_quaternion
+                    self.last_FT_position = FT_position
+                    self.last_FT_quaternion = FT_quaternion
                     
                     # Store force/torque in arrays
                     if len(self.forces) > 100:  # Keep only last 100 points
@@ -1306,7 +1312,7 @@ class KneeFlexionExperiment(QMainWindow):
             fy = df.iloc[:, 2]
             fz = df.iloc[:, 3]
 
-            
+
             #delta_ft= constants.CENTER_FT - constants.TIBIA_PROXIMAL
             delta_x = constants.DELTA_X
             delta_y = constants.DELTA_Y
@@ -1314,7 +1320,23 @@ class KneeFlexionExperiment(QMainWindow):
             #delta_x = delta_ft[0]
             #delta_y = delta_ft[1]
             #delta_y = delta_ft[2]
-            
+
+            """rotation = fromFTquaternion to TibiaOriginCosys
+
+            # rotated FT values
+            Torques = np.array([tx, ty, tz])
+            Forces = np.array([tx, ty, tz])
+            Torques_rotated = rotation@Torques
+            Forces_rotated = rotation@Torques
+
+            tx = Torques_rotated[:,0]
+            ty = Torques_rotated[:,1]
+            tz = Torques_rotated[:,3]
+            tx = Forces_rotated[:,0]
+            ty = Forces_rotated[:,1]
+            tz = Forces_rotated[:,3]"""
+
+
             flexion = df.iloc[:, 21]  # Flexion column
             tjx = tz - fy * delta_x + fx * delta_y - tx
 
