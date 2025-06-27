@@ -213,13 +213,13 @@ class KneeFlexionExperiment(QMainWindow):
                     force_end_rotated = (rotation_tibia@(force_end_point + translation_tibia).T).T
                     force = force_end_rotated - force_start_rotated
 
+                    # same for torques
+                    torque_start_point = force_start_point
+                    torque_end_point = torque_start_point + torque
+                    torque_start_rotated = (rotation_tibia@(torque_start_point+translation_tibia).T).T
+                    torque_end_rotated = (rotation_tibia@(torque_end_point + translation_tibia).T).T
+                    torque = torque_end_rotated - torque_start_rotated
 
-                    #rotation_matrix = np.array([
-                    #    [0, 1, 0],
-                    #    [0, 0, 1],
-                    #    [1, 0, 0]])#if axes don't match coordinate system
-                    # force = rotation_matrix@force
-                    #torque = rotation_matrix@torque
 
                     # calculate real torques in the knee joint from forces and torques             
                     tjx = torque[0] - force[2] * constants.DELTA_Y + force[1] * constants.DELTA_Z
@@ -229,7 +229,12 @@ class KneeFlexionExperiment(QMainWindow):
                     torque[1] = tjy
                     torque[2] = tjz
                     
-                    
+                    #rotation_matrix = np.array([
+                    #    [0, 1, 0],
+                    #    [0, 0, 1],
+                    #    [1, 0, 0]])#if axes don't match coordinate system
+                    # force = rotation_matrix@force
+                    #torque = rotation_matrix@torque                    
 
                     
                     # Store force/torque in arrays
