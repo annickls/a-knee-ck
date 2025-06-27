@@ -24,9 +24,9 @@ RECORDED = os.path.join(current_folder, "recorded_data")
 # data reading
 root_folder = os.path.dirname(current_folder)
 DATA_PREVIOUS_TEST = "/home/annick/GUI/data_for_gui/print_data.F_sensor_temp_data_7.txt"
-DATA_CSV = os.path.join(root_folder, "knee_eval_ws", "data.csv")
-DATA_CSV = max(glob.glob(root_folder + "/knee_eval_ws" + "/data*.csv"), key=os.path.getmtime)
-#DATA_CSV = "data_new.csv"
+#DATA_CSV = os.path.join(root_folder, "knee_eval_ws", "data.csv")
+#DATA_CSV = max(glob.glob(root_folder + "/knee_eval_ws" + "/data*.csv"), key=os.path.getmtime)
+DATA_CSV = "data_new.csv"
 
 
 #landmarks of femur and tibia for grood & suntay calculations 
@@ -52,6 +52,8 @@ CENTER_AXIS_LATERAL = np.array([89.07107543945312,-84.18157196044922,1376.079956
 
 TEST_POINT_MEDIAL = np.array([70,-160,1375])
 TEST_POINT_LATERAL = np.array([84,-100,1365])
+
+FT_ORIGIN = np.array([])
 
 
 #calculation torques - distances FT-Dose to Tibia Origin

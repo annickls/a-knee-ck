@@ -195,10 +195,42 @@ class KneeFlexionExperiment(QMainWindow):
                     self.last_FT_position = FT_position
                     self.last_FT_quaternion = FT_quaternion
 
-                    rotation = UpdateVisualization.rotation_between_coordinate_systems(FT_quaternion)
-                    force = rotation@force.T
-                    torque = rotation@torque.T
-                    # (rotation@(femur_vertices_centered.T)).T
+                    
+                    
+                    current_folder = os.path.dirname(os.path.abspath(__file__))
+                    yaml_path = os.path.join(current_folder, "data_for_gui/marker_coordinates.yaml")
+                    
+                    #if kabsch for FT works:
+                    # translation, rotation_FT = MeshUtils.kabsch(yaml_path, "sensor")
+
+                    # alternative, if trafos don't work, just take tibia, (approx same)
+                    translation_tibia, rotation_tibia = MeshUtils.kabsch(yaml_path, "tibia")
+
+                    #force_start_point = UpdateVisualization.tibia_landmarks['tibia_proximal']['position']
+                    force_start_point = constants.FT_ORIGIN
+                    force_end_point = force_start_point + force
+                    force_start_rotated = (rotation_tibia@(force_start_point+translation_tibia).T).T
+                    force_end_rotated = (rotation_tibia@(force_end_point + translation_tibia).T).T
+                    force = force_end_rotated - force_start_rotated
+
+
+                    #rotation_matrix = np.array([
+                    #    [0, 1, 0],
+                    #    [0, 0, 1],
+                    #    [1, 0, 0]])#if axes don't match coordinate system
+                    # force = rotation_matrix@force
+                    #torque = rotation_matrix@torque
+
+                    # calculate real torques in the knee joint from forces and torques             
+                    tjx = torque[0] - force[2] * constants.DELTA_Y + force[1] * constants.DELTA_Z
+                    tjy = torque[1] - force[0] * constants.DELTA_Z - force[2] * constants.DELTA_X
+                    tjz = torque[2] + force[1] * constants.DELTA_X + force[0] * constants.DELTA_Y
+                    torque[0] = tjx
+                    torque[1] = tjy
+                    torque[2] = tjz
+                    
+                    
+
                     
                     # Store force/torque in arrays
                     if len(self.forces) > 100:  # Keep only last 100 points
@@ -1335,45 +1367,23 @@ class KneeFlexionExperiment(QMainWindow):
             fz = df.iloc[:, 3]
 
 
-            #delta_ft= constants.CENTER_FT - constants.TIBIA_PROXIMAL
             delta_x = constants.DELTA_X
             delta_y = constants.DELTA_Y
             delta_z = constants.DELTA_Z
-            #delta_x = delta_ft[0]
-            #delta_y = delta_ft[1]
-            #delta_y = delta_ft[2]
 
-            """rotation = fromFTquaternion to TibiaOriginCosys
-
-            # rotated FT values
-            Torques = np.array([tx, ty, tz])
-            Forces = np.array([tx, ty, tz])
-            Torques_rotated = rotation@Torques
-            Forces_rotated = rotation@Torques
-
-            tx = Torques_rotated[:,0]
-            ty = Torques_rotated[:,1]
-            tz = Torques_rotated[:,3]
-            tx = Forces_rotated[:,0]
-            ty = Forces_rotated[:,1]
-            tz = Forces_rotated[:,3]"""
 
 
             flexion = df.iloc[:, 21]  # Flexion column
-            #tjx = tz - fy * delta_x + fx * delta_y - tx
-
-            tjx = tz + fy * delta_x + fx * delta_y
-
             rotation = df.iloc[:, 23]  # Rotation column
-            tjy = tx - fz * delta_y + fy * delta_z
             adduction = df.iloc[:, 22]
-            #tjy = tjx
-            
             medial_joint_gap = df.iloc[:, 27]  # Medial_Joint_Gap column
             lateral_joint_gap = df.iloc[:, 28]  # Lateral_Joint_Gap column
+
+            #tjx = tz + fy * delta_x + fx * delta_y -tx 
+            # tjy = tx - fz * delta_y + fy * delta_z # not used anymore, because torques are recorded already calculated
+            tjx = tx
+            tjy = ty
                 
-            #tjx = tx + ty+ tz
-            #tjy = tx + ty+ tz
             
             # Configuration parameters (you can make these class attributes for easy modification)
             

@@ -49,13 +49,15 @@ class UpdateVisualization():
             # Remove old arrow from the plot
             if hasattr(self, 'force_arrow_plt'):
                 self.force_arrow_plt.remove()
-                
-            rotation_matrix = np.array([
-                    [0, 1, 0],
-                    [0, 0, 1],
-                    [1, 0, 0]
-                ])
-            force = rotation_matrix@force.T
+            
+            # rotate force values to map the visualization axes
+            #rotation_matrix = np.array([
+            #        [0, 1, 0],
+            #        [0, 0, 1],
+            #        [1, 0, 0]
+            #    ])
+            #force = (rotation_matrix@force.T).T
+            #torque = (rotation_matrix@torque.T).T
             # Create a new arrow
             self.force_arrow_plt = self.canvas_current.axes_force.quiver(
                 0, 0, 0, 
@@ -73,7 +75,7 @@ class UpdateVisualization():
             if hasattr(self, 'torque_arrow_plt'):
                 self.torque_arrow_plt.remove()
                 
-            torque = rotation_matrix@torque.T
+            
             # Create a new arrow
             self.torque_arrow_plt = self.canvas_current.axes_torque.quiver(
                 0, 0, 0, 
@@ -266,12 +268,6 @@ class UpdateVisualization():
         idx = data_index % len(self.forces)
         force = self.forces[idx].copy()
 
-        rotation_matrix = np.array([
-                    [0, 1, 0],
-                    [0, 0, 1],
-                    [-1, 0, 0]
-                ])
-        force = rotation_matrix@force.T
         
         # Scale forces for better visualization
         force_scaled = force * constants.SCALE_FACTOR_ARROW
@@ -310,11 +306,6 @@ class UpdateVisualization():
         # Get current data point
         idx = data_index % len(self.torques)
         torque = self.torques[idx].copy()
-        torque = rotation_matrix@torque.T
-        tjz = torque[2] + force[1] * constants.DELTA_X + force[0] * constants.DELTA_Y
-        tjx = torque[0] - force[2] * constants.DELTA_Y + force[1] * constants.DELTA_Z
-        torque[2] = tjz
-        torque[0] = tjx
         
 
          # Scale forces for better visualization
@@ -687,12 +678,12 @@ class UpdateVisualization():
             
             #UpdateVisualization.tibiavarusaxis = e2t
 
-            # e1t: tibial medial-lateral axis (corrected)
+            # e1t: tibial medial-lateral axis 
             e1t = np.cross(e3t, e2t)
             e1t = e1t / np.linalg.norm(e1t)
 
             UpdateVisualization.tibiamediallateral = e1t
-            UpdateVisualization.e1t_store = - e1t
+            UpdateVisualization.e1t_store = e1t
             
             # Calculate floating axis (common perpendicular to e1f and e2t)
             floating_axis = np.cross(e1f, e3t)
@@ -1095,7 +1086,6 @@ class UpdateVisualization():
         
         return R
 
-
     def rotation_between_coordinate_systems(FT_quaternion):
         """
         Calculate rotation matrix from quaternion-defined coordinate system 
@@ -1108,24 +1098,27 @@ class UpdateVisualization():
         Returns:
             3x3 rotation matrix R such that: point_in_axes_system = R @ point_in_quat_system
         """
-        x_axis = UpdateVisualization.e1t_store
-        y_axis = UpdateVisualization.e2t_store
+        #x_axis = UpdateVisualization.e1t_store
+        #y_axis = UpdateVisualization.e2t_store
+        #z_axis = UpdateVisualization.e3t_store
+
+        x_axis = UpdateVisualization.e2t_store
+        y_axis = UpdateVisualization.e1t_store
+        #y_axis = - y_axis
         z_axis = UpdateVisualization.e3t_store
 
         # Get rotation matrices for both coordinate systems
         R_quat = UpdateVisualization.quaternion_to_rotation_matrix(FT_quaternion)
         R_axes = UpdateVisualization.axes_to_rotation_matrix(x_axis, y_axis, z_axis)
 
-        
         # The transformation from quaternion system to axes system is:
         # R_total = R_axes @ R_quat.T
         # This is because R_quat transforms from world to quat system,
         # so R_quat.T transforms from quat system to world,
         # and R_axes transforms from world to axes system
-        R_total = R_axes @ (R_quat.T)
-        #R_total = (R_axes @ (R_quat.T)).T
+        R_total = (R_axes @ (R_quat.T)).T
 
-        # (rotation@(femur_vertices_centered.T)).T
+        
         #print("test")
         #print(R_axes)
         #print(R_quat)
