@@ -184,8 +184,8 @@ class KneeFlexionExperiment(QMainWindow):
                     # Same reordering for quaternion components
 
                     #FT position and quaternion
-                    FT_position = np.array([float(parts[20]), float(parts[21]), float(parts[22])])
-                    FT_quaternion = np.array([float(parts[26]), float(parts[23]), float(parts[24]), float(parts[25])])
+                    FT_position = np.array([float(parts[21]), float(parts[22]), float(parts[23])])
+                    FT_quaternion = np.array([float(parts[27]), float(parts[24]), float(parts[25]), float(parts[26])])
                     
                     # Store positions and quaternions for other methods to use
                     self.last_femur_position = femur_position
@@ -195,47 +195,38 @@ class KneeFlexionExperiment(QMainWindow):
                     self.last_FT_position = FT_position
                     self.last_FT_quaternion = FT_quaternion
 
-                    
-                    
-                    current_folder = os.path.dirname(os.path.abspath(__file__))
-                    yaml_path = os.path.join(current_folder, "data_for_gui/marker_coordinates.yaml")
-                    
-                    #if kabsch for FT works:
-                    # translation, rotation_FT = MeshUtils.kabsch(yaml_path, "sensor")
+                    # Calculate the distance between sensor and tibia center in sensor CoSy
+                    # Get Trafo of sensor and tibia CoSy
+                    R_sensor = MeshUtils.quaternion_to_transform_matrix(FT_quaternion)[:3,:3]
+                    R_tibia = MeshUtils.quaternion_to_transform_matrix(tibia_quaternion)[:3,:3]
+                    # Calculate distances in sensor CoSy
+                    sensor2tibia_sensor = R_sensor.T @ (tibia_position-FT_position)
+                    tibia2center_sensor = R_sensor.T @ R_tibia @ self.distance_tibia_center
+                    sensor2center_sensor = sensor2tibia_sensor+tibia2center_sensor
 
-                    # alternative, if trafos don't work, just take tibia, (approx same)
-                    translation_tibia, rotation_tibia = MeshUtils.kabsch(yaml_path, "tibia")
+                    # print(f"Sensor OptiCoSy: {np.round(FT_position,3)}")
+                    # print(f"Marker OptiCoSy: {np.round(tibia_position,3)}")                    
+                    # print(f"Sensor zu Marker OptiCoSy: {np.round(tibia_position-FT_position,3)}")
+                    # print(f"Sensor zu Marker SensorCoSy: {np.round(sensor2tibia_sensor,3)}")
+                    # print(f"Marker zu Tibiazentrum: {np.round(tibia2center_sensor,3)}")
 
-                    #force_start_point = UpdateVisualization.tibia_landmarks['tibia_proximal']['position']
-                    force_start_point = constants.FT_ORIGIN
-                    force_end_point = force_start_point + force
-                    force_start_rotated = (rotation_tibia@(force_start_point+translation_tibia).T).T
-                    force_end_rotated = (rotation_tibia@(force_end_point + translation_tibia).T).T
-                    force = force_end_rotated - force_start_rotated
+                    # calculate real torques in the knee joint from forces and torques
+                    tjx = torque[0] - force[2] * sensor2center_sensor[1] + force[1] * sensor2center_sensor[2]
+                    tjy = torque[1] - force[0] * sensor2center_sensor[2] - force[2] * sensor2center_sensor[0]
+                    tjz = torque[2] + force[1] * sensor2center_sensor[0] + force[0] * sensor2center_sensor[1]
 
-                    # same for torques
-                    torque_start_point = force_start_point
-                    torque_end_point = torque_start_point + torque
-                    torque_start_rotated = (rotation_tibia@(torque_start_point+translation_tibia).T).T
-                    torque_end_rotated = (rotation_tibia@(torque_end_point + translation_tibia).T).T
-                    torque = torque_end_rotated - torque_start_rotated
-
-
-                    # calculate real torques in the knee joint from forces and torques             
-                    tjx = torque[0] - force[2] * constants.DELTA_Y + force[1] * constants.DELTA_Z
-                    tjy = torque[1] - force[0] * constants.DELTA_Z - force[2] * constants.DELTA_X
-                    tjz = torque[2] + force[1] * constants.DELTA_X + force[0] * constants.DELTA_Y
                     torque[0] = tjx
                     torque[1] = tjy
                     torque[2] = tjz
-                    
-                    #rotation_matrix = np.array([
-                    #    [0, 1, 0],
-                    #    [0, 0, 1],
-                    #    [1, 0, 0]])#if axes don't match coordinate system
-                    # force = rotation_matrix@force
-                    #torque = rotation_matrix@torque                    
 
+                    # Transform calculated force and torque back to init CoSy for visualization
+                    force = R_sensor @ force
+                    torque = R_sensor @ torque
+
+                    # print(f"Force: {np.round(force,3)}")
+                    # print(f"Torque pure: {np.round(np.array([float(parts[4]), float(parts[5]), float(parts[6])]),3)}")
+                    # print(f"Sensor zu Tibia zentrum: {np.round(sensor2center_sensor, 2)}")
+                    # print(f"Torque: {np.round(torque,3)}\n")
                     
                     # Store force/torque in arrays
                     if len(self.forces) > 100:  # Keep only last 100 points
@@ -1174,16 +1165,21 @@ class KneeFlexionExperiment(QMainWindow):
             tibia_lateral = constants.TIBIA_LATERAL
             tibia_proximal = constants.TIBIA_PROXIMAL
             tibia_distal = constants.TIBIA_DISTAL
+            tibia_marker = constants.TIBIA_MARKER
 
             tibia_medial_rot = rotation@(tibia_medial+translation)
             tibia_lateral_rot = rotation@(tibia_lateral+translation)
             tibia_proximal_rot = rotation@(tibia_proximal+translation)
             tibia_distal_rot = rotation@(tibia_distal+translation)
+            tibia_marker_rot = rotation@(tibia_marker+translation)
+
+            self.distance_tibia_center = (tibia_proximal_rot-tibia_marker_rot)*0.001
 
             UpdateVisualization.add_landmark(self, tibia_medial_rot, "tibia_medial")
             UpdateVisualization.add_landmark(self, tibia_lateral_rot, "tibia_lateral")
             UpdateVisualization.add_landmark(self, tibia_proximal_rot, "tibia_proximal")
             UpdateVisualization.add_landmark(self, tibia_distal_rot, "tibia_distal")
+            UpdateVisualization.add_landmark(self, tibia_marker_rot, "tibia_marker")
 
 
 
