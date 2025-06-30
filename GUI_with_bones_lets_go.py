@@ -10,6 +10,7 @@ import time
 import datetime
 from scipy import interpolate
 from scipy.spatial.transform import Rotation as R
+from scipy.spatial import cKDTree
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -295,7 +296,7 @@ class KneeFlexionExperiment(QMainWindow):
                             if self.diagram_start_mode == "start":
                                 angles_new = UpdateVisualization.get_current_knee_angles()
                                 t_start = time.time()
-                                medial_joint_gap_test, lateral_joint_gap_test = UpdateVisualization.calculate_joint_gap(self.femur_mesh)
+                                medial_joint_gap_test, lateral_joint_gap_test = UpdateVisualization.calculate_joint_gap(self.femur_kdtree, self.femur_kabsch_rot, self.femur_kabsch_trans)
                                 t_end = time.time()
                                 print(f"Medial gap: {np.round(medial_joint_gap_test,3)}, lateral gap: {np.round(lateral_joint_gap_test,3)}, calc time: {np.round(t_end-t_start,3)}")
                                 flexion_angle = angles_new['flexion']
@@ -1017,6 +1018,14 @@ class KneeFlexionExperiment(QMainWindow):
             translation, rotation = MeshUtils.kabsch(yaml_path, "femur")
             femur_vertices_centered = femur_vertices + translation
             femur_vertices_transformed = (rotation@(femur_vertices_centered.T)).T
+
+            # Build KD-Tree from vertices
+            face_centroids = femur_vertices[femur_faces].mean(axis=1)
+            self.femur_kdtree = cKDTree(face_centroids)
+            # Add kabsch to class cause we need it for the gap measurements
+            self.femur_kabsch_rot = rotation
+            self.femur_kabsch_trans = translation
+
             # Create mesh item with the repositioned and rotated vertices
             # Set up the mesh with proper shading
             self.femur_mesh = gl.GLMeshItem(

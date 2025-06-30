@@ -832,21 +832,21 @@ class UpdateVisualization():
                 'anterior_posterior': 0.0, 'medial_lateral': 0.0, 'proximal_distal': 0.0}
 
     @staticmethod
-    def calculate_joint_gap(mesh):
+    def calculate_joint_gap(femur_KDTree, rotation, translation):
         # Get current position of tibia landmarks
         tibia_medial = UpdateVisualization.tibia_landmarks['tibia_medial']['position']
         tibia_lateral = UpdateVisualization.tibia_landmarks['tibia_lateral']['position']
-        # Get points from stl
-        pts_mesh = mesh.vertexes
-        # Distance in x-y-z of all points to landmarks
-        dist_medial_array = pts_mesh-tibia_medial
-        dist_lateral_array = pts_mesh-tibia_lateral
-        # Absolute distance of all points to landmarks
-        medial_gap_array = np.linalg.norm(dist_medial_array, axis=1)
-        lateral_gap_array = np.linalg.norm(dist_lateral_array, axis=1)
+        # Translate tibia landmarks back to the stl coordinate system
+        tibia_medial_init = rotation.T@tibia_medial-translation
+        tibia_lateral_init = rotation.T@tibia_lateral-translation
+
+        # Calculate distance from point to femur model
+        distance_medial, candidate_medial = femur_KDTree.query(tibia_medial_init, k=100)
+        distance_lateral, candidate_lateral = femur_KDTree.query(tibia_lateral_init, k=100)
+
         # Minimal distance
-        medial_gap = min(medial_gap_array)
-        lateral_gap = min(lateral_gap_array)
+        medial_gap = min(distance_medial)
+        lateral_gap = min(distance_lateral)
 
         return medial_gap, lateral_gap
 
