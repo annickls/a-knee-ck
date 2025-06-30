@@ -830,7 +830,26 @@ class UpdateVisualization():
             traceback.print_exc()
             return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0,
                 'anterior_posterior': 0.0, 'medial_lateral': 0.0, 'proximal_distal': 0.0}
-    
+
+    @staticmethod
+    def calculate_joint_gap(mesh):
+        # Get current position of tibia landmarks
+        tibia_medial = UpdateVisualization.tibia_landmarks['tibia_medial']['position']
+        tibia_lateral = UpdateVisualization.tibia_landmarks['tibia_lateral']['position']
+        # Get points from stl
+        pts_mesh = mesh.vertexes
+        # Distance in x-y-z of all points to landmarks
+        dist_medial_array = pts_mesh-tibia_medial
+        dist_lateral_array = pts_mesh-tibia_lateral
+        # Absolute distance of all points to landmarks
+        medial_gap_array = np.linalg.norm(dist_medial_array, axis=1)
+        lateral_gap_array = np.linalg.norm(dist_lateral_array, axis=1)
+        # Minimal distance
+        medial_gap = min(medial_gap_array)
+        lateral_gap = min(lateral_gap_array)
+
+        return medial_gap, lateral_gap
+
     @staticmethod
     def get_current_knee_angles():
         """Get the current knee angles."""

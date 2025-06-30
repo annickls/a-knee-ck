@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import csv
 import warnings
-from stl import mesh
+#from stl import mesh
 import os
 import glob
 import time
@@ -294,6 +294,10 @@ class KneeFlexionExperiment(QMainWindow):
                             
                             if self.diagram_start_mode == "start":
                                 angles_new = UpdateVisualization.get_current_knee_angles()
+                                t_start = time.time()
+                                medial_joint_gap_test, lateral_joint_gap_test = UpdateVisualization.calculate_joint_gap(self.femur_mesh)
+                                t_end = time.time()
+                                print(f"Medial gap: {np.round(medial_joint_gap_test,3)}, lateral gap: {np.round(lateral_joint_gap_test,3)}, calc time: {np.round(t_end-t_start,3)}")
                                 flexion_angle = angles_new['flexion']
 
                                 if self.diagram_mode == "varus_valgus":
