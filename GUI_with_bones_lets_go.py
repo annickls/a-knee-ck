@@ -3,13 +3,14 @@ import numpy as np
 import pandas as pd
 import csv
 import warnings
-from stl import mesh
+#from stl import mesh
 import os
 import glob
 import time
 import datetime
 from scipy import interpolate
 from scipy.spatial.transform import Rotation as R
+from scipy.spatial import cKDTree
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -100,6 +101,7 @@ class KneeFlexionExperiment(QMainWindow):
             # Find latest csv file
             root_folder = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             pattern = os.path.join(root_folder, "knee_eval_ws", "data*.csv")
+
             try: 
                 self.csv_path = max(glob.glob(pattern), key=os.path.getmtime)
             except: 
@@ -317,8 +319,18 @@ class KneeFlexionExperiment(QMainWindow):
 
                             
                             if self.diagram_start_mode == "start":
+                                # Calculate flexion/I-E/Varus-Valgus
                                 angles_new = UpdateVisualization.get_current_knee_angles()
+                                # Calculate joint gap
+                                t_start = time.time()
+                                medial_joint_gap_test, lateral_joint_gap_test = UpdateVisualization.calculate_joint_gap(self)
+                                t_end = time.time()
+                                print(f"Medial gap: {np.round(medial_joint_gap_test,3)}, lateral gap: {np.round(lateral_joint_gap_test,3)}, calc time: {np.round(t_end-t_start,5)}")
+
+                                # Set angles and newly calculated joint gaps
                                 flexion_angle = angles_new['flexion']
+                                angles_new['lateral_tibia_femur'] = lateral_joint_gap_test
+                                angles_new['medial_tibia_femur'] = medial_joint_gap_test
 
                                 if self.diagram_mode == "varus_valgus":
                                     
@@ -1048,6 +1060,14 @@ class KneeFlexionExperiment(QMainWindow):
             translation, rotation = MeshUtils.kabsch(yaml_path, "femur")
             femur_vertices_centered = femur_vertices + translation
             femur_vertices_transformed = (rotation@(femur_vertices_centered.T)).T
+
+            # Build KD-Tree from vertices
+            face_centroids = femur_vertices[femur_faces].mean(axis=1)
+            self.femur_kdtree = cKDTree(face_centroids)
+            # Add kabsch to class cause we need it for the gap measurements
+            self.femur_kabsch_rot = rotation
+            self.femur_kabsch_trans = translation
+
             # Create mesh item with the repositioned and rotated vertices
             # Set up the mesh with proper shading
             self.femur_mesh = gl.GLMeshItem(
