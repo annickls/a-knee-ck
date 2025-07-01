@@ -101,7 +101,7 @@ class KneeFlexionExperiment(QMainWindow):
             # Find latest csv file
             root_folder = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             pattern = os.path.join(root_folder, "knee_eval_ws", "data*.csv")
-            pattern = os.path.join(root_folder, "a-knee-ck", "data*.csv")
+
             try: 
                 self.csv_path = max(glob.glob(pattern), key=os.path.getmtime)
             except: 
@@ -295,12 +295,18 @@ class KneeFlexionExperiment(QMainWindow):
 
                             
                             if self.diagram_start_mode == "start":
+                                # Calculate flexion/I-E/Varus-Valgus
                                 angles_new = UpdateVisualization.get_current_knee_angles()
+                                # Calculate joint gap
                                 t_start = time.time()
-                                medial_joint_gap_test, lateral_joint_gap_test = UpdateVisualization.calculate_joint_gap(self.femur_kdtree, self.femur_kabsch_rot, self.femur_kabsch_trans)
+                                medial_joint_gap_test, lateral_joint_gap_test = UpdateVisualization.calculate_joint_gap(self)
                                 t_end = time.time()
-                                print(f"Medial gap: {np.round(medial_joint_gap_test,3)}, lateral gap: {np.round(lateral_joint_gap_test,3)}, calc time: {np.round(t_end-t_start,3)}")
+                                print(f"Medial gap: {np.round(medial_joint_gap_test,3)}, lateral gap: {np.round(lateral_joint_gap_test,3)}, calc time: {np.round(t_end-t_start,5)}")
+
+                                # Set angles and newly calculated joint gaps
                                 flexion_angle = angles_new['flexion']
+                                angles_new['lateral_tibia_femur'] = lateral_joint_gap_test
+                                angles_new['medial_tibia_femur'] = medial_joint_gap_test
 
                                 if self.diagram_mode == "varus_valgus":
                                     

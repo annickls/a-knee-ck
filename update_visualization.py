@@ -831,18 +831,36 @@ class UpdateVisualization():
             return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0,
                 'anterior_posterior': 0.0, 'medial_lateral': 0.0, 'proximal_distal': 0.0}
 
-    @staticmethod
-    def calculate_joint_gap(femur_KDTree, rotation, translation):
+    def calculate_joint_gap(instanceGUI):
         # Get current position of tibia landmarks
         tibia_medial = UpdateVisualization.tibia_landmarks['tibia_medial']['position']
         tibia_lateral = UpdateVisualization.tibia_landmarks['tibia_lateral']['position']
+        # Old: Debug with known landmarks
+        # medial_origin = instanceGUI.landmarks_origin["tibia_medial"]
+        # lateral_origin = instanceGUI.landmarks_origin["tibia_lateral"]
+
+        # Get latest transformation from tibia
+        femur_trans = instanceGUI.last_femur_position*1000
+        femur_rot = MeshUtils.quaternion_to_transform_matrix(instanceGUI.last_femur_quaternion)[:3,:3]
+
+        # # Test stuff with femur landmark
+        # femur_distal_origin = instanceGUI.landmarks_origin["femur_distal"]
+        # femur_distal = UpdateVisualization.femur_landmarks["femur_distal"]["position"]
+        # femur_distal_opti = femur_rot.T@(femur_distal-femur_trans)
+        # print(f"Distal origin: {np.round(femur_distal_origin,2)} \tDistal Calc: {np.round(femur_distal_opti,2)}")
+        
+        # Transform tibia landmarks to origin in femur reference CoSy
+        tibia_medial_opti = femur_rot.T@(tibia_medial-femur_trans)
+        tibia_lateral_opti = femur_rot.T@(tibia_lateral-femur_trans)
         # Translate tibia landmarks back to the stl coordinate system
-        tibia_medial_init = rotation.T@tibia_medial-translation
-        tibia_lateral_init = rotation.T@tibia_lateral-translation
+        tibia_medial_init = instanceGUI.femur_kabsch_rot.T@tibia_medial_opti-instanceGUI.femur_kabsch_trans
+        tibia_lateral_init = instanceGUI.femur_kabsch_rot.T@tibia_lateral_opti-instanceGUI.femur_kabsch_trans
+        # print(f"Tibia medial init: {np.round(tibia_medial_init,2)}, \ttibia lateral init: {np.round(tibia_lateral_init,2)}")
+        # print(f"Tibia lateral init: {np.round(tibia_lateral_init,2)}")
 
         # Calculate distance from point to femur model
-        distance_medial, candidate_medial = femur_KDTree.query(tibia_medial_init, k=100)
-        distance_lateral, candidate_lateral = femur_KDTree.query(tibia_lateral_init, k=100)
+        distance_medial, candidate_medial = instanceGUI.femur_kdtree.query(tibia_medial_init, k=100)
+        distance_lateral, candidate_lateral = instanceGUI.femur_kdtree.query(tibia_lateral_init, k=100)
 
         # Minimal distance
         medial_gap = min(distance_medial)
