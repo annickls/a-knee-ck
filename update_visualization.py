@@ -527,18 +527,19 @@ class UpdateVisualization():
         self.landmarks[name] = landmark_sphere
         self.landmarks_origin[name] = position
 
-    def update_landmark_alex(self, position, quaternion, name):
+    @staticmethod
+    def update_landmark_alex(instanceGUI, position, quaternion, name):
         """
         Update landmarks position
         """
         # Reset transformation cause setting a new translation does not replace the old transformation
-        self.landmarks[name].resetTransform()
+        instanceGUI.landmarks[name].resetTransform()
 
         # Calculating new landmark position
         transform_mesh = MeshUtils.quaternion_to_transform_matrix(quaternion, position)
-        origin = self.landmarks_origin[name]
+        origin = instanceGUI.landmarks_origin[name]
         transform = transform_mesh[:3,:3]@origin + transform_mesh[:3,3]
-        self.landmarks[name].translate(transform[0], transform[1], transform[2])
+        instanceGUI.landmarks[name].translate(transform[0], transform[1], transform[2])
         #print(name)
         #print(transform)
 
@@ -557,18 +558,18 @@ class UpdateVisualization():
         
         # Calculate knee angles if we have sufficient landmarks
         if UpdateVisualization._has_required_landmarks():
-            angles = UpdateVisualization.calculate_grood_suntay_angles()
+            angles = UpdateVisualization.calculate_grood_suntay_angles(instanceGUI)
             UpdateVisualization.current_knee_angles = angles
             #print(angles['adduction'])
             
             
-            self.joint_angles_text.setText(
+            instanceGUI.joint_angles_text.setText(
                     f"Joint Angles: \n Flexion: {int(angles['flexion'])}°\n "
                     f"Varus (-) / Valgus (+): {int(angles['adduction'])}°\n "
                     f"Int (-) and Ext (+) Rotation: {int(angles['rotation'])}°"
                 )
             
-            self.joint_translations_text.setText(
+            instanceGUI.joint_translations_text.setText(
                     f"Translation: \n anterior(+) / posterior(-): {int(angles['anterior_posterior'])}mm\n "
                     f"medial(+) / lateral(-): {int(angles['medial_lateral'])}mm\n "
                     f"distal(+) / proximal(-): {int(angles['proximal_distal'])}mm"
@@ -588,7 +589,7 @@ class UpdateVisualization():
         return tibia_available and femur_available
     
     @staticmethod
-    def calculate_grood_suntay_angles():
+    def calculate_grood_suntay_angles(instanceGUI):
         """
         Calculate knee angles using the Grood and Suntay method.
         
@@ -760,45 +761,8 @@ class UpdateVisualization():
             
 
             #===========Clalculation distances femur condyles - tibia plateau medial and lateral======== 
-            # define spheres for medial and lateral femur condyles
-            #center_medial, radius_medial = UpdateVisualization.define_sphere_with_constraints(femur_center_axis_medial, femur_center_axis_lateral, femur_center_medial_1, femur_center_medial_2)
-            #center_lateral, radius_lateral = UpdateVisualization.define_sphere_with_constraints(femur_center_axis_medial, femur_center_axis_lateral, femur_center_lateral_1, femur_center_lateral_2)
 
-            center_medial = femur_sphere_center_medial 
-            radius_medial = np.linalg.norm(center_medial - UpdateVisualization.femur_landmarks['femur_medial']['position'])
-            center_lateral = femur_sphere_center_lateral
-            radius_lateral= np.linalg.norm(center_lateral - UpdateVisualization.femur_landmarks['femur_lateral']['position'])
-            #radius_medial = np.linalg.norm(femur_center_medial-femur_center_medial_1)
-            
-
-            # medial
-            #medial_tibia_femur = femur_medial - tibia_medial
-            medial_tibia_femur = center_medial - tibia_medial
-            m1 = np.dot(medial_tibia_femur, e1f)
-            m3 = np.dot(medial_tibia_femur, e3t)
-            medial_joint_gap = -(-m3 - m1 * math.cos(adduction)) -radius_medial
-            #medial_joint_gap = m3 -radius_medial
-
-            if medial_joint_gap < 0:
-                medial_joint_gap = 0
-   
-            
-            #laterall
-            #lateral_tibia_femur = femur_lateral - tibia_lateral
-            lateral_tibia_femur = center_lateral - tibia_lateral
-            l1 = np.dot(lateral_tibia_femur, e1f)
-            #l3 = np.dot(lateral_tibia_femur, e2t) / np.linalg.norm(e2t)
-            l3 = np.dot(lateral_tibia_femur, e3t)
-            lateral_joint_gap = -(-l3 - l1 *math.cos(adduction))  - radius_lateral
-            #lateral_joint_gap = l3-radius_lateral
-            #print("test")
-            #print(radius_lateral)
-            #print(l3)
-            #print(l1*math.cos(adduction))
-            
-            if lateral_joint_gap < 0:
-                lateral_joint_gap = 0
-
+            medial_joint_gap, lateral_joint_gap = UpdateVisualization.calculate_joint_gap(instanceGUI)
 
             
 
@@ -835,36 +799,26 @@ class UpdateVisualization():
             return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0,
                 'anterior_posterior': 0.0, 'medial_lateral': 0.0, 'proximal_distal': 0.0}
 
+    @staticmethod
     def calculate_joint_gap(instanceGUI):
         # Get current position of tibia landmarks
         tibia_medial = UpdateVisualization.tibia_landmarks['tibia_medial']['position']
         tibia_lateral = UpdateVisualization.tibia_landmarks['tibia_lateral']['position']
-        # Old: Debug with known landmarks
-        # medial_origin = instanceGUI.landmarks_origin["tibia_medial"]
-        # lateral_origin = instanceGUI.landmarks_origin["tibia_lateral"]
 
-        # Get latest transformation from tibia
+        # Get latest transformation from femur
         femur_trans = instanceGUI.last_femur_position*1000
         femur_rot = MeshUtils.quaternion_to_transform_matrix(instanceGUI.last_femur_quaternion)[:3,:3]
-
-        # # Test stuff with femur landmark
-        # femur_distal_origin = instanceGUI.landmarks_origin["femur_distal"]
-        # femur_distal = UpdateVisualization.femur_landmarks["femur_distal"]["position"]
-        # femur_distal_opti = femur_rot.T@(femur_distal-femur_trans)
-        # print(f"Distal origin: {np.round(femur_distal_origin,2)} \tDistal Calc: {np.round(femur_distal_opti,2)}")
         
-        # Transform tibia landmarks to origin in femur reference CoSy
+        # Transform tibia landmarks to femur reference CoSy
         tibia_medial_opti = femur_rot.T@(tibia_medial-femur_trans)
         tibia_lateral_opti = femur_rot.T@(tibia_lateral-femur_trans)
         # Translate tibia landmarks back to the stl coordinate system
         tibia_medial_init = instanceGUI.femur_kabsch_rot.T@tibia_medial_opti-instanceGUI.femur_kabsch_trans
         tibia_lateral_init = instanceGUI.femur_kabsch_rot.T@tibia_lateral_opti-instanceGUI.femur_kabsch_trans
-        # print(f"Tibia medial init: {np.round(tibia_medial_init,2)}, \ttibia lateral init: {np.round(tibia_lateral_init,2)}")
-        # print(f"Tibia lateral init: {np.round(tibia_lateral_init,2)}")
 
         # Calculate distance from point to femur model
-        distance_medial, candidate_medial = instanceGUI.femur_kdtree.query(tibia_medial_init, k=100)
-        distance_lateral, candidate_lateral = instanceGUI.femur_kdtree.query(tibia_lateral_init, k=100)
+        distance_medial, _ = instanceGUI.femur_kdtree.query(tibia_medial_init, k=100)
+        distance_lateral, _ = instanceGUI.femur_kdtree.query(tibia_lateral_init, k=100)
 
         # Minimal distance
         medial_gap = min(distance_medial)

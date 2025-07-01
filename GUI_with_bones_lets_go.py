@@ -319,18 +319,11 @@ class KneeFlexionExperiment(QMainWindow):
 
                             
                             if self.diagram_start_mode == "start":
-                                # Calculate flexion/I-E/Varus-Valgus
+                                # Calculate flexion/I-E/Varus-Valgus and joint gap
                                 angles_new = UpdateVisualization.get_current_knee_angles()
-                                # Calculate joint gap
-                                t_start = time.time()
-                                medial_joint_gap_test, lateral_joint_gap_test = UpdateVisualization.calculate_joint_gap(self)
-                                t_end = time.time()
-                                print(f"Medial gap: {np.round(medial_joint_gap_test,3)}, lateral gap: {np.round(lateral_joint_gap_test,3)}, calc time: {np.round(t_end-t_start,5)}")
 
                                 # Set angles and newly calculated joint gaps
                                 flexion_angle = angles_new['flexion']
-                                angles_new['lateral_tibia_femur'] = lateral_joint_gap_test
-                                angles_new['medial_tibia_femur'] = medial_joint_gap_test
 
                                 if self.diagram_mode == "varus_valgus":
                                     
