@@ -84,10 +84,11 @@ DISTANCE_BONE_VIZ = 700
 SCALE_FACTOR_ARROW = 20
 
 #2D plot settings
-X_LIM_VAL = 40
+X_LIM_VAL = 30
 X_LIM_ROT = 50
 Y_MAX_FLEX = 120
 Y_MIN_FLEX = -10
+RANGE_FILTER_PLOT = 2.5
 
 
 # interpolation and other plot adjustments

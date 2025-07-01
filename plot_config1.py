@@ -6,6 +6,7 @@ import constants
 import numpy as np
 from matplotlib.collections import LineCollection
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
+from update_visualization import UpdateVisualization
 
 class MplCanvas(FigureCanvas):
     """Matplotlib canvas class for embedding plots in Qt that can display either current or historical force/torque data"""
@@ -115,7 +116,7 @@ class MplCanvas(FigureCanvas):
         self.force_comp_text = self.axes_force.text2D(0.32, 0.95, "", transform=self.axes_force.transAxes, fontsize=8)
         self.torque_comp_text = self.axes_torque.text2D(0.4, 0.95, "", transform=self.axes_torque.transAxes, fontsize=8)
 
-    def update_varus_valgus_plot(self, flexion_angle, var_val_displacement, mode):
+    def update_varus_valgus_plot(self, flexion_angle, var_val_displacement, mode, mode_points):
         """Update the varus/valgus vs flexion plot by adding only the newest data point"""
 
         # Add new data point
@@ -154,29 +155,39 @@ class MplCanvas(FigureCanvas):
             self.ax.set_xlabel('abduction        adduction')
             self.ax.set_xlim(-constants.X_LIM_VAL, constants.X_LIM_VAL)
         
-        # Only add the newest data point
         color = constants.SALMON if var_val_displacement > 0 else constants.LIMEGREEN
-        
-        # Draw horizontal line from 0 to displacement value for new point
-        self.line, = self.ax.plot([0, var_val_displacement], [flexion_angle, flexion_angle], 
-                            color=color, linewidth=2, alpha=0.7)
-        
-
-        
-        # Add current point (red dot) - remove previous current point if it exists
-        if hasattr(self, 'current_point') and self.current_point:
-            self.current_point.remove()
-        
-        self.current_point, = self.ax.plot(var_val_displacement, flexion_angle, 'ro', 
-                                        markersize=8, zorder=10)
-        
-        # Add current bar highlight - remove previous highlight if it exists
-        if hasattr(self, 'current_highlight') and self.current_highlight:
-            self.current_highlight.remove()
+        if mode_points == "bars":
             
-        current_color = 'red' if var_val_displacement > 0 else 'blue'
-        self.current_highlight, = self.ax.plot([0, var_val_displacement], [flexion_angle, flexion_angle], 
-                                            color=current_color, linewidth=4, alpha=0.8, zorder=5)
+            # Draw horizontal line from 0 to displacement value for new point
+            self.line, = self.ax.plot([0, var_val_displacement], [flexion_angle, flexion_angle], 
+                                color=color, linewidth=2, alpha=0.7)
+            
+            # Add current point (red dot) - remove previous current point if it exists
+            if hasattr(self, 'current_point') and self.current_point:
+                self.current_point.remove()
+            
+            self.current_point, = self.ax.plot(var_val_displacement, flexion_angle, 'ro', 
+                                            markersize=8, zorder=10)
+            
+            # Add current bar highlight - remove previous highlight if it exists
+            #if hasattr(self, 'current_highlight') and self.current_highlight:
+            #    self.current_highlight.remove()
+                
+            #current_color = 'red' if var_val_displacement > 0 else 'blue'
+            #self.current_highlight, = self.ax.plot([0, var_val_displacement], [flexion_angle, flexion_angle], 
+            #                                 color=current_color, linewidth=4, alpha=0.8, zorder=5)
+        else:
+            range_filter_plot = constants.RANGE_FILTER_PLOT
+            if mode == "rotation":
+                if -range_filter_plot < UpdateVisualization.current_knee_angles['adduction'] < range_filter_plot:
+                    self.current_point, = self.ax.plot(var_val_displacement, flexion_angle, 'o', color = color, 
+                                                    markersize=4, zorder=10)
+                    
+            else:
+                if -range_filter_plot < UpdateVisualization.current_knee_angles['rotation'] < range_filter_plot:
+                    self.current_point, = self.ax.plot(var_val_displacement, flexion_angle, 'o', color = color, 
+                                                    markersize=4, zorder=10)
+
         
         self.draw()
 

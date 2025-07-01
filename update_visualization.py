@@ -779,8 +779,8 @@ class UpdateVisualization():
             medial_joint_gap = -(-m3 - m1 * math.cos(adduction)) -radius_medial
             #medial_joint_gap = m3 -radius_medial
 
-            #if medial_joint_gap < 0:
-            #    medial_joint_gap = 0
+            if medial_joint_gap < 0:
+                medial_joint_gap = 0
    
             
             #laterall
@@ -791,9 +791,13 @@ class UpdateVisualization():
             l3 = np.dot(lateral_tibia_femur, e3t)
             lateral_joint_gap = -(-l3 - l1 *math.cos(adduction))  - radius_lateral
             #lateral_joint_gap = l3-radius_lateral
+            #print("test")
+            #print(radius_lateral)
+            #print(l3)
+            #print(l1*math.cos(adduction))
             
-            #if lateral_joint_gap < 0:
-            #    lateral_joint_gap = 0
+            if lateral_joint_gap < 0:
+                lateral_joint_gap = 0
 
 
             

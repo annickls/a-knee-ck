@@ -248,14 +248,38 @@ class KneeFlexionExperiment(QMainWindow):
                     if current_tab == 0:  # Current Data tab
                         UpdateVisualization.update_current_visualization(self, force, torque)
                     elif current_tab == 1:  # History tab
-                        # Add to history
-                        self.force_history.append(force)
-                        self.torque_history.append(torque)
-                        
-                        # Keep history to specified size
-                        if len(self.force_history) > constants.HISTORY_SIZE:
-                            self.force_history.pop(0)
-                            self.torque_history.pop(0)
+                        if self.diagram_start_mode == "start":
+                            angles_new = UpdateVisualization.get_current_knee_angles()
+                            flexion_angle = angles_new['flexion']
+
+                            if self.diagram_mode == "varus_valgus":
+                                
+                                lateral_joint_gap = angles_new['lateral_tibia_femur']
+                                medial_joint_gap = angles_new['medial_tibia_femur']
+                                
+                                
+                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, lateral_joint_gap, self.diagram_mode, self.diagram_point_mode)
+                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, -medial_joint_gap, self.diagram_mode, self.diagram_point_mode)
+
+                                
+                            elif self.diagram_mode == 'rotation':  # rotation mode
+                                # Extract rotation angles from your angles_new dictionary
+                                #internal_rotation_angle = angles_new['rotation']
+                                internal_rotation_angle = angles_new['rotation'] # test for adduction angles
+                                
+                                
+                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, internal_rotation_angle, self.diagram_mode, self.diagram_point_mode)
+                            else:
+                                # Extract adductionangles from your angles_new dictionary
+                                #internal_rotation_angle = angles_new['rotation']
+                                adduction_angle = angles_new['adduction'] # test for adduction angles
+                                
+                                
+                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, adduction_angle, self.diagram_mode, self.diagram_point_mode)
+                            
+
+                        else:
+                            test = 0
                             
                         UpdateVisualization.update_history_visualization(self)
                     elif current_tab == 2:  # Bone visualization tab
@@ -302,8 +326,8 @@ class KneeFlexionExperiment(QMainWindow):
                                     medial_joint_gap = angles_new['medial_tibia_femur']
                                     
                                     
-                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, lateral_joint_gap, self.diagram_mode)
-                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, -medial_joint_gap, self.diagram_mode)
+                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, lateral_joint_gap, self.diagram_mode, self.diagram_point_mode)
+                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, -medial_joint_gap, self.diagram_mode, self.diagram_point_mode)
 
                                     
                                 elif self.diagram_mode == 'rotation':  # rotation mode
@@ -312,14 +336,14 @@ class KneeFlexionExperiment(QMainWindow):
                                     internal_rotation_angle = angles_new['rotation'] # test for adduction angles
                                     
                                     
-                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, internal_rotation_angle, self.diagram_mode)
+                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, internal_rotation_angle, self.diagram_mode, self.diagram_point_mode)
                                 else:
                                     # Extract adductionangles from your angles_new dictionary
                                     #internal_rotation_angle = angles_new['rotation']
                                     adduction_angle = angles_new['adduction'] # test for adduction angles
                                     
                                     
-                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, adduction_angle, self.diagram_mode)
+                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, adduction_angle, self.diagram_mode, self.diagram_point_mode)
                                 
 
                             else:
@@ -469,7 +493,7 @@ class KneeFlexionExperiment(QMainWindow):
          
         # Add tabs to the tab widget
         self.tabs.addTab(self.tab1, "current data")
-        self.tabs.addTab(self.tab2, "force && torque history")
+        self.tabs.addTab(self.tab2, "point diagram")
         self.tabs.addTab(self.tab3, "bone visualization")
         #self.tabs.addTab(self.tab4, "position path")
 
@@ -488,13 +512,17 @@ class KneeFlexionExperiment(QMainWindow):
         # second tab
         tab2_layout = QVBoxLayout()
         # Add force/torque visualization
-        viz_label_2 = QLabel("Force & Torque Visualization")
+        viz_label_2 = QLabel("Filtered Point Diagram")
         viz_label_2.setAlignment(Qt.AlignCenter)
         viz_label_2.setFont(QFont("Arial", 12, QFont.Bold))
         tab2_layout.addWidget(viz_label_2)
         # Create matplotlib visualization
         self.canvas_history = MplCanvas(width=4, height=8, mode="history")
-        tab2_layout.addWidget(self.canvas_history)
+        #tab2_layout.addWidget(self.canvas_history)
+
+        # Create matplotlib canvas for the dynamic diagram
+        self.canvas_varus_valgus = MplCanvas(width=6, height=7, mode="varus_valgus")
+        tab2_layout.addWidget(self.canvas_varus_valgus)
         self.tab2.setLayout(tab2_layout)
         
          # bone tab
@@ -687,6 +715,11 @@ class KneeFlexionExperiment(QMainWindow):
         self.diagram_start_mode = "stop"
         self.diagram_start_stop_button.clicked.connect(self.start_stop_diagram)
 
+        self.diagram_toggle_bar_point_button = QPushButton("show bars")
+        self.diagram_toggle_bar_point_button.setFixedHeight(constants.BUTTON_HEIGHT_2)
+        self.diagram_point_mode = "points"
+        self.diagram_toggle_bar_point_button.clicked.connect(self.toggle_bar_point_diagram)
+
         #button to record data
         self.record_individual_button = QPushButton("Record Data")
         self.record_individual_button.setFixedHeight(constants.BUTTON_HEIGHT_2)
@@ -712,6 +745,8 @@ class KneeFlexionExperiment(QMainWindow):
         right_layout.addWidget(self.diagram_axes_button, 10,0, 2, 1)
         right_layout.addWidget(self.diagram_start_stop_button, 11,0, 2, 1)
         right_layout.addWidget(self.record_individual_button, 12,0, 2, 1)
+        right_layout.addWidget(self.diagram_toggle_bar_point_button, 13,0, 2, 1)
+        
 
         
         right_widget.setLayout(right_layout)
@@ -1325,6 +1360,15 @@ class KneeFlexionExperiment(QMainWindow):
             self.diagram_start_mode = "stop"
             self.diagram_start_stop_button.setText("start plot")  # Update button text
 
+    def toggle_bar_point_diagram(self):
+        if self.diagram_point_mode == "points":
+            self.diagram_point_mode = "bars"
+            self.diagram_toggle_bar_point_button.setText("show points")  # Update button text   
+        else:
+            self.diagram_point_mode = "points"
+            self.diagram_toggle_bar_point_button.setText("show bars")  # Update button text
+
+
     def calculate_and_plot_contours(self):
         """
         Calculate and display the contour plot in the varus_valgus canvas.
@@ -1380,10 +1424,12 @@ class KneeFlexionExperiment(QMainWindow):
             medial_joint_gap = df.iloc[:, 27]  # Medial_Joint_Gap column
             lateral_joint_gap = df.iloc[:, 28]  # Lateral_Joint_Gap column
 
-            #tjx = tz + fy * delta_x + fx * delta_y -tx 
-            # tjy = tx - fz * delta_y + fy * delta_z # not used anymore, because torques are recorded already calculated
-            tjx = tx
-            tjy = ty
+            
+
+            tjx = tz + fy * delta_x + fx * delta_y -tx 
+            tjy = tx - fz * delta_y + fy * delta_z # not used anymore, because torques are recorded already calculated
+            #tjx = tx
+            #tjy = ty
                 
             
             # Configuration parameters (you can make these class attributes for easy modification)
@@ -1410,6 +1456,10 @@ class KneeFlexionExperiment(QMainWindow):
                 tjx_range_temp = tjx_max - tjx_min
                 bin_size_temp = tjx_range_temp / desired_bins
                 bin_size = round(bin_size_temp, 1)
+                print(desired_bins )
+                print(tjx_range_temp)
+                print(bin_size_temp)
+                print(bin_size)
             else:
                 #bin_size = 0.5
                 desired_bins = constants.BINS_VAR
@@ -1878,7 +1928,7 @@ class KneeFlexionExperiment(QMainWindow):
             tjx_range_end = tjx_bins[tjx_bin_idx + 1]
             tjx_middle = (tjx_range_start + tjx_range_end) / 2
             
-            legend_label = f'{tjx_middle:.2f} ({total_count})'
+            legend_label = f'{tjx_middle:.2f} [Nm] ({total_count})'
             
             # Add a dummy scatter for legend
             self.canvas_varus_valgus.ax.scatter([], [], 
