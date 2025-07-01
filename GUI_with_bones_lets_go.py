@@ -101,6 +101,7 @@ class KneeFlexionExperiment(QMainWindow):
             # Find latest csv file
             root_folder = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             pattern = os.path.join(root_folder, "knee_eval_ws", "data*.csv")
+            pattern = os.path.join(root_folder, "a-knee-ck", "data*.csv")
             try: 
                 self.csv_path = max(glob.glob(pattern), key=os.path.getmtime)
             except: 
