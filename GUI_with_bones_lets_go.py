@@ -331,6 +331,9 @@ class KneeFlexionExperiment(QMainWindow):
                                 medial_joint_gap = angles_new['medial_tibia_femur']
                                 internal_rotation_angle = angles_new['rotation'] 
                                 adduction_angle = angles_new['adduction'] # test for adduction angles
+                                medial_translation = angles_new['medial'] 
+                                anterior_translation = angles_new['anterior'] 
+                                
 
                                 if self.diagram_mode == "varus_valgus":
                                     
@@ -340,6 +343,8 @@ class KneeFlexionExperiment(QMainWindow):
                                         lateral_joint_gap,
                                         internal_rotation_angle,
                                         adduction_angle,
+                                        anterior_translation,
+                                        medial_translation,
                                         self.diagram_mode, 
                                         self.diagram_point_mode)
                                     
@@ -348,6 +353,8 @@ class KneeFlexionExperiment(QMainWindow):
                                         -medial_joint_gap, 
                                         internal_rotation_angle,
                                         adduction_angle,
+                                        anterior_translation,
+                                        medial_translation,
                                         self.diagram_mode, 
                                         self.diagram_point_mode)
 
@@ -363,9 +370,11 @@ class KneeFlexionExperiment(QMainWindow):
                                         internal_rotation_angle,
                                         internal_rotation_angle,
                                         adduction_angle,
+                                        anterior_translation,
+                                        medial_translation,
                                         self.diagram_mode, 
                                         self.diagram_point_mode)
-                                else:
+                                elif self.diagram_mode == 'adduction':
                                     # Extract adductionangles from your angles_new dictionary
                                     #internal_rotation_angle = angles_new['rotation']
                                     #adduction_angle = angles_new['adduction'] # test for adduction angles
@@ -376,6 +385,31 @@ class KneeFlexionExperiment(QMainWindow):
                                         adduction_angle,
                                         internal_rotation_angle,
                                         adduction_angle,
+                                        anterior_translation,
+                                        medial_translation,
+                                        self.diagram_mode, 
+                                        self.diagram_point_mode)
+                                    
+                                elif self.diagram_mode == 'anterior':
+                                    
+                                    self.canvas_varus_valgus.update_varus_valgus_plot(
+                                        flexion_angle, 
+                                        anterior_translation,
+                                        internal_rotation_angle,
+                                        adduction_angle,
+                                        anterior_translation,
+                                        medial_translation,
+                                        self.diagram_mode, 
+                                        self.diagram_point_mode)
+                                elif self.diagram_mode == 'medial':
+                                    
+                                    self.canvas_varus_valgus.update_varus_valgus_plot(
+                                        flexion_angle, 
+                                        medial_translation,
+                                        internal_rotation_angle,
+                                        adduction_angle,
+                                        anterior_translation,
+                                        medial_translation,
                                         self.diagram_mode, 
                                         self.diagram_point_mode)
                                 
@@ -1455,9 +1489,13 @@ class KneeFlexionExperiment(QMainWindow):
 
     def toggle_diagram_axes_anterior(self):
         print("here you would see ap translation")
+        self.diagram_mode = "anterior"
+        print(f"Diagram mode switched to: {self.diagram_mode}") 
 
     def toggle_diagram_axes_medial(self):
         print("here you would see ml translation")
+        self.diagram_mode = "medial"
+        print(f"Diagram mode switched to: {self.diagram_mode}") 
         
 
     def start_stop_diagram(self):

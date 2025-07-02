@@ -86,9 +86,12 @@ SCALE_FACTOR_ARROW = 20
 #2D plot settings
 X_LIM_VAL = 30
 X_LIM_ROT = 50
+X_LIM_ANTERIOR = 40
+X_LIM_MEDIAL = 40
 Y_MAX_FLEX = 120
 Y_MIN_FLEX = -10
 RANGE_FILTER_PLOT = 2.5
+RANGE_FILTER_PLOT_TRANSLATION = 3
 
 
 # interpolation and other plot adjustments

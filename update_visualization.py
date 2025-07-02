@@ -25,7 +25,9 @@ class UpdateVisualization():
                            'medial_lateral': 0.0, 
                            'proximal_distal': 0.0, 
                            'medial_joint_gap': 0.0, 
-                           'lateral_joint_gap':0.0}
+                           'lateral_joint_gap':0.0,
+                           'anterior_tranlation': 0.0,
+                           'medial_translation': 0.0}
     femurmediallateral = [0,0,0]
     femurproximaldistal = [0, 0, 0]
     femurvarusaxis = [0, 0, 0]
@@ -789,7 +791,9 @@ class UpdateVisualization():
                 'medial_lateral': medial_lateral,
                 'proximal_distal': proximal_distal,
                 'medial_tibia_femur': medial_joint_gap,
-                'lateral_tibia_femur': lateral_joint_gap
+                'lateral_tibia_femur': lateral_joint_gap,
+                'anterior': anterior_posterior,
+                'medial': medial_lateral
             }
             
         except Exception as e:

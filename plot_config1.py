@@ -45,7 +45,7 @@ class MplCanvas(FigureCanvas):
         super().__init__(self.fig)
         self.fig.tight_layout()
 
-        if mode == "varus_valgus" or mode == "rotation" or mode =="adduction":
+        if mode == "varus_valgus" or mode == "rotation" or mode =="adduction" or mode == "anterior" or mode == "medial":
             self.ax = self.fig.add_subplot(111)
             self.ax.set_xlabel('x-axis')
             self.ax.set_ylabel('Flexion Angle [°]')
@@ -339,6 +339,8 @@ class OptimizedVarusValgusPlot(QWidget):
         self.rotation_data = np.zeros(self.max_points, dtype=np.float32)
         self.adduction_data = np.zeros(self.max_points, dtype=np.float32)
         self.mode_data = np.zeros(self.max_points, dtype=np.uint8)
+        self.anterior_data = np.zeros(self.max_points, dtype=np.float32)
+        self.medial_data = np.zeros(self.max_points, dtype=np.float32)
         
         # Debug: Print array types and shapes to verify they're created correctly
         print(f"Array types and shapes:")
@@ -352,6 +354,8 @@ class OptimizedVarusValgusPlot(QWidget):
         # Plot bounds - adjust these based on your constants
         self.x_lim_val = constants.X_LIM_VAL
         self.x_lim_rot = constants.X_LIM_ROT
+        self.x_lim_anterior = constants.X_LIM_ANTERIOR
+        self.x_lim_medial = constants.X_LIM_MEDIAL
         self.y_min_flex = constants.Y_MIN_FLEX
         self.y_max_flex = constants.Y_MAX_FLEX
         
@@ -392,6 +396,11 @@ class OptimizedVarusValgusPlot(QWidget):
             self.x_min, self.x_max = -self.x_lim_rot, self.x_lim_rot
         elif self.current_mode == "adduction":
             self.x_min, self.x_max = -self.x_lim_val, self.x_lim_val
+        elif self.current_mode == "anterior":
+            self.x_min, self.x_max = -self.x_lim_anterior, self.x_lim_anterior
+        elif self.current_mode == "medial":
+            self.x_min, self.x_max = -self.x_lim_anterior, self.x_lim_anterior
+
             
         # Plot area margins
         self.margin_left = 80
@@ -561,12 +570,14 @@ class OptimizedVarusValgusPlot(QWidget):
                     if 0 <= px < self.width and 0 <= py < self.height:
                         self.img_array[py, px] = color
     
-    def add_point(self, flexion_angle, var_val_displacement, rotation_angle, adduction_angle, mode):
+    def add_point(self, flexion_angle, var_val_displacement, rotation_angle, adduction_angle, anterior_translation, medial_translation, mode):
         """Add a new data point to the circular buffer."""
         self.flexion_data[self.write_idx] = flexion_angle
         self.varus_valgus_data[self.write_idx] = var_val_displacement
         self.rotation_data[self.write_idx] = rotation_angle
         self.adduction_data[self.write_idx] = adduction_angle
+        self.anterior_data[self.write_idx] = anterior_translation
+        self.medial_data[self.write_idx] = medial_translation
         
         # Encode mode
         if mode == "varus_valgus":
@@ -575,12 +586,16 @@ class OptimizedVarusValgusPlot(QWidget):
             self.mode_data[self.write_idx] = 1
         elif mode == "adduction":
             self.mode_data[self.write_idx] = 2
+        elif mode == "anterior":
+            self.mode_data[self.write_idx] = 3
+        elif mode == "medial":
+            self.mode_data[self.write_idx] = 4
             
         self.write_idx = (self.write_idx + 1) % self.max_points
         self.point_count = min(self.point_count + 1, self.max_points)
         
         
-    def update_varus_valgus_plot(self, flexion_angle, var_val_displacement, rotation_angle, adduction_angle, mode, mode_points):
+    def update_varus_valgus_plot(self, flexion_angle, var_val_displacement, rotation_angle, adduction_angle, anterior_translation, medial_translation, mode, mode_points):
         """Main update method - optimized for real-time performance."""
         # Update mode if changed
         if mode != self.current_mode or mode_points != self.current_point_mode:
@@ -590,7 +605,7 @@ class OptimizedVarusValgusPlot(QWidget):
             self._draw_static_elements()
         
         # Add new data point
-        self.add_point(flexion_angle, var_val_displacement, rotation_angle, adduction_angle, mode)
+        self.add_point(flexion_angle, var_val_displacement, rotation_angle, adduction_angle, anterior_translation, medial_translation, mode)
         
         # Render frame
         self._render_frame()
@@ -598,9 +613,18 @@ class OptimizedVarusValgusPlot(QWidget):
         # Trigger Qt repaint
         self.update()
     
-    def _apply_angle_filter(self, flexion, vv, rotation, adduction, modes):
+    def _apply_angle_filter(self, flexion, vv, rotation, adduction, anterior, medial, modes):
         """Apply angle-based filtering based on current mode."""
-        current_mode_val = 0 if self.current_mode == "varus_valgus" else (1 if self.current_mode == "rotation" else 2)
+        """if self.current_mode == "varus_valgus":
+            current_mode_val = 0  
+        elif self.current_mode == "rotation":
+            current_mode_val = 1
+        elif self.current_mode == "adduction":
+            current_mode_val = 2
+        elif self.current_mode == "anterior":
+            current_mode_val = 3
+        elif self.current_mode == "medial":
+            current_mode_val = 4
         
         # Start with mode filter
         mode_mask = modes == current_mode_val
@@ -608,9 +632,17 @@ class OptimizedVarusValgusPlot(QWidget):
         if self.current_mode == "rotation":
             # For rotation mode: filter where -2.5 < adduction < 2.5
             angle_mask = (adduction >= -constants.RANGE_FILTER_PLOT) & (adduction <= constants.RANGE_FILTER_PLOT)
-        else:  # varus_valgus or adduction mode
+        elif self.current_mode == "varus_valgus" or self.current_mode == "adduction":  # varus_valgus or adduction mode
             # For varus_valgus or adduction mode: filter where -2.5 < rotation < 2.5
             angle_mask = (rotation >= -constants.RANGE_FILTER_PLOT) & (rotation <= constants.RANGE_FILTER_PLOT)
+        elif self.current_mode == "anterior":
+            angle_mask = ( abs(medial) <= constants.RANGE_FILTER_PLOT_TRANSLATION)
+        elif self.current_mode == "medial":
+            angle_mask = ( abs(anterior) <= constants.RANGE_FILTER_PLOT_TRANSLATION)
+        else:
+            # Default case - no additional filtering beyond mode
+            angle_mask = np.ones(len(flexion), dtype=bool)
+            print("attention no values filtered")
         
         # Combine both filters
         combined_mask = mode_mask & angle_mask
@@ -618,7 +650,12 @@ class OptimizedVarusValgusPlot(QWidget):
         return (flexion[combined_mask], 
                 vv[combined_mask], 
                 rotation[combined_mask], 
-                adduction[combined_mask])
+                adduction[combined_mask],
+                anterior[combined_mask],
+                medial[combined_mask])"""
+        print("DEBUG: Filtering disabled - returning all data")
+        return flexion, vv, rotation, adduction, anterior, medial
+        
         
     def _render_frame(self):
         """Render the current frame with all data points."""
@@ -635,6 +672,8 @@ class OptimizedVarusValgusPlot(QWidget):
             rotation = self.rotation_data[:self.point_count]
             adduction = self.adduction_data[:self.point_count]
             modes = self.mode_data[:self.point_count]
+            anterior = self.anterior_data[:self.point_count]
+            medial = self.medial_data[:self.point_count]
         else:
             # Handle circular buffer
             flexion = np.concatenate([self.flexion_data[self.write_idx:], self.flexion_data[:self.write_idx]])
@@ -642,10 +681,16 @@ class OptimizedVarusValgusPlot(QWidget):
             rotation = np.concatenate([self.rotation_data[self.write_idx:], self.rotation_data[:self.write_idx]])
             adduction = np.concatenate([self.adduction_data[self.write_idx:], self.adduction_data[:self.write_idx]])
             modes = np.concatenate([self.mode_data[self.write_idx:], self.mode_data[:self.write_idx]])
+            anterior = np.concatenate([self.anterior_data[self.write_idx:], self.anterior_data[:self.write_idx]])
+            medial = np.concatenate([self.medial_data[self.write_idx:], self.medial_data[:self.write_idx]])
         
         # Apply filtering
-        flex_filtered, vv_filtered, rotation_filtered, adduction_filtered = self._apply_angle_filter(
-            flexion, vv, rotation, adduction, modes)
+        flex_filtered, vv_filtered, rotation_filtered, adduction_filtered, anterior_filtered, medial_filtered = self._apply_angle_filter(
+            flexion, vv, rotation, adduction, modes, anterior, medial)
+        
+        # debug because of problem in apply_filter
+        anterior_filtered = anterior
+        medial_filtered = medial
         
         if len(flex_filtered) == 0:
             return
@@ -655,8 +700,12 @@ class OptimizedVarusValgusPlot(QWidget):
             angle_to_plot = rotation_filtered
         elif self.current_mode == "adduction":
             angle_to_plot = adduction_filtered
-        else:  # varus_valgus
+        elif self.current_mode == "varus_valgus":  # varus_valgus
             angle_to_plot = vv_filtered
+        elif self.current_mode == "anterior":
+            angle_to_plot = anterior_filtered
+        elif self.current_mode == "medial":
+            angle_to_plot = medial_filtered
             
         # Draw points based on mode
         if self.current_point_mode == "bars":
@@ -723,6 +772,10 @@ class OptimizedVarusValgusPlot(QWidget):
             label = "external rotation         internal rotation"
         elif self.current_mode == "adduction":
             label = "varus angle        valgus angle"
+        elif self.current_mode == "anterior":
+            label = "anterior translation        posterior translation"
+        elif self.current_mode == "medial":
+            label = "medial translation        lateral translation"    
         else:
             label = "x-axis"
             
