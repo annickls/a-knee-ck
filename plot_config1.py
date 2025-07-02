@@ -7,6 +7,17 @@ import numpy as np
 from matplotlib.collections import LineCollection
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
 from update_visualization import UpdateVisualization
+import tkinter as tk
+from PIL import Image, ImageTk
+import threading
+import time
+import queue
+import numpy as np
+from PyQt5.QtWidgets import QWidget
+from PyQt5.QtGui import QImage, QPainter, QPen, QBrush, QFont
+from PyQt5.QtCore import Qt, QTimer
+from PIL import Image
+import time
 
 class MplCanvas(FigureCanvas):
     """Matplotlib canvas class for embedding plots in Qt that can display either current or historical force/torque data"""
@@ -152,7 +163,7 @@ class MplCanvas(FigureCanvas):
             self.ax.set_xlabel('external rotation         internal rotation')
             self.ax.set_xlim(-constants.X_LIM_ROT, constants.X_LIM_ROT)
         elif mode == "adduction":
-            self.ax.set_xlabel('abduction        adduction')
+            self.ax.set_xlabel('valgus        varus')
             self.ax.set_xlim(-constants.X_LIM_VAL, constants.X_LIM_VAL)
         
         color = constants.SALMON if var_val_displacement > 0 else constants.LIMEGREEN
@@ -313,4 +324,703 @@ class ColoredGLAxisItem(gl.GLAxisItem):
 
 
 
+class OptimizedVarusValgusPlotOld(QWidget):
+    """Ultra-optimized varus/valgus vs flexion plot for real-time knee joint data - PyQt version."""
+    
+    def __init__(self, parent=None, width=800, height=600, max_points=100000):
+        super().__init__(parent)
+        
+        self.width, self.height = width, height
+        max_points = 100000
+        self.max_points = max_points
+        
+        # Set widget size
+        self.setFixedSize(width, height)
+        
+        # Pre-allocate all data arrays (zero memory allocation during runtime)
+        self.flexion_data = np.zeros(max_points, dtype=np.float32)
+        self.varus_valgus_data = np.zeros(max_points, dtype=np.float32)
+        self.rotation_data = np.zeros(max_points, dtype=np.float32)  # Store rotation angles
+        self.adduction_data = np.zeros(max_points, dtype=np.float32)  # Store adduction angles
+        self.mode_data = np.zeros(max_points, dtype=np.uint8)  # 0=varus_valgus, 1=rotation, 2=adduction
+        
+        self.write_idx = 0
+        self.point_count = 0
+        
+        # Plot bounds - adjust these based on your constants
+        self.x_lim_val = constants.X_LIM_VAL
+        self.x_lim_rot = constants.X_LIM_ROT
+        self.y_min_flex = constants.Y_MIN_FLEX
+        self.y_max_flex = constants.Y_MAX_FLEX
+        
+        # Current mode and display settings
+        self.current_mode = "varus_valgus"
+        self.current_point_mode = "bars"
+        
+        # Pre-allocate image array for fast rendering
+        self.img_array = np.zeros((height, width, 3), dtype=np.uint8)
+        
+        # Colors (RGB values)
+        self.bg_color = np.array([240, 240, 240], dtype=np.uint8)  # Light gray background
+        self.grid_color = np.array([200, 200, 200], dtype=np.uint8)  # Grid lines
+        self.axis_color = np.array([100, 100, 100], dtype=np.uint8)  # Axis lines
+        self.salmon_color = np.array([250, 128, 114], dtype=np.uint8)  # Positive values
+        self.limegreen_color = np.array([50, 205, 50], dtype=np.uint8)  # Negative values
+        self.current_point_color = np.array([255, 0, 0], dtype=np.uint8)  # Red for current point
+        
+        # Pre-compute coordinate transform parameters
+        self._update_transform_params()
+        
+        # Initialize plot
+        self._draw_static_elements()
+        
+        # Performance tracking
+        self.frame_count = 0
+        self.last_time = time.time()
+        
+        # Timer for automatic updates (optional)
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update)
+        
+    def _update_transform_params(self):
+        """Update coordinate transformation parameters based on current mode."""
+        if self.current_mode == "varus_valgus":
+            self.x_min, self.x_max = -self.x_lim_val, self.x_lim_val
+        elif self.current_mode == "rotation":
+            self.x_min, self.x_max = -self.x_lim_rot, self.x_lim_rot
+        elif self.current_mode == "adduction":
+            self.x_min, self.x_max = -self.x_lim_val, self.x_lim_val
+            
+        # Plot area margins
+        self.margin_left = 80
+        self.margin_right = 40
+        self.margin_top = 40
+        self.margin_bottom = 80
+        
+        self.plot_width = self.width - self.margin_left - self.margin_right
+        self.plot_height = self.height - self.margin_top - self.margin_bottom
+        
+        # Transform parameters
+        self.x_scale = self.plot_width / (self.x_max - self.x_min)
+        self.y_scale = self.plot_height / (self.y_max_flex - self.y_min_flex)
+        
+    def _world_to_screen(self, x, y):
+        """Convert world coordinates to screen coordinates."""
+        screen_x = int(self.margin_left + (x - self.x_min) * self.x_scale)
+        screen_y = int(self.margin_top + self.plot_height - (y - self.y_min_flex) * self.y_scale)
+        return screen_x, screen_y
+        
+    def _draw_static_elements(self):
+        """Draw grid, axes, and labels that don't change."""
+        # Clear background
+        self.img_array[:] = self.bg_color
+        
+        # Draw grid lines
+        self._draw_grid()
+        
+        # Draw axes
+        self._draw_axes()
+        
+    def _draw_grid(self):
+        """Draw grid lines."""
+        # Vertical grid lines
+        x_step = (self.x_max - self.x_min) / 10
+        for i in range(11):
+            x = self.x_min + i * x_step
+            screen_x, _ = self._world_to_screen(x, 0)
+            if 0 <= screen_x < self.width:
+                self.img_array[self.margin_top:self.margin_top + self.plot_height, screen_x] = self.grid_color
+        
+        # Horizontal grid lines
+        y_step = (self.y_max_flex - self.y_min_flex) / 10
+        for i in range(11):
+            y = self.y_min_flex + i * y_step
+            _, screen_y = self._world_to_screen(0, y)
+            if 0 <= screen_y < self.height:
+                self.img_array[screen_y, self.margin_left:self.margin_left + self.plot_width] = self.grid_color
+                
+    def _draw_axes(self):
+        """Draw main axes."""
+        # Y-axis (flexion)
+        screen_x, _ = self._world_to_screen(0, 0)
+        if 0 <= screen_x < self.width:
+            self.img_array[self.margin_top:self.margin_top + self.plot_height, screen_x:screen_x+2] = self.axis_color
+        
+    def _draw_line(self, x1, y1, x2, y2, color, thickness=1):
+        """Draw a line between two points."""
+        screen_x1, screen_y1 = self._world_to_screen(x1, y1)
+        screen_x2, screen_y2 = self._world_to_screen(x2, y2)
+        
+        # Simple line drawing
+        dx = abs(screen_x2 - screen_x1)
+        dy = abs(screen_y2 - screen_y1)
+        
+        if dx == 0 and dy == 0:
+            return
+            
+        steps = max(dx, dy)
+        if steps == 0:
+            return
+            
+        x_inc = (screen_x2 - screen_x1) / steps
+        y_inc = (screen_y2 - screen_y1) / steps
+        
+        for i in range(steps + 1):
+            x = int(screen_x1 + i * x_inc)
+            y = int(screen_y1 + i * y_inc)
+            
+            if 0 <= x < self.width and 0 <= y < self.height:
+                for t in range(thickness):
+                    for u in range(thickness):
+                        if x + t < self.width and y + u < self.height:
+                            self.img_array[y + u, x + t] = color
+                            
+    def _draw_point(self, x, y, color, size = 2):
+        """#Draw a simple point
+        screen_x, screen_y = self._world_to_screen(x, y)
+        
+        if 0 <= screen_x < self.width and 0 <= screen_y < self.height:
+            self.img_array[screen_y, screen_x] = color"""
+        """Draw a simple point - single pixel or 3x3 square."""
+        screen_x, screen_y = self._world_to_screen(x, y)
+        
+        if size == 1:
+            # Single pixel
+            if 0 <= screen_x < self.width and 0 <= screen_y < self.height:
+                self.img_array[screen_y, screen_x] = color
+        else:
+            # 4x4 square around the pixel
+            for dy in range(-2, 3):  # -1, 0, 1
+                for dx in range(-2, 3):  # -1, 0, 1
+                    px, py = screen_x + dx, screen_y + dy
+                    if 0 <= px < self.width and 0 <= py < self.height:
+                        self.img_array[py, px] = color
+    
+    def add_point(self, flexion_angle, var_val_displacement, rotation_angle, adduction_angle, mode):
+        """Add a new data point to the circular buffer."""
+        self.flexion_data[self.write_idx] = flexion_angle
+        self.varus_valgus_data[self.write_idx] = var_val_displacement
+        self.rotation_data[self.write_idx] = rotation_angle
+        self.adduction_data[self.write_idx] = adduction_angle
+        
 
+        
+        # Encode mode
+        if mode == "varus_valgus":
+            self.mode_data[self.write_idx] = 0
+        elif mode == "rotation":
+            self.mode_data[self.write_idx] = 1
+        elif mode == "adduction":
+            self.mode_data[self.write_idx] = 2
+            
+        self.write_idx = (self.write_idx + 1) % self.max_points
+        self.point_count = min(self.point_count + 1, self.max_points)
+        
+        
+    def update_varus_valgus_plot(self, flexion_angle, var_val_displacement, rotation_angle, adduction_angle, mode, mode_points):
+        """Main update method - optimized for real-time performance."""
+        # Update mode if changed
+        if mode != self.current_mode or mode_points != self.current_point_mode:
+            self.current_mode = mode
+            self.current_point_mode = mode_points
+            self._update_transform_params()
+            self._draw_static_elements()
+        
+        # Add new data point
+        self.add_point(flexion_angle, var_val_displacement, rotation_angle, adduction_angle, mode)
+        
+        # Render frame
+        self._render_frame()
+        
+        # Trigger Qt repaint
+        self.update()
+    
+    def _apply_angle_filter(self, flexion, vv, rotation, adduction, modes):
+        """Apply angle-based filtering based on current mode."""
+        current_mode_val = 0 if self.current_mode == "varus_valgus" else (1 if self.current_mode == "rotation" else 2)
+        
+        # Start with mode filter
+        mode_mask = modes == current_mode_val
+        
+        if self.current_mode == "rotation":
+            # For rotation mode: filter where -2.5 < adduction < 2.5
+            angle_mask = (adduction >= -constants.RANGE_FILTER_PLOT) & (adduction <= constants.RANGE_FILTER_PLOT)
+        else:  # varus_valgus or adduction mode
+            # For varus_valgus or adduction mode: filter where -2.5 < rotation < 2.5
+            angle_mask = (rotation >= -constants.RANGE_FILTER_PLOT) & (rotation <= constants.RANGE_FILTER_PLOT)
+        
+        # Combine both filters
+        combined_mask = mode_mask & angle_mask
+        
+        return (flexion[combined_mask], 
+                vv[combined_mask], 
+                rotation[combined_mask], 
+                adduction[combined_mask])
+        
+    def _render_frame(self):
+        """Render the current frame with all data points."""
+        # Redraw static elements
+        self._draw_static_elements()
+        
+        if self.point_count == 0:
+            return
+            
+        print(self.point_count)
+        print(self.max_points)
+        # Get active data
+        if self.point_count < self.max_points:
+            flexion = self.flexion_data[:self.point_count]
+            vv = self.varus_valgus_data[:self.point_count]
+            rotation = self.rotation_data[:self.point_count]
+            adduction = self.adduction_data[:self.point_count]
+            modes = self.mode_data[:self.point_count]
+        else:
+            # Handle circular buffer
+            flexion = np.concatenate([self.flexion_data[self.write_idx:], self.flexion_data[:self.write_idx]])
+            vv = np.concatenate([self.varus_valgus_data[self.write_idx:], self.varus_valgus_data[:self.write_idx]])
+            rotation = np.concatenate([self.rotation_data[self.write_idx:], self.rotation_data[:self.write_idx]])
+            adduction = np.concatenate([self.adduction_data[self.write_idx:], self.adduction_data[:self.write_idx]])
+            modes = np.concatenate([self.mode_data[self.write_idx:], self.mode_data[:self.write_idx]])
+        
+        # Apply filtering
+        flex_filtered, vv_filtered, rotation_filtered, adduction_filtered = self._apply_angle_filter(
+            flexion, vv, rotation, adduction, modes)
+        
+        if len(flex_filtered) == 0:
+            return
+        
+        # Determine which angle to plot based on current mode
+        if self.current_mode == "rotation":
+            angle_to_plot = rotation_filtered
+        elif self.current_mode == "adduction":
+            angle_to_plot = adduction_filtered
+        else:  # varus_valgus
+            angle_to_plot = vv_filtered
+            
+        # Draw points based on mode
+        if self.current_point_mode == "bars":
+            self._draw_bars(flex_filtered, angle_to_plot)
+        else:
+            self._draw_points(flex_filtered, angle_to_plot)
+            
+        # Draw current point (most recent)
+        if len(flex_filtered) > 0:
+            latest_flex = flex_filtered[-1]
+            latest_angle = angle_to_plot[-1]
+            self._draw_point(latest_angle, latest_flex, self.current_point_color, size=3)
+    
+    def _draw_bars(self, flexion, vv):
+        #Draw horizontal bars from 0 to displacement value.
+        for i in range(len(flexion)):
+            color = self.salmon_color if vv[i] > 0 else self.limegreen_color
+            self._draw_line(0, flexion[i], vv[i], flexion[i], color, thickness=2)
+            
+    def _draw_points(self, flexion, vv):
+        """#Draw simple scatter points.
+        for i in range(len(flexion)):
+            color = self.salmon_color if vv[i] > 0 else self.limegreen_color
+            self._draw_point(vv[i], flexion[i], color, 2)"""
+        """Draw simple scatter points."""
+        for i in range(len(flexion)):
+            color = self.salmon_color if vv[i] > 0 else self.limegreen_color
+            self._draw_point(vv[i], flexion[i], color, size=3)  # size=3 for 3x3 squares
+    
+    def paintEvent(self, event):
+        """PyQt paint event - renders the image to the widget."""
+        painter = QPainter(self)
+        
+        # Convert numpy array to QImage
+        h, w, ch = self.img_array.shape
+        bytes_per_line = ch * w
+        qimage = QImage(self.img_array.data, w, h, bytes_per_line, QImage.Format_RGB888)
+        
+        # Draw the image
+        painter.drawImage(0, 0, qimage)
+        
+        # Draw text labels using QPainter (better performance than drawing on image)
+        self._draw_labels(painter)
+        
+    def _draw_labels(self, painter):
+        """Draw axis labels and title using QPainter."""
+        painter.setPen(QPen(Qt.black))
+        painter.setFont(QFont("Arial", 10))
+        
+        # Y-axis label (rotated)
+        painter.save()
+        painter.translate(20, self.height//2)
+        painter.rotate(-90)
+        painter.drawText(0, 0, "Flexion Angle [°]")
+        painter.restore()
+        
+        # X-axis label
+        if self.current_mode == "varus_valgus":
+            label = "medial joint gap          lateral joint gap"
+        elif self.current_mode == "rotation":
+            label = "external rotation         internal rotation"
+        elif self.current_mode == "adduction":
+            label = "abduction        adduction"
+        else:
+            label = "x-axis"
+            
+        painter.drawText(self.width//2 - 100, self.height - 20, label)
+        
+        # Title
+        painter.setFont(QFont("Arial", 12, QFont.Bold))
+        if self.current_mode == "varus_valgus":
+            title = "medial/lateral joint gap [mm]"
+        else:
+            title = f"{self.current_mode} [°]"
+            
+        painter.drawText(self.width//2 - 100, 20, title)
+
+    
+class OptimizedVarusValgusPlot(QWidget):
+    """Ultra-optimized varus/valgus vs flexion plot for real-time knee joint data - PyQt version."""
+    
+    def __init__(self, parent=None, width=800, height=600, max_points=10000):
+        super().__init__(parent)
+    
+        self.width, self.height = width, height
+        self.max_points = max_points  # Remove the reassignment line
+        
+        # Set widget size
+        self.setFixedSize(width, height)
+        
+        # Pre-allocate all data arrays (zero memory allocation during runtime)
+        # Make sure these are NumPy arrays, not Python lists
+        self.flexion_data = np.zeros(self.max_points, dtype=np.float32)
+        self.varus_valgus_data = np.zeros(self.max_points, dtype=np.float32)
+        self.rotation_data = np.zeros(self.max_points, dtype=np.float32)
+        self.adduction_data = np.zeros(self.max_points, dtype=np.float32)
+        self.mode_data = np.zeros(self.max_points, dtype=np.uint8)
+        
+        # Debug: Print array types and shapes to verify they're created correctly
+        print(f"Array types and shapes:")
+        print(f"flexion_data: {type(self.flexion_data)}, shape: {self.flexion_data.shape}")
+        print(f"max_points: {self.max_points}")
+        
+        self.write_idx = 0
+        self.point_count = 0
+        
+        # Rest of your initialization code...
+        # Plot bounds - adjust these based on your constants
+        self.x_lim_val = constants.X_LIM_VAL
+        self.x_lim_rot = constants.X_LIM_ROT
+        self.y_min_flex = constants.Y_MIN_FLEX
+        self.y_max_flex = constants.Y_MAX_FLEX
+        
+        # Current mode and display settings
+        self.current_mode = "varus_valgus"
+        self.current_point_mode = "bars"
+        
+        # Pre-allocate image array for fast rendering
+        self.img_array = np.zeros((height, width, 3), dtype=np.uint8)
+        
+        # Colors (RGB values)
+        self.bg_color = np.array([240, 240, 240], dtype=np.uint8)
+        self.grid_color = np.array([200, 200, 200], dtype=np.uint8)
+        self.axis_color = np.array([100, 100, 100], dtype=np.uint8)
+        self.salmon_color = np.array([250, 128, 114], dtype=np.uint8)
+        self.limegreen_color = np.array([50, 205, 50], dtype=np.uint8)
+        self.current_point_color = np.array([255, 0, 0], dtype=np.uint8)
+        
+        # Pre-compute coordinate transform parameters
+        self._update_transform_params()
+        
+        # Initialize plot
+        self._draw_static_elements()
+        
+        # Performance tracking
+        self.frame_count = 0
+        self.last_time = time.time()
+        
+        # Timer for automatic updates (optional)
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update)
+        
+    def _update_transform_params(self):
+        """Update coordinate transformation parameters based on current mode."""
+        if self.current_mode == "varus_valgus":
+            self.x_min, self.x_max = -self.x_lim_val, self.x_lim_val
+        elif self.current_mode == "rotation":
+            self.x_min, self.x_max = -self.x_lim_rot, self.x_lim_rot
+        elif self.current_mode == "adduction":
+            self.x_min, self.x_max = -self.x_lim_val, self.x_lim_val
+            
+        # Plot area margins
+        self.margin_left = 80
+        self.margin_right = 40
+        self.margin_top = 40
+        self.margin_bottom = 80
+        
+        self.plot_width = self.width - self.margin_left - self.margin_right
+        self.plot_height = self.height - self.margin_top - self.margin_bottom
+        
+        # Transform parameters
+        self.x_scale = self.plot_width / (self.x_max - self.x_min)
+        self.y_scale = self.plot_height / (self.y_max_flex - self.y_min_flex)
+        
+    def _world_to_screen(self, x, y):
+        """Convert world coordinates to screen coordinates."""
+        screen_x = int(self.margin_left + (x - self.x_min) * self.x_scale)
+        screen_y = int(self.margin_top + self.plot_height - (y - self.y_min_flex) * self.y_scale)
+        return screen_x, screen_y
+        
+    def _draw_static_elements(self):
+        """Draw grid, axes, and labels that don't change."""
+        # Clear background
+        self.img_array[:] = self.bg_color
+        
+        # Draw grid lines
+        self._draw_grid()
+        
+        # Draw axes
+        self._draw_axes()
+        
+    def _draw_grid(self):
+        """Draw grid lines."""
+        # Vertical grid lines
+        x_step = (self.x_max - self.x_min) / 10
+        for i in range(11):
+            x = self.x_min + i * x_step
+            screen_x, _ = self._world_to_screen(x, 0)
+            if 0 <= screen_x < self.width:
+                self.img_array[self.margin_top:self.margin_top + self.plot_height, screen_x] = self.grid_color
+        
+        # Horizontal grid lines
+        y_step = (self.y_max_flex - self.y_min_flex) / 10
+        for i in range(11):
+            y = self.y_min_flex + i * y_step
+            _, screen_y = self._world_to_screen(0, y)
+            if 0 <= screen_y < self.height:
+                self.img_array[screen_y, self.margin_left:self.margin_left + self.plot_width] = self.grid_color
+                
+    def _draw_axes(self):
+        """Draw main axes."""
+        # Y-axis (flexion)
+        screen_x, _ = self._world_to_screen(0, 0)
+        if 0 <= screen_x < self.width:
+            self.img_array[self.margin_top:self.margin_top + self.plot_height, screen_x:screen_x+2] = self.axis_color
+        
+    def _draw_line(self, x1, y1, x2, y2, color, thickness=1):
+        """Draw a line between two points."""
+        screen_x1, screen_y1 = self._world_to_screen(x1, y1)
+        screen_x2, screen_y2 = self._world_to_screen(x2, y2)
+        
+        # Simple line drawing
+        dx = abs(screen_x2 - screen_x1)
+        dy = abs(screen_y2 - screen_y1)
+        
+        if dx == 0 and dy == 0:
+            return
+            
+        steps = max(dx, dy)
+        if steps == 0:
+            return
+            
+        x_inc = (screen_x2 - screen_x1) / steps
+        y_inc = (screen_y2 - screen_y1) / steps
+        
+        for i in range(steps + 1):
+            x = int(screen_x1 + i * x_inc)
+            y = int(screen_y1 + i * y_inc)
+            
+            if 0 <= x < self.width and 0 <= y < self.height:
+                for t in range(thickness):
+                    for u in range(thickness):
+                        if x + t < self.width and y + u < self.height:
+                            self.img_array[y + u, x + t] = color
+                            
+    def _draw_point(self, x, y, color, size = 2):
+        """#Draw a simple point
+        screen_x, screen_y = self._world_to_screen(x, y)
+        
+        if 0 <= screen_x < self.width and 0 <= screen_y < self.height:
+            self.img_array[screen_y, screen_x] = color"""
+        """Draw a simple point - single pixel or 3x3 square."""
+        screen_x, screen_y = self._world_to_screen(x, y)
+        
+        if size == 1:
+            # Single pixel
+            if 0 <= screen_x < self.width and 0 <= screen_y < self.height:
+                self.img_array[screen_y, screen_x] = color
+        else:
+            # 4x4 square around the pixel
+            for dy in range(-2, 3):  # -1, 0, 1
+                for dx in range(-2, 3):  # -1, 0, 1
+                    px, py = screen_x + dx, screen_y + dy
+                    if 0 <= px < self.width and 0 <= py < self.height:
+                        self.img_array[py, px] = color
+    
+    def add_point(self, flexion_angle, var_val_displacement, rotation_angle, adduction_angle, mode):
+        """Add a new data point to the circular buffer."""
+        self.flexion_data[self.write_idx] = flexion_angle
+        self.varus_valgus_data[self.write_idx] = var_val_displacement
+        self.rotation_data[self.write_idx] = rotation_angle
+        self.adduction_data[self.write_idx] = adduction_angle
+        
+        # Encode mode
+        if mode == "varus_valgus":
+            self.mode_data[self.write_idx] = 0
+        elif mode == "rotation":
+            self.mode_data[self.write_idx] = 1
+        elif mode == "adduction":
+            self.mode_data[self.write_idx] = 2
+            
+        self.write_idx = (self.write_idx + 1) % self.max_points
+        self.point_count = min(self.point_count + 1, self.max_points)
+        
+        
+    def update_varus_valgus_plot(self, flexion_angle, var_val_displacement, rotation_angle, adduction_angle, mode, mode_points):
+        """Main update method - optimized for real-time performance."""
+        # Update mode if changed
+        if mode != self.current_mode or mode_points != self.current_point_mode:
+            self.current_mode = mode
+            self.current_point_mode = mode_points
+            self._update_transform_params()
+            self._draw_static_elements()
+        
+        # Add new data point
+        self.add_point(flexion_angle, var_val_displacement, rotation_angle, adduction_angle, mode)
+        
+        # Render frame
+        self._render_frame()
+        
+        # Trigger Qt repaint
+        self.update()
+    
+    def _apply_angle_filter(self, flexion, vv, rotation, adduction, modes):
+        """Apply angle-based filtering based on current mode."""
+        current_mode_val = 0 if self.current_mode == "varus_valgus" else (1 if self.current_mode == "rotation" else 2)
+        
+        # Start with mode filter
+        mode_mask = modes == current_mode_val
+        
+        if self.current_mode == "rotation":
+            # For rotation mode: filter where -2.5 < adduction < 2.5
+            angle_mask = (adduction >= -constants.RANGE_FILTER_PLOT) & (adduction <= constants.RANGE_FILTER_PLOT)
+        else:  # varus_valgus or adduction mode
+            # For varus_valgus or adduction mode: filter where -2.5 < rotation < 2.5
+            angle_mask = (rotation >= -constants.RANGE_FILTER_PLOT) & (rotation <= constants.RANGE_FILTER_PLOT)
+        
+        # Combine both filters
+        combined_mask = mode_mask & angle_mask
+        
+        return (flexion[combined_mask], 
+                vv[combined_mask], 
+                rotation[combined_mask], 
+                adduction[combined_mask])
+        
+    def _render_frame(self):
+        """Render the current frame with all data points."""
+        # Redraw static elements
+        self._draw_static_elements()
+        
+        if self.point_count == 0:
+            return
+            
+        # Get active data
+        if self.point_count < self.max_points:
+            flexion = self.flexion_data[:self.point_count]
+            vv = self.varus_valgus_data[:self.point_count]
+            rotation = self.rotation_data[:self.point_count]
+            adduction = self.adduction_data[:self.point_count]
+            modes = self.mode_data[:self.point_count]
+        else:
+            # Handle circular buffer
+            flexion = np.concatenate([self.flexion_data[self.write_idx:], self.flexion_data[:self.write_idx]])
+            vv = np.concatenate([self.varus_valgus_data[self.write_idx:], self.varus_valgus_data[:self.write_idx]])
+            rotation = np.concatenate([self.rotation_data[self.write_idx:], self.rotation_data[:self.write_idx]])
+            adduction = np.concatenate([self.adduction_data[self.write_idx:], self.adduction_data[:self.write_idx]])
+            modes = np.concatenate([self.mode_data[self.write_idx:], self.mode_data[:self.write_idx]])
+        
+        # Apply filtering
+        flex_filtered, vv_filtered, rotation_filtered, adduction_filtered = self._apply_angle_filter(
+            flexion, vv, rotation, adduction, modes)
+        
+        if len(flex_filtered) == 0:
+            return
+        
+        # Determine which angle to plot based on current mode
+        if self.current_mode == "rotation":
+            angle_to_plot = rotation_filtered
+        elif self.current_mode == "adduction":
+            angle_to_plot = adduction_filtered
+        else:  # varus_valgus
+            angle_to_plot = vv_filtered
+            
+        # Draw points based on mode
+        if self.current_point_mode == "bars":
+            self._draw_bars(flex_filtered, angle_to_plot)
+        else:
+            self._draw_points(flex_filtered, angle_to_plot)
+            
+        # Draw current point (most recent)
+        if len(flex_filtered) > 0:
+            latest_flex = flex_filtered[-1]
+            latest_angle = angle_to_plot[-1]
+            self._draw_point(latest_angle, latest_flex, self.current_point_color, size=3)
+    
+    def _draw_bars(self, flexion, vv):
+        #Draw horizontal bars from 0 to displacement value.
+        for i in range(len(flexion)):
+            color = self.salmon_color if vv[i] > 0 else self.limegreen_color
+            self._draw_line(0, flexion[i], vv[i], flexion[i], color, thickness=2)
+            
+    def _draw_points(self, flexion, vv):
+        """#Draw simple scatter points.
+        for i in range(len(flexion)):
+            color = self.salmon_color if vv[i] > 0 else self.limegreen_color
+            self._draw_point(vv[i], flexion[i], color, 2)"""
+        """Draw simple scatter points."""
+        for i in range(len(flexion)):
+            color = self.salmon_color if vv[i] > 0 else self.limegreen_color
+            self._draw_point(vv[i], flexion[i], color, size=3)  # size=3 for 3x3 squares
+    
+    def paintEvent(self, event):
+        """PyQt paint event - renders the image to the widget."""
+        painter = QPainter(self)
+        
+        # Convert numpy array to QImage
+        h, w, ch = self.img_array.shape
+        bytes_per_line = ch * w
+        qimage = QImage(self.img_array.data, w, h, bytes_per_line, QImage.Format_RGB888)
+        
+        # Draw the image
+        painter.drawImage(0, 0, qimage)
+        
+        # Draw text labels using QPainter (better performance than drawing on image)
+        self._draw_labels(painter)
+        
+    def _draw_labels(self, painter):
+        """Draw axis labels and title using QPainter."""
+        painter.setPen(QPen(Qt.black))
+        painter.setFont(QFont("Arial", 10))
+        
+        # Y-axis label (rotated)
+        painter.save()
+        painter.translate(20, self.height//2)
+        painter.rotate(-90)
+        painter.drawText(0, 0, "Flexion Angle [°]")
+        painter.restore()
+        
+        # X-axis label
+        if self.current_mode == "varus_valgus":
+            label = "medial joint gap          lateral joint gap"
+        elif self.current_mode == "rotation":
+            label = "external rotation         internal rotation"
+        elif self.current_mode == "adduction":
+            label = "abduction        adduction"
+        else:
+            label = "x-axis"
+            
+        painter.drawText(self.width//2 - 100, self.height - 20, label)
+        
+        # Title
+        painter.setFont(QFont("Arial", 12, QFont.Bold))
+        if self.current_mode == "varus_valgus":
+            title = "medial/lateral joint gap [mm]"
+        else:
+            title = f"{self.current_mode} [°]"
+            
+        painter.drawText(self.width//2 - 100, 20, title)

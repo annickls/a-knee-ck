@@ -25,10 +25,17 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QPushButton,
                             QProgressBar, QGridLayout, QSplitter, QTabWidget, 
                             QSlider, QGroupBox, QTextEdit, QDialog, QDialogButtonBox)
 
+
+import tkinter as tk
+from PIL import Image, ImageTk
+import threading
+import time
+import queue
+
 # custom
 import constants
 from pathlib import Path
-from plot_config1 import MplCanvas, ColoredGLAxisItem
+from plot_config1 import MplCanvas, ColoredGLAxisItem, OptimizedVarusValgusPlot
 from mesh_utils import MeshUtils
 from update_visualization import UpdateVisualization
 
@@ -260,8 +267,8 @@ class KneeFlexionExperiment(QMainWindow):
                                 medial_joint_gap = angles_new['medial_tibia_femur']
                                 
                                 
-                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, lateral_joint_gap, self.diagram_mode, self.diagram_point_mode)
-                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, -medial_joint_gap, self.diagram_mode, self.diagram_point_mode)
+                                #self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, lateral_joint_gap, self.diagram_mode, self.diagram_point_mode)
+                                #self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, -medial_joint_gap, self.diagram_mode, self.diagram_point_mode)
 
                                 
                             elif self.diagram_mode == 'rotation':  # rotation mode
@@ -270,14 +277,14 @@ class KneeFlexionExperiment(QMainWindow):
                                 internal_rotation_angle = angles_new['rotation'] # test for adduction angles
                                 
                                 
-                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, internal_rotation_angle, self.diagram_mode, self.diagram_point_mode)
+                                #self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, internal_rotation_angle, self.diagram_mode, self.diagram_point_mode)
                             else:
                                 # Extract adductionangles from your angles_new dictionary
                                 #internal_rotation_angle = angles_new['rotation']
                                 adduction_angle = angles_new['adduction'] # test for adduction angles
                                 
                                 
-                                self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, adduction_angle, self.diagram_mode, self.diagram_point_mode)
+                                #self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, adduction_angle, self.diagram_mode, self.diagram_point_mode)
                             
 
                         else:
@@ -324,31 +331,57 @@ class KneeFlexionExperiment(QMainWindow):
 
                                 # Set angles and newly calculated joint gaps
                                 flexion_angle = angles_new['flexion']
+                                lateral_joint_gap = angles_new['lateral_tibia_femur']
+                                medial_joint_gap = angles_new['medial_tibia_femur']
+                                internal_rotation_angle = angles_new['rotation'] 
+                                adduction_angle = angles_new['adduction'] # test for adduction angles
 
                                 if self.diagram_mode == "varus_valgus":
                                     
-                                    lateral_joint_gap = angles_new['lateral_tibia_femur']
-                                    medial_joint_gap = angles_new['medial_tibia_femur']
                                     
+                                    self.canvas_varus_valgus.update_varus_valgus_plot(
+                                        flexion_angle, 
+                                        lateral_joint_gap,
+                                        internal_rotation_angle,
+                                        adduction_angle,
+                                        self.diagram_mode, 
+                                        self.diagram_point_mode)
                                     
-                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, lateral_joint_gap, self.diagram_mode, self.diagram_point_mode)
-                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, -medial_joint_gap, self.diagram_mode, self.diagram_point_mode)
+                                    self.canvas_varus_valgus.update_varus_valgus_plot(
+                                        flexion_angle, 
+                                        -medial_joint_gap, 
+                                        internal_rotation_angle,
+                                        adduction_angle,
+                                        self.diagram_mode, 
+                                        self.diagram_point_mode)
 
                                     
                                 elif self.diagram_mode == 'rotation':  # rotation mode
                                     # Extract rotation angles from your angles_new dictionary
                                     #internal_rotation_angle = angles_new['rotation']
-                                    internal_rotation_angle = angles_new['rotation'] # test for adduction angles
+                                    #internal_rotation_angle = angles_new['rotation'] # test for adduction angles
                                     
                                     
-                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, internal_rotation_angle, self.diagram_mode, self.diagram_point_mode)
+                                    self.canvas_varus_valgus.update_varus_valgus_plot(
+                                        flexion_angle, 
+                                        internal_rotation_angle,
+                                        internal_rotation_angle,
+                                        adduction_angle,
+                                        self.diagram_mode, 
+                                        self.diagram_point_mode)
                                 else:
                                     # Extract adductionangles from your angles_new dictionary
                                     #internal_rotation_angle = angles_new['rotation']
-                                    adduction_angle = angles_new['adduction'] # test for adduction angles
+                                    #adduction_angle = angles_new['adduction'] # test for adduction angles
                                     
                                     
-                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, adduction_angle, self.diagram_mode, self.diagram_point_mode)
+                                    self.canvas_varus_valgus.update_varus_valgus_plot(
+                                        flexion_angle, 
+                                        adduction_angle,
+                                        internal_rotation_angle,
+                                        adduction_angle,
+                                        self.diagram_mode, 
+                                        self.diagram_point_mode)
                                 
 
                             else:
@@ -572,7 +605,14 @@ class KneeFlexionExperiment(QMainWindow):
         diagram_layout = QVBoxLayout()
 
         # Create matplotlib canvas for the dynamic diagram
-        self.canvas_varus_valgus = MplCanvas(width=6, height=7, mode="varus_valgus")
+        #self.canvas_varus_valgus = MplCanvas(width=6, height=7, mode="varus_valgus")
+
+        #self.root = tk.Tk()
+        #self.root.title("Optimized Varus-Valgus Plot")
+        self.canvas_varus_valgus = OptimizedVarusValgusPlot(self, width=400, height=600)
+
+        
+
         diagram_layout.addWidget(self.canvas_varus_valgus)
 
         # Add contour calculation button
@@ -1288,19 +1328,19 @@ class KneeFlexionExperiment(QMainWindow):
         """Toggle between varus/valgus and rotation display modes"""
         if self.diagram_mode == "varus_valgus":
             self.diagram_mode = "rotation"
-            self.diagram_axes_button.setText("click to show adduction angle")
+            self.diagram_axes_button.setText("click to show var/val angle")
             
             # Update diagram title
             if hasattr(self, 'canvas_varus_valgus'):
                 try:
                     # Clear the plot and reset
-                    self.canvas_varus_valgus.ax.clear()
+                    """self.canvas_varus_valgus.ax.clear()
                     self.canvas_varus_valgus.ax.set_ylabel('Flexion Angle [°]')
                     self.canvas_varus_valgus.ax.set_title('Internal/External Rotation [°]')
                     self.canvas_varus_valgus.ax.grid(True, alpha=0.3)
                     self.canvas_varus_valgus.ax.set_xlim(-constants.X_LIM_ROT, constants.X_LIM_ROT)  
                     self.canvas_varus_valgus.ax.set_ylim(constants.Y_MIN_FLEX, constants.Y_MAX_FLEX)
-                    self.canvas_varus_valgus.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
+                    self.canvas_varus_valgus.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)"""
                     
                     # Clear the stored data arrays
                     self.canvas_varus_valgus.varus_valgus_data = []
@@ -1322,7 +1362,7 @@ class KneeFlexionExperiment(QMainWindow):
                     self.canvas_varus_valgus.ax.clear()
                     #self.canvas_varus_valgus.ax.set_xlabel('test1')
                     self.canvas_varus_valgus.ax.set_ylabel('Flexion Angle [°]')
-                    self.canvas_varus_valgus.ax.set_title('adduction angle [°]')
+                    self.canvas_varus_valgus.ax.set_title('var/val angle [°]')
                     self.canvas_varus_valgus.ax.grid(True, alpha=0.3)
                     self.canvas_varus_valgus.ax.set_xlim(-constants.X_LIM_VAL, constants.X_LIM_VAL)
                     self.canvas_varus_valgus.ax.set_ylim(constants.Y_MIN_FLEX, constants.Y_MAX_FLEX)
