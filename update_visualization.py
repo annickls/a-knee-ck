@@ -398,8 +398,8 @@ class UpdateVisualization():
    
     def update_display(self):
         current_angle = constants.FLEXION_ANGLES[self.current_angle_index]
-        self.next_label.setText(f"Please flex knee to {current_angle} degrees")
-        self.next_label.setAlignment(Qt.AlignCenter)
+        #self.next_label.setText(f"Please flex knee to {current_angle} degrees")
+        #self.next_label.setAlignment(Qt.AlignCenter)
         # Update overall progress
         self.overall_progress.setValue(self.current_angle_index)
             

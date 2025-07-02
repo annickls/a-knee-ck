@@ -363,7 +363,7 @@ class OptimizedVarusValgusPlot(QWidget):
         self.img_array = np.zeros((height, width, 3), dtype=np.uint8)
         
         # Colors (RGB values)
-        self.bg_color = np.array([240, 240, 240], dtype=np.uint8)
+        self.bg_color = np.array([255, 255, 255], dtype=np.uint8)
         self.grid_color = np.array([200, 200, 200], dtype=np.uint8)
         self.axis_color = np.array([100, 100, 100], dtype=np.uint8)
         self.salmon_color = np.array([250, 128, 114], dtype=np.uint8)
@@ -424,22 +424,85 @@ class OptimizedVarusValgusPlot(QWidget):
         self._draw_axes()
         
     def _draw_grid(self):
-        """Draw grid lines."""
+        """Draw grid lines with ticks."""
         # Vertical grid lines
         x_step = (self.x_max - self.x_min) / 10
         for i in range(11):
             x = self.x_min + i * x_step
             screen_x, _ = self._world_to_screen(x, 0)
             if 0 <= screen_x < self.width:
+                # Draw vertical grid line
                 self.img_array[self.margin_top:self.margin_top + self.plot_height, screen_x] = self.grid_color
+                
+                # Draw tick marks on x-axis
+                y_axis_screen_y = self.margin_top + self.plot_height
+                if y_axis_screen_y < self.height:
+                    # Draw tick mark (extend below the axis)
+                    tick_length = 8
+                    for tick_y in range(tick_length):
+                        if y_axis_screen_y + tick_y < self.height:
+                            self.img_array[y_axis_screen_y + tick_y, screen_x] = self.axis_color
         
         # Horizontal grid lines
-        y_step = (self.y_max_flex - self.y_min_flex) / 10
-        for i in range(11):
+        y_step = (self.y_max_flex - self.y_min_flex) / 13
+        for i in range(14):
             y = self.y_min_flex + i * y_step
             _, screen_y = self._world_to_screen(0, y)
             if 0 <= screen_y < self.height:
+                # Draw horizontal grid line
                 self.img_array[screen_y, self.margin_left:self.margin_left + self.plot_width] = self.grid_color
+                
+                # Draw tick marks on y-axis
+                y_axis_screen_x = self.margin_left
+                if y_axis_screen_x >= 0:
+                    # Draw tick mark (extend left of the axis)
+                    tick_length = 8
+                    for tick_x in range(tick_length):
+                        if y_axis_screen_x - tick_x >= 0:
+                            self.img_array[screen_y, y_axis_screen_x - tick_x] = self.axis_color
+
+    def _draw_tick_labels(self, painter):
+        """Draw tick labels using QPainter for better text rendering."""
+        painter.setPen(QPen(Qt.black))
+        painter.setFont(QFont("Arial", 8))
+        
+        # X-axis tick labels
+        x_step = (self.x_max - self.x_min) / 10
+        for i in range(11):
+            x_value = self.x_min + i * x_step
+            screen_x, _ = self._world_to_screen(x_value, 0)
+            
+            if 0 <= screen_x < self.width:
+                # Format the label based on the value range
+                if abs(x_value) < 0.01:  # Very close to zero
+                    label = "0"
+                elif abs(x_value) < 1:
+                    label = f"{x_value:.1f}"
+                else:
+                    label = f"{x_value:.0f}"
+                
+                # Draw label below the tick
+                label_y = self.margin_top + self.plot_height + 25
+                painter.drawText(screen_x - 10, label_y, label)
+        
+        # Y-axis tick labels
+        y_step = (self.y_max_flex - self.y_min_flex) / 13
+        for i in range(14):
+            y_value = self.y_min_flex + i * y_step
+            _, screen_y = self._world_to_screen(0, y_value)
+            
+            if 0 <= screen_y < self.height:
+                # Format the label
+                if abs(y_value) < 0.01:  # Very close to zero
+                    label = "0"
+                elif abs(y_value) < 1:
+                    label = f"{y_value:.1f}"
+                else:
+                    label = f"{y_value:.0f}"
+                
+                # Draw label to the left of the tick
+                label_x = self.margin_left - 35
+                painter.drawText(label_x, screen_y + 4, label)
                 
     def _draw_axes(self):
         """Draw main axes."""
@@ -643,6 +706,9 @@ class OptimizedVarusValgusPlot(QWidget):
         painter.setPen(QPen(Qt.black))
         painter.setFont(QFont("Arial", 10))
         
+        # Draw tick labels first
+        self._draw_tick_labels(painter)
+        
         # Y-axis label (rotated)
         painter.save()
         painter.translate(20, self.height//2)
@@ -656,7 +722,7 @@ class OptimizedVarusValgusPlot(QWidget):
         elif self.current_mode == "rotation":
             label = "external rotation         internal rotation"
         elif self.current_mode == "adduction":
-            label = "abduction        adduction"
+            label = "varus angle        valgus angle"
         else:
             label = "x-axis"
             

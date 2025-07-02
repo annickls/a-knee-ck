@@ -26,12 +26,6 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QPushButton,
                             QSlider, QGroupBox, QTextEdit, QDialog, QDialogButtonBox)
 
 
-import tkinter as tk
-from PIL import Image, ImageTk
-import threading
-import time
-import queue
-
 # custom
 import constants
 from pathlib import Path
@@ -389,28 +383,7 @@ class KneeFlexionExperiment(QMainWindow):
                             else:
                                 test = 0
                             
-                            """if self.diagram_start_mode == "start":
-                                angles_new = UpdateVisualization.get_current_knee_angles()
-                                flexion_angle = angles_new['flexion']
-                                
-                                if self.diagram_mode == "varus_valgus":
-                                    lateral_joint_gap = angles_new['lateral_tibia_femur']
-                                    medial_joint_gap = angles_new['medial_tibia_femur']
-                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, lateral_joint_gap, 
-                                                                                    self.diagram_mode, self.diagram_point_mode)
-                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, -medial_joint_gap, 
-                                                                                    self.diagram_mode, self.diagram_point_mode)
-                                elif self.diagram_mode == 'rotation':
-                                    internal_rotation_angle = angles_new['rotation']
-                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, internal_rotation_angle, 
-                                                                                    self.diagram_mode, self.diagram_point_mode)
-                                else:
-                                    adduction_angle = angles_new['adduction']
-                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, adduction_angle, 
-                                                                                    self.diagram_mode, self.diagram_point_mode)
-
                             
-                            #self.canvas_varus_valgus.draw()"""
                         
                         # Update force visualization
                         UpdateVisualization.update_bone_forces(self, self.current_data_index)
@@ -581,8 +554,8 @@ class KneeFlexionExperiment(QMainWindow):
         #tab2_layout.addWidget(self.canvas_history)
 
         # Create matplotlib canvas for the dynamic diagram
-        self.canvas_varus_valgus = MplCanvas(width=6, height=7, mode="varus_valgus")
-        tab2_layout.addWidget(self.canvas_varus_valgus)
+        #self.canvas_varus_valgus = MplCanvas(width=6, height=7, mode="varus_valgus")
+        #tab2_layout.addWidget(self.canvas_varus_valgus)
         self.tab2.setLayout(tab2_layout)
         
          # bone tab
@@ -631,7 +604,7 @@ class KneeFlexionExperiment(QMainWindow):
 
         #self.root = tk.Tk()
         #self.root.title("Optimized Varus-Valgus Plot")
-        self.canvas_varus_valgus = OptimizedVarusValgusPlot(self, width=400, height=600)
+        self.canvas_varus_valgus = OptimizedVarusValgusPlot(self, width=600, height=600)
         #self.canvas_varus_valgus = VarusValgusCanvas()
 
         
@@ -641,7 +614,7 @@ class KneeFlexionExperiment(QMainWindow):
         # Add contour calculation button
         self.contour_button = QPushButton("Calculate Contour Plot")
         self.contour_button.clicked.connect(self.calculate_and_plot_contours)
-        self.contour_button.setMinimumHeight(40)
+        self.contour_button.setMinimumHeight(constants.BUTTON_HEIGHT_3)
         self.contour_button.setStyleSheet("""
             QPushButton {
                 background-color: #4CAF50;
@@ -658,6 +631,41 @@ class KneeFlexionExperiment(QMainWindow):
                 background-color: #3d8b40;
             }
         """)
+
+
+        diagram_buttons_layout = QHBoxLayout()
+
+        self.diagram_axes_rotation_button = QPushButton("rotation [°]")
+        self.diagram_axes_rotation_button.setFixedHeight(constants.BUTTON_HEIGHT_3)
+        self.diagram_axes_rotation_button.clicked.connect(self.toggle_diagram_axes_rotation)
+        diagram_buttons_layout.addWidget(self.diagram_axes_rotation_button)
+
+        self.diagram_axes_adduction_button = QPushButton("var/val [°]")
+        self.diagram_axes_adduction_button.setFixedHeight(constants.BUTTON_HEIGHT_3)
+        self.diagram_axes_adduction_button.clicked.connect(self.toggle_diagram_axes_adduction)
+        diagram_buttons_layout.addWidget(self.diagram_axes_adduction_button)
+
+        self.diagram_axes_joint_gaps_button = QPushButton("joint gaps")
+        self.diagram_axes_joint_gaps_button.setFixedHeight(constants.BUTTON_HEIGHT_3)
+        self.diagram_axes_joint_gaps_button.clicked.connect(self.toggle_diagram_axes_joint_gaps)
+        diagram_buttons_layout.addWidget(self.diagram_axes_joint_gaps_button)
+
+
+        diagram_buttons_translations_layout = QHBoxLayout()
+
+        self.diagram_axes_anterior_button = QPushButton("anterior/posterior translation")
+        self.diagram_axes_anterior_button.setFixedHeight(constants.BUTTON_HEIGHT_3)
+        self.diagram_axes_anterior_button.clicked.connect(self.toggle_diagram_axes_anterior)
+        diagram_buttons_translations_layout.addWidget(self.diagram_axes_anterior_button)
+
+        self.diagram_axes_medial_button = QPushButton("medial/lateral translation")
+        self.diagram_axes_medial_button.setFixedHeight(constants.BUTTON_HEIGHT_3)
+        self.diagram_axes_medial_button.clicked.connect(self.toggle_diagram_axes_medial)
+        diagram_buttons_translations_layout.addWidget(self.diagram_axes_medial_button)
+
+
+        diagram_layout.addLayout(diagram_buttons_layout)
+        diagram_layout.addLayout(diagram_buttons_translations_layout)
         diagram_layout.addWidget(self.contour_button)
 
         self.save_plot_button = QPushButton("Save Plot")
@@ -713,10 +721,10 @@ class KneeFlexionExperiment(QMainWindow):
         self.next_button.setFixedHeight(constants.BUTTON_HEIGHT)
 
         # Next Angle Label
-        self.next_label = QLabel("test1")
-        font = self.next_label.font()
-        font.setPointSize(12)
-        self.next_label.setFont(font)
+        #self.next_label = QLabel("test1")
+        #font = self.next_label.font()
+        #font.setPointSize(12)
+        #self.next_label.setFont(font)
 
         # Rotate Button
         self.rotate_button = QPushButton("Hold Flexion for 5 s")
@@ -772,10 +780,7 @@ class KneeFlexionExperiment(QMainWindow):
         #self.start_buttoncsv.setFixedSize(150, 40)
         self.start_buttoncsv.clicked.connect(self.toggle_monitoring)
 
-        #test button to change axes in diagram
-        self.diagram_axes_button = QPushButton("click to show rotation")
-        self.diagram_axes_button.setFixedHeight(constants.BUTTON_HEIGHT_2)
-        self.diagram_axes_button.clicked.connect(self.toggle_diagram_axes)
+        
 
         # start stop plotting
         self.diagram_start_stop_button = QPushButton("start plot")
@@ -805,7 +810,7 @@ class KneeFlexionExperiment(QMainWindow):
         subsub_layout.addWidget(self.next_button)
 
         right_layout.addLayout(subsub_layout, 0, 0)
-        right_layout.addWidget(self.next_label, 1, 0)
+        #right_layout.addWidget(self.next_label, 1, 0)
         #right_layout.addWidget(self.image_frame, 1, 1, 5, 3)
         
         right_layout.addWidget(record_data_label, 2, 0, 2, 1)
@@ -816,7 +821,7 @@ class KneeFlexionExperiment(QMainWindow):
         right_layout.addWidget(self.external_rot_button, 7, 0)
         right_layout.addWidget(self.lachmann_button, 8, 0)
         right_layout.addWidget(self.start_buttoncsv, 9,0, 2, 1)
-        right_layout.addWidget(self.diagram_axes_button, 10,0, 2, 1)
+        #right_layout.addWidget(self.diagram_axes_button, 10,0, 2, 1)
         right_layout.addWidget(self.diagram_start_stop_button, 11,0, 2, 1)
         right_layout.addWidget(self.record_individual_button, 12,0, 2, 1)
         right_layout.addWidget(self.diagram_toggle_bar_point_button, 13,0, 2, 1)
@@ -933,7 +938,7 @@ class KneeFlexionExperiment(QMainWindow):
         self.current_angle_index = 0
         self.current_angle = constants.FLEXION_ANGLES[self.current_angle_index]
         self.overall_progress.setValue(0)
-        self.next_label.setText(f"Please flex knee to {self.current_angle} degrees")
+        #self.next_label.setText(f"Please flex knee to {self.current_angle} degrees")
         self.rotation_progress_label.show()
         self.rotation_progress.show()
 
@@ -966,7 +971,7 @@ class KneeFlexionExperiment(QMainWindow):
         self.experiment_running = True
         
         # Enable only needed buttons
-        self.next_label.show()
+        #self.next_label.show()
         self.start_button.setEnabled(False)
         self.rotate_button.setEnabled(True)
         
@@ -1037,7 +1042,7 @@ class KneeFlexionExperiment(QMainWindow):
     def start_lachmann(self):  
         self.lachmann_button.setEnabled(False)
         self.image_label.clear()
-        self.next_label.hide()
+        #self.next_label.hide()
         
         self.rotation_progress_label.setText("Performing Lachmann Test")
         self.rotation_progress_label.show()
@@ -1077,7 +1082,7 @@ class KneeFlexionExperiment(QMainWindow):
             self.start_button.setEnabled(True) # Enable start button again
 
             # Hide instructions
-            self.next_label.hide()
+            #self.next_label.hide()
             self.rotation_progress_label.hide()
             self.rotation_progress.hide()
         
@@ -1354,8 +1359,8 @@ class KneeFlexionExperiment(QMainWindow):
         
         return legend_widget
     
-    def toggle_diagram_axes(self):
-        """Toggle between varus/valgus and rotation display modes"""
+    """def toggle_diagram_axes(self):
+        #Toggle between varus/valgus and rotation display modes
         if self.diagram_mode == "varus_valgus":
             self.diagram_mode = "rotation"
             self.diagram_axes_button.setText("click to show var/val angle")
@@ -1364,13 +1369,13 @@ class KneeFlexionExperiment(QMainWindow):
             if hasattr(self, 'canvas_varus_valgus'):
                 try:
                     # Clear the plot and reset
-                    """self.canvas_varus_valgus.ax.clear()
+                    self.canvas_varus_valgus.ax.clear()
                     self.canvas_varus_valgus.ax.set_ylabel('Flexion Angle [°]')
                     self.canvas_varus_valgus.ax.set_title('Internal/External Rotation [°]')
                     self.canvas_varus_valgus.ax.grid(True, alpha=0.3)
                     self.canvas_varus_valgus.ax.set_xlim(-constants.X_LIM_ROT, constants.X_LIM_ROT)  
                     self.canvas_varus_valgus.ax.set_ylim(constants.Y_MIN_FLEX, constants.Y_MAX_FLEX)
-                    self.canvas_varus_valgus.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)"""
+                    self.canvas_varus_valgus.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
                     
                     # Clear the stored data arrays
                     #self.canvas_varus_valgus.varus_valgus_data = []
@@ -1433,7 +1438,27 @@ class KneeFlexionExperiment(QMainWindow):
                 except Exception as e:
                     print(f"Error updating plot to varus/valgus mode: {e}")
         
+        print(f"Diagram mode switched to: {self.diagram_mode}")"""
+
+
+    def toggle_diagram_axes_rotation(self):
+        self.diagram_mode = "rotation"
         print(f"Diagram mode switched to: {self.diagram_mode}")
+
+    def toggle_diagram_axes_adduction(self):
+        self.diagram_mode = "adduction"
+        print(f"Diagram mode switched to: {self.diagram_mode}")
+
+    def toggle_diagram_axes_joint_gaps(self):
+        self.diagram_mode = "varus_valgus"
+        print(f"Diagram mode switched to: {self.diagram_mode}") 
+
+    def toggle_diagram_axes_anterior(self):
+        print("here you would see ap translation")
+
+    def toggle_diagram_axes_medial(self):
+        print("here you would see ml translation")
+        
 
     def start_stop_diagram(self):
         if self.diagram_start_mode == "stop":
@@ -1452,14 +1477,6 @@ class KneeFlexionExperiment(QMainWindow):
             self.diagram_toggle_bar_point_button.setText("show bars")  # Update button text
 
     def clear_diagram(self):
-        """self.canvas_varus_valgus.varus_valgus_data = [np.zeros(100000, dtype=np.float32)]
-        self.canvas_varus_valgus.flexion_data = np.zeros(100000, dtype=np.float32)
-
-        self.canvas_varus_valgus.rotation_data = np.zeros(100000, dtype=np.float32)
-        self.canvas_varus_valgus.adduction_data = np.zeros(100000, dtype=np.float32)
-
-        self.canvas_varus_valgus.write_idx = 0
-        self.canvas_varus_valgus.point_count = 0"""
         self.canvas_varus_valgus.clear_data()
 
 
