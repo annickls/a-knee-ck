@@ -35,7 +35,7 @@ import queue
 # custom
 import constants
 from pathlib import Path
-from plot_config1 import MplCanvas, ColoredGLAxisItem, OptimizedVarusValgusPlot, VarusValgusCanvas
+from plot_config1 import MplCanvas, ColoredGLAxisItem, OptimizedVarusValgusPlot
 from mesh_utils import MeshUtils
 from update_visualization import UpdateVisualization
 
@@ -1460,7 +1460,7 @@ class KneeFlexionExperiment(QMainWindow):
 
         self.canvas_varus_valgus.write_idx = 0
         self.canvas_varus_valgus.point_count = 0"""
-        print("test")
+        self.canvas_varus_valgus.clear_data()
 
 
     def calculate_and_plot_contours(self):
