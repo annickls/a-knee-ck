@@ -35,9 +35,11 @@ import queue
 # custom
 import constants
 from pathlib import Path
-from plot_config1 import MplCanvas, ColoredGLAxisItem, OptimizedVarusValgusPlot
+from plot_config1 import MplCanvas, ColoredGLAxisItem, OptimizedVarusValgusPlot, VarusValgusCanvas
 from mesh_utils import MeshUtils
 from update_visualization import UpdateVisualization
+
+
 
 
 
@@ -386,9 +388,29 @@ class KneeFlexionExperiment(QMainWindow):
 
                             else:
                                 test = 0
+                            
+                            """if self.diagram_start_mode == "start":
+                                angles_new = UpdateVisualization.get_current_knee_angles()
+                                flexion_angle = angles_new['flexion']
+                                
+                                if self.diagram_mode == "varus_valgus":
+                                    lateral_joint_gap = angles_new['lateral_tibia_femur']
+                                    medial_joint_gap = angles_new['medial_tibia_femur']
+                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, lateral_joint_gap, 
+                                                                                    self.diagram_mode, self.diagram_point_mode)
+                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, -medial_joint_gap, 
+                                                                                    self.diagram_mode, self.diagram_point_mode)
+                                elif self.diagram_mode == 'rotation':
+                                    internal_rotation_angle = angles_new['rotation']
+                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, internal_rotation_angle, 
+                                                                                    self.diagram_mode, self.diagram_point_mode)
+                                else:
+                                    adduction_angle = angles_new['adduction']
+                                    self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, adduction_angle, 
+                                                                                    self.diagram_mode, self.diagram_point_mode)
 
                             
-                            #self.canvas_varus_valgus.draw()
+                            #self.canvas_varus_valgus.draw()"""
                         
                         # Update force visualization
                         UpdateVisualization.update_bone_forces(self, self.current_data_index)
@@ -610,6 +632,7 @@ class KneeFlexionExperiment(QMainWindow):
         #self.root = tk.Tk()
         #self.root.title("Optimized Varus-Valgus Plot")
         self.canvas_varus_valgus = OptimizedVarusValgusPlot(self, width=400, height=600)
+        #self.canvas_varus_valgus = VarusValgusCanvas()
 
         
 
@@ -765,6 +788,12 @@ class KneeFlexionExperiment(QMainWindow):
         self.diagram_point_mode = "points"
         self.diagram_toggle_bar_point_button.clicked.connect(self.toggle_bar_point_diagram)
 
+        # button to clear plot
+        self.diagram_clear_button = QPushButton("clear plot")
+        self.diagram_clear_button.setFixedHeight(constants.BUTTON_HEIGHT_2)
+        self.diagram_clear_button.clicked.connect(self.clear_diagram)
+
+
         #button to record data
         self.record_individual_button = QPushButton("Record Data")
         self.record_individual_button.setFixedHeight(constants.BUTTON_HEIGHT_2)
@@ -791,6 +820,7 @@ class KneeFlexionExperiment(QMainWindow):
         right_layout.addWidget(self.diagram_start_stop_button, 11,0, 2, 1)
         right_layout.addWidget(self.record_individual_button, 12,0, 2, 1)
         right_layout.addWidget(self.diagram_toggle_bar_point_button, 13,0, 2, 1)
+        right_layout.addWidget(self.diagram_clear_button, 14,0, 2, 1)
         
 
         
@@ -816,7 +846,7 @@ class KneeFlexionExperiment(QMainWindow):
         self.overall_progress.setStyleSheet("QProgressBar {border: 1px solid grey; border-radius: 3px; text-align: center;}"
                                            "QProgressBar::chunk {background-color: #4CAF50; width: 10px;}") # Set color for overall progress bar
         overall_progress_layout.addWidget(self.overall_progress)
-        main_layout.addLayout(overall_progress_layout, 3, 0, 1, 2)
+        #main_layout.addLayout(overall_progress_layout, 3, 0, 1, 2)
 
         # Set main layout
         main_widget.setLayout(main_layout)
@@ -1343,8 +1373,8 @@ class KneeFlexionExperiment(QMainWindow):
                     self.canvas_varus_valgus.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)"""
                     
                     # Clear the stored data arrays
-                    self.canvas_varus_valgus.varus_valgus_data = []
-                    self.canvas_varus_valgus.flexion_data = []
+                    #self.canvas_varus_valgus.varus_valgus_data = []
+                    #self.canvas_varus_valgus.flexion_data = []
                     
                     #self.canvas_varus_valgus.draw()
                     
@@ -1369,8 +1399,8 @@ class KneeFlexionExperiment(QMainWindow):
                     self.canvas_varus_valgus.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
                     
                     # Clear the stored data arrays
-                    self.canvas_varus_valgus.varus_valgus_data = []
-                    self.canvas_varus_valgus.flexion_data = []
+                    #self.canvas_varus_valgus.varus_valgus_data = []
+                    #self.canvas_varus_valgus.flexion_data = []
                     
                     #self.canvas_varus_valgus.draw()
                     
@@ -1395,8 +1425,8 @@ class KneeFlexionExperiment(QMainWindow):
                     self.canvas_varus_valgus.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
                     
                     # Clear the stored data arrays
-                    self.canvas_varus_valgus.varus_valgus_data = []
-                    self.canvas_varus_valgus.flexion_data = []
+                    #self.canvas_varus_valgus.varus_valgus_data = []
+                    #self.canvas_varus_valgus.flexion_data = []
                     
                     #self.canvas_varus_valgus.draw()
                     
@@ -1420,6 +1450,17 @@ class KneeFlexionExperiment(QMainWindow):
         else:
             self.diagram_point_mode = "points"
             self.diagram_toggle_bar_point_button.setText("show bars")  # Update button text
+
+    def clear_diagram(self):
+        """self.canvas_varus_valgus.varus_valgus_data = [np.zeros(100000, dtype=np.float32)]
+        self.canvas_varus_valgus.flexion_data = np.zeros(100000, dtype=np.float32)
+
+        self.canvas_varus_valgus.rotation_data = np.zeros(100000, dtype=np.float32)
+        self.canvas_varus_valgus.adduction_data = np.zeros(100000, dtype=np.float32)
+
+        self.canvas_varus_valgus.write_idx = 0
+        self.canvas_varus_valgus.point_count = 0"""
+        print("test")
 
 
     def calculate_and_plot_contours(self):
