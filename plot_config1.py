@@ -615,7 +615,7 @@ class OptimizedVarusValgusPlot(QWidget):
     
     def _apply_angle_filter(self, flexion, vv, rotation, adduction, anterior, medial, modes):
         """Apply angle-based filtering based on current mode."""
-        """if self.current_mode == "varus_valgus":
+        if self.current_mode == "varus_valgus":
             current_mode_val = 0  
         elif self.current_mode == "rotation":
             current_mode_val = 1
@@ -652,9 +652,9 @@ class OptimizedVarusValgusPlot(QWidget):
                 rotation[combined_mask], 
                 adduction[combined_mask],
                 anterior[combined_mask],
-                medial[combined_mask])"""
-        print("DEBUG: Filtering disabled - returning all data")
-        return flexion, vv, rotation, adduction, anterior, medial
+                medial[combined_mask])
+        #print("DEBUG: Filtering disabled - returning all data")
+        #return flexion, vv, rotation, adduction, anterior, medial
         
         
     def _render_frame(self):
@@ -686,11 +686,8 @@ class OptimizedVarusValgusPlot(QWidget):
         
         # Apply filtering
         flex_filtered, vv_filtered, rotation_filtered, adduction_filtered, anterior_filtered, medial_filtered = self._apply_angle_filter(
-            flexion, vv, rotation, adduction, modes, anterior, medial)
+            flexion, vv, rotation, adduction, anterior, medial, modes)
         
-        # debug because of problem in apply_filter
-        anterior_filtered = anterior
-        medial_filtered = medial
         
         if len(flex_filtered) == 0:
             return
@@ -726,10 +723,6 @@ class OptimizedVarusValgusPlot(QWidget):
             self._draw_line(0, flexion[i], vv[i], flexion[i], color, thickness=2)
             
     def _draw_points(self, flexion, vv):
-        """#Draw simple scatter points.
-        for i in range(len(flexion)):
-            color = self.salmon_color if vv[i] > 0 else self.limegreen_color
-            self._draw_point(vv[i], flexion[i], color, 2)"""
         """Draw simple scatter points."""
         for i in range(len(flexion)):
             color = self.salmon_color if vv[i] > 0 else self.limegreen_color
