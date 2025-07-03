@@ -343,9 +343,9 @@ class OptimizedVarusValgusPlot(QWidget):
         self.medial_data = np.zeros(self.max_points, dtype=np.float32)
         
         # Debug: Print array types and shapes to verify they're created correctly
-        print(f"Array types and shapes:")
-        print(f"flexion_data: {type(self.flexion_data)}, shape: {self.flexion_data.shape}")
-        print(f"max_points: {self.max_points}")
+        #print(f"Array types and shapes:")
+        #print(f"flexion_data: {type(self.flexion_data)}, shape: {self.flexion_data.shape}")
+        #print(f"max_points: {self.max_points}")
         
         self.write_idx = 0
         self.point_count = 0

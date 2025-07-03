@@ -471,7 +471,7 @@ class KneeFlexionExperiment(QMainWindow):
         # Create a filename with timestamp, angle, and test type
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         angle = constants.FLEXION_ANGLES[self.current_angle_index]
-        filename = f"recorded_data/{timestamp}_{angle}deg_{self.current_test_name}.csv"
+        filename = f"recorded_data/{timestamp}_{self.current_test_name}_{angle}.csv"
 
         # Get current knee angles
         angles = UpdateVisualization.get_current_knee_angles()
@@ -515,6 +515,9 @@ class KneeFlexionExperiment(QMainWindow):
             elif index == 2:  # Bone visualization tab
                 UpdateVisualization.update_bone_forces(self, self.current_data_index)
             print(f"Tab changed to {index}, visualization updated")
+
+    def on_plot_tab_changed(self, index):
+        print("plot tab changed")
 
     def setup_ui(self):
         
@@ -562,7 +565,14 @@ class KneeFlexionExperiment(QMainWindow):
         self.tabs.addTab(self.tab1, "current data")
         self.tabs.addTab(self.tab2, "point diagram")
         self.tabs.addTab(self.tab3, "bone visualization")
-        #self.tabs.addTab(self.tab4, "position path")
+
+        #subtabs for contour plot
+        self.plot_tabs = QTabWidget()
+        self.tab_live = QWidget()
+        self.tab_contour = QWidget()
+
+        self.plot_tabs.addTab(self.tab_live, "live points")
+        self.plot_tabs.addTab(self.tab_contour, "contour plot")
 
         # first tab
         tab1_layout = QVBoxLayout()
@@ -579,18 +589,10 @@ class KneeFlexionExperiment(QMainWindow):
         # second tab
         tab2_layout = QVBoxLayout()
         # Add force/torque visualization
-        viz_label_2 = QLabel("Filtered Point Diagram")
+        viz_label_2 = QLabel("Filtered Point Diagram with contour lines")
         viz_label_2.setAlignment(Qt.AlignCenter)
         viz_label_2.setFont(QFont("Arial", 12, QFont.Bold))
         tab2_layout.addWidget(viz_label_2)
-        # Create matplotlib visualization
-        self.canvas_history = MplCanvas(width=4, height=8, mode="history")
-        #tab2_layout.addWidget(self.canvas_history)
-
-        # Create matplotlib canvas for the dynamic diagram
-        #self.canvas_varus_valgus = MplCanvas(width=6, height=7, mode="varus_valgus")
-        #tab2_layout.addWidget(self.canvas_varus_valgus)
-        self.tab2.setLayout(tab2_layout)
         
          # bone tab
         # Modified third tab layout with dynamic diagram
@@ -626,26 +628,44 @@ class KneeFlexionExperiment(QMainWindow):
         self.force_arrow_head = None
         gl_legend = self.setup_legend_widget()
 
+        # Add text display for joint angles and translations
+        angles_translations_layout = QHBoxLayout()
+        self.joint_angles_text = QLabel("Joint Angles: \n Not calculated yet")
+        self.joint_angles_text.setFont(QFont("Arial", 11))
+        self.joint_angles_text.setAlignment(Qt.AlignLeft)
+        angles_translations_layout.addWidget(self.joint_angles_text)
+
+        # Add text display for joint translations
+        self.joint_translations_text = QLabel("Joint Translations: \n Not calculated yet")
+        self.joint_translations_text.setFont(QFont("Arial", 11))
+        self.joint_translations_text.setAlignment(Qt.AlignLeft)
+        angles_translations_layout.addWidget(self.joint_translations_text)
+        
+
+        bone_viz_layout.addLayout(angles_translations_layout)
         bone_viz_layout.addWidget(gl_legend)
         bone_viz_layout.addWidget(self.gl_view)
         bone_viz_layout.addLayout(bone_load_layout)
 
         # Right side - Dynamic diagram section
         diagram_layout = QVBoxLayout()
-
-        # Create matplotlib canvas for the dynamic diagram
-        #self.canvas_varus_valgus = MplCanvas(width=6, height=7, mode="varus_valgus")
-
-        #self.root = tk.Tk()
-        #self.root.title("Optimized Varus-Valgus Plot")
+        tab_live_layout = QVBoxLayout()
         self.canvas_varus_valgus = OptimizedVarusValgusPlot(self, width=600, height=600)
-        #self.canvas_varus_valgus = VarusValgusCanvas()
+        tab_live_layout.addWidget(self.canvas_varus_valgus)
+        self.tab_live.setLayout(tab_live_layout)
 
-        
+        # second tab
+        tab_contour_plot_layout = QVBoxLayout()
+        # Add force/torque visualization
+        viz_label_2 = QLabel("Filtered Point Diagram with contour lines")
+        viz_label_2.setAlignment(Qt.AlignCenter)
+        viz_label_2.setFont(QFont("Arial", 12, QFont.Bold))
+        tab_contour_plot_layout.addWidget(viz_label_2)
+        # Create matplotlib visualization
+        self.canvas_contour_plot = MplCanvas(width=4, height=8, mode="varus_valgus")
+        tab_contour_plot_layout.addWidget(self.canvas_contour_plot)
 
-        diagram_layout.addWidget(self.canvas_varus_valgus)
-
-        # Add contour calculation button
+          # Add contour calculation button
         self.contour_button = QPushButton("Calculate Contour Plot")
         self.contour_button.clicked.connect(self.calculate_and_plot_contours)
         self.contour_button.setMinimumHeight(constants.BUTTON_HEIGHT_3)
@@ -666,6 +686,15 @@ class KneeFlexionExperiment(QMainWindow):
             }
         """)
 
+        tab_contour_plot_layout.addWidget(self.contour_button)
+
+        self.tab_contour.setLayout(tab_contour_plot_layout)
+
+
+        self.plot_tabs.currentChanged.connect(self.on_plot_tab_changed)
+        diagram_layout.addWidget(self.plot_tabs)
+
+
 
         diagram_buttons_layout = QHBoxLayout()
 
@@ -679,7 +708,7 @@ class KneeFlexionExperiment(QMainWindow):
         self.diagram_axes_adduction_button.clicked.connect(self.toggle_diagram_axes_adduction)
         diagram_buttons_layout.addWidget(self.diagram_axes_adduction_button)
 
-        self.diagram_axes_joint_gaps_button = QPushButton("joint gaps")
+        self.diagram_axes_joint_gaps_button = QPushButton("joint gaps (var/val)")
         self.diagram_axes_joint_gaps_button.setFixedHeight(constants.BUTTON_HEIGHT_3)
         self.diagram_axes_joint_gaps_button.clicked.connect(self.toggle_diagram_axes_joint_gaps)
         diagram_buttons_layout.addWidget(self.diagram_axes_joint_gaps_button)
@@ -700,7 +729,7 @@ class KneeFlexionExperiment(QMainWindow):
 
         diagram_layout.addLayout(diagram_buttons_layout)
         diagram_layout.addLayout(diagram_buttons_translations_layout)
-        diagram_layout.addWidget(self.contour_button)
+        #diagram_layout.addWidget(self.contour_button)
 
         self.save_plot_button = QPushButton("Save Plot")
         self.save_plot_button.clicked.connect(self.save_current_plot)
@@ -712,24 +741,13 @@ class KneeFlexionExperiment(QMainWindow):
         bone_and_diagram_layout.addLayout(bone_viz_layout, 2)  # Give bone viz more space (ratio 2:1)
         bone_and_diagram_layout.addLayout(diagram_layout, 1)
 
-        # Add text display for joint angles and translations
-        angles_translations_layout = QHBoxLayout()
-        self.joint_angles_text = QLabel("Joint Angles: \n Not calculated yet")
-        self.joint_angles_text.setFont(QFont("Arial", 11))
-        self.joint_angles_text.setAlignment(Qt.AlignLeft)
-        angles_translations_layout.addWidget(self.joint_angles_text)
-
-        # Add text display for joint translations
-        self.joint_translations_text = QLabel("Joint Translations: \n Not calculated yet")
-        self.joint_translations_text.setFont(QFont("Arial", 11))
-        self.joint_translations_text.setAlignment(Qt.AlignLeft)
-        angles_translations_layout.addWidget(self.joint_translations_text)
+        
 
         # Connect tab change signal
         self.tabs.currentChanged.connect(self.on_tab_changed)
 
         # Add all components to main tab layout
-        tab3_layout.addLayout(angles_translations_layout)
+        #tab3_layout.addLayout(angles_translations_layout)
         tab3_layout.addLayout(bone_and_diagram_layout)
         self.tab3.setLayout(tab3_layout)
 
@@ -749,7 +767,7 @@ class KneeFlexionExperiment(QMainWindow):
         self.start_button.setFixedHeight(constants.BUTTON_HEIGHT)
         
         # Next Angle Button
-        self.next_button = QPushButton("Next Angle")
+        self.next_button = QPushButton("Next Round")
         self.next_button.clicked.connect(self.next_angle)
         self.next_button.setEnabled(False)
         self.next_button.setFixedHeight(constants.BUTTON_HEIGHT)
@@ -761,37 +779,37 @@ class KneeFlexionExperiment(QMainWindow):
         #self.next_label.setFont(font)
 
         # Rotate Button
-        self.rotate_button = QPushButton("Hold Flexion for 5 s")
-        self.rotate_button.clicked.connect(self.start_rotation)
-        self.rotate_button.setEnabled(False)
-        self.rotate_button.setFixedHeight(constants.BUTTON_HEIGHT)
+        #self.rotate_button = QPushButton("Hold Flexion for 5 s")
+        #self.rotate_button.clicked.connect(self.start_rotation)
+        #self.rotate_button.setEnabled(False)
+        #self.rotate_button.setFixedHeight(constants.BUTTON_HEIGHT)
 
         # Varus Button
-        self.varus_button = QPushButton("Apply Varus Load for 5 s")
+        self.varus_button = QPushButton("Apply Varus/Valgus Load")
         self.varus_button.clicked.connect(self.start_varus)
         self.varus_button.setEnabled(False)
         self.varus_button.setFixedHeight(constants.BUTTON_HEIGHT)
 
         # Valgus Button
-        self.valgus_button = QPushButton("Apply Valgus Load for 5 s")
+        self.valgus_button = QPushButton("Rotate Tibia int/ext")
         self.valgus_button.clicked.connect(self.start_valgus)
         self.valgus_button.setEnabled(False)
         self.valgus_button.setFixedHeight(constants.BUTTON_HEIGHT)
 
         # IR Button
-        self.internal_rot_button = QPushButton("Rotate Tibia internally for 5 s")
+        self.internal_rot_button = QPushButton("Translate Tibia anterior/posterior")
         self.internal_rot_button.clicked.connect(self.start_internal_rot)
         self.internal_rot_button.setEnabled(False)
         self.internal_rot_button.setFixedHeight(constants.BUTTON_HEIGHT)
 
         # ER Button
-        self.external_rot_button = QPushButton("Rotate Tibia externally for 5 s")
+        self.external_rot_button = QPushButton("Translate Tibia medial/lateral")
         self.external_rot_button.clicked.connect(self.start_external_rot)
         self.external_rot_button.setEnabled(False)
         self.external_rot_button.setFixedHeight(constants.BUTTON_HEIGHT)
 
         # Lachmann Test Button - New addition
-        self.lachmann_button = QPushButton("Perform Lachmann Test for 8 s")
+        self.lachmann_button = QPushButton("Perform Lachmann Test")
         self.lachmann_button.clicked.connect(self.start_lachmann)
         self.lachmann_button.setEnabled(False)
         self.lachmann_button.setFixedHeight(constants.BUTTON_HEIGHT)
@@ -844,29 +862,27 @@ class KneeFlexionExperiment(QMainWindow):
         subsub_layout.addWidget(self.next_button)
 
         right_layout.addLayout(subsub_layout, 0, 0)
-        #right_layout.addWidget(self.next_label, 1, 0)
-        #right_layout.addWidget(self.image_frame, 1, 1, 5, 3)
         
         right_layout.addWidget(record_data_label, 2, 0, 2, 1)
-        right_layout.addWidget(self.rotate_button, 3, 0)
+        #right_layout.addWidget(self.rotate_button, 3, 0)
         right_layout.addWidget(self.varus_button, 4, 0)
         right_layout.addWidget(self.valgus_button, 5, 0)
         right_layout.addWidget(self.internal_rot_button, 6, 0)
         right_layout.addWidget(self.external_rot_button, 7, 0)
         right_layout.addWidget(self.lachmann_button, 8, 0)
         right_layout.addWidget(self.start_buttoncsv, 9,0, 2, 1)
-        #right_layout.addWidget(self.diagram_axes_button, 10,0, 2, 1)
-        right_layout.addWidget(self.diagram_start_stop_button, 11,0, 2, 1)
-        right_layout.addWidget(self.record_individual_button, 12,0, 2, 1)
-        right_layout.addWidget(self.diagram_toggle_bar_point_button, 13,0, 2, 1)
-        right_layout.addWidget(self.diagram_clear_button, 14,0, 2, 1)
+        right_layout.addWidget(self.record_individual_button, 10,0, 2, 1)
+        right_layout.addWidget(self.diagram_start_stop_button, 12,0, 2, 1)
+        right_layout.addWidget(self.diagram_clear_button, 13,0, 2, 1)
+        right_layout.addWidget(self.diagram_toggle_bar_point_button, 14,0, 2, 1)
+        
         
 
         
         right_widget.setLayout(right_layout)
         bottom_splitter.addWidget(right_widget)
 
-        bottom_splitter.setSizes([1000, 200])  # adjust sizes for left and right part
+        bottom_splitter.setSizes([1500, 100])  # adjust sizes for left and right part
         
         # Add the splitter to the main layout
         main_layout.addWidget(bottom_splitter, 2, 0, 1, 2)
@@ -1007,7 +1023,7 @@ class KneeFlexionExperiment(QMainWindow):
         # Enable only needed buttons
         #self.next_label.show()
         self.start_button.setEnabled(False)
-        self.rotate_button.setEnabled(True)
+        self.varus_button.setEnabled(True)
         
         # Start visualization timer immediately and keep it running throughout the experiment
         if not self.viz_timer.isActive():
@@ -1023,16 +1039,16 @@ class KneeFlexionExperiment(QMainWindow):
         self.current_angle_index += 1
         UpdateVisualization.update_display(self)
         self.next_button.setEnabled(False)
-        self.rotate_button.setEnabled(True)
+        self.varus_button.setEnabled(True)
 
-    def start_rotation(self):
+    """def start_rotation(self):
         self.rotate_button.setEnabled(False) # Disable rotate button
         self.varus_button.setEnabled(True) 
         self.remaining_time = constants.HOLD_TIME
         self.rotation_progress.setValue(self.remaining_time)
         self.seconds_timer.start(1000)  # Update every second
         self.next_button.setEnabled(False)
-        self.start_recording(f"neutral") # Start recording data
+        self.start_recording(f"neutral") # Start recording data"""
         
     def start_varus(self):
         self.varus_button.setEnabled(False) # Disable varus button
@@ -1065,13 +1081,15 @@ class KneeFlexionExperiment(QMainWindow):
         self.seconds_timer.start(1000)  # Update every second
         self.start_recording(f"ext") # Start recording data
 
-        # Enable appropriate next button based on where we are in the test
+        self.lachmann_button.setEnabled(True)
+
+        """# Enable appropriate next button based on where we are in the test
         if self.current_angle_index >= (len(constants.FLEXION_ANGLES) - 1):
             self.lachmann_button.setEnabled(True) # last angle, enable Lachmann test button
             self.next_button.setEnabled(False)
         else:
             self.next_button.setEnabled(True) # not last angle: enable next button
-            self.lachmann_button.setEnabled(False)
+            self.lachmann_button.setEnabled(False)"""
 
     def start_lachmann(self):  
         self.lachmann_button.setEnabled(False)
@@ -1085,8 +1103,9 @@ class KneeFlexionExperiment(QMainWindow):
         self.rotation_progress.setRange(0, constants.LACHMANN_TIME)
         self.rotation_progress.setFormat("%v seconds remaining")
         self.seconds_timer.start(1000)  # Start the timer and update every second
-        self.start_recording("lachmann") # Start recording data
-        self.current_test_type = 'lachmann' # Set flag to indicate we're in Lachmann test
+        self.start_recording(f"lachmann") # Start recording data
+        self.current_test_type = 'none' # Set flag to indicate we're in Lachmann test
+        self.next_button.setEnabled(True) 
     
     def update_seconds_progress(self):
         self.remaining_time -= 1
@@ -1556,11 +1575,10 @@ class KneeFlexionExperiment(QMainWindow):
             tx = df.iloc[:, 4]  # Tx column
             ty = df.iloc[:, 5]
             tz = df.iloc[:, 6]
+            
             fx = df.iloc[:, 1]
             fy = df.iloc[:, 2]
             fz = df.iloc[:, 3]
-
-
             delta_x = constants.DELTA_X
             delta_y = constants.DELTA_Y
             delta_z = constants.DELTA_Z
@@ -1575,10 +1593,10 @@ class KneeFlexionExperiment(QMainWindow):
 
             
 
-            tjx = tz + fy * delta_x + fx * delta_y -tx 
-            tjy = tx - fz * delta_y + fy * delta_z # not used anymore, because torques are recorded already calculated
-            #tjx = tx
-            #tjy = ty
+            #tjx = tz + fy * delta_x + fx * delta_y -tx 
+            #tjy = tx - fz * delta_y + fy * delta_z # not used anymore, because torques are recorded already calculated
+            tjx = tx
+            tjy = ty
                 
             
             # Configuration parameters (you can make these class attributes for easy modification)
@@ -1605,10 +1623,10 @@ class KneeFlexionExperiment(QMainWindow):
                 tjx_range_temp = tjx_max - tjx_min
                 bin_size_temp = tjx_range_temp / desired_bins
                 bin_size = round(bin_size_temp, 1)
-                print(desired_bins )
-                print(tjx_range_temp)
-                print(bin_size_temp)
-                print(bin_size)
+                #print(desired_bins )
+                #print(tjx_range_temp)
+                #print(bin_size_temp)
+                #print(bin_size)
             else:
                 #bin_size = 0.5
                 desired_bins = constants.BINS_VAR
@@ -1736,7 +1754,7 @@ class KneeFlexionExperiment(QMainWindow):
             grouped_data = pd.DataFrame(weighted_groups)
             
             # Clear the existing plot
-            self.canvas_varus_valgus.ax.clear()
+            self.canvas_contour_plot.ax.clear()
             
             # Create colormap
             n_tjx_bins = len(tjx_bins) - 1
@@ -1782,24 +1800,24 @@ class KneeFlexionExperiment(QMainWindow):
             
                 # Configure the plot
                 x_range = max(abs(rotation.min()), abs(rotation.max())) * 1.1
-                self.canvas_varus_valgus.ax.set_xlim(-x_range, x_range)
-                self.canvas_varus_valgus.ax.axvline(x=0, color='black', linestyle='--', alpha=0.5, linewidth=1)
+                self.canvas_contour_plot.ax.set_xlim(-x_range, x_range)
+                self.canvas_contour_plot.ax.axvline(x=0, color='black', linestyle='--', alpha=0.5, linewidth=1)
                 
                 # Set labels and title
-                self.canvas_varus_valgus.ax.set_xlabel('Internal Rotation [°]      External Rotation [°]', fontsize=12)
-                self.canvas_varus_valgus.ax.set_ylabel('Flexion [°]', fontsize=12)
+                self.canvas_contour_plot.ax.set_xlabel('Internal Rotation [°]      External Rotation [°]', fontsize=12)
+                self.canvas_contour_plot.ax.set_ylabel('Flexion [°]', fontsize=12)
                 title = 'Rotation Torque Contour Lines'
                 """if APPLY_MOVING_AVERAGE:
                     title += f' + {MOVING_AVERAGE_METHOD.title()} Moving Average)'
                 else:
                     title += ')'"""
-                self.canvas_varus_valgus.ax.set_title(title, fontsize=12)
+                self.canvas_contour_plot.ax.set_title(title, fontsize=12)
                 
                 # Add grid and legend
-                self.canvas_varus_valgus.ax.grid(True, alpha=0.3)
+                self.canvas_contour_plot.ax.grid(True, alpha=0.3)
                 
                 # Refresh the canvas
-                self.canvas_varus_valgus.draw()
+                self.canvas_contour_plot.draw()
                 
                 print(f"Contour plot generated successfully with {plotted_lines} lines")
             else:
@@ -1827,21 +1845,21 @@ class KneeFlexionExperiment(QMainWindow):
             
                 # Configure the plot
                 x_range = max(abs(medial_joint_gap.max()), abs(lateral_joint_gap.max())) * 1.1
-                self.canvas_varus_valgus.ax.set_xlim(-x_range, x_range)
-                self.canvas_varus_valgus.ax.axvline(x=0, color='black', linestyle='--', alpha=0.5, linewidth=1)
+                self.canvas_contour_plot.ax.set_xlim(-x_range, x_range)
+                self.canvas_contour_plot.ax.axvline(x=0, color='black', linestyle='--', alpha=0.5, linewidth=1)
                 
                 # Set labels and title
-                self.canvas_varus_valgus.ax.set_xlabel('Medial Joint Gap [mm]     Lateral Joint Gap [mm]', fontsize=12)
-                self.canvas_varus_valgus.ax.set_ylabel('Flexion [°]', fontsize=12)
+                self.canvas_contour_plot.ax.set_xlabel('Medial Joint Gap [mm]     Lateral Joint Gap [mm]', fontsize=12)
+                self.canvas_contour_plot.ax.set_ylabel('Flexion [°]', fontsize=12)
                 title = 'Joint Gap Torque Contour Lines'
               
-                self.canvas_varus_valgus.ax.set_title(title, fontsize=12)
+                self.canvas_contour_plot.ax.set_title(title, fontsize=12)
                 
                 # Add grid and legend
-                self.canvas_varus_valgus.ax.grid(True, alpha=0.3)
+                self.canvas_contour_plot.ax.grid(True, alpha=0.3)
                 
                 # Refresh the canvas
-                self.canvas_varus_valgus.draw()
+                self.canvas_contour_plot.draw()
                 
                 print(f"Contour plot generated successfully with {plotted_lines} lines")
         
@@ -1978,7 +1996,7 @@ class KneeFlexionExperiment(QMainWindow):
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = os.path.join(save_dir, f"varus_valgus_plot_{timestamp}.png")
             
-            self.canvas_varus_valgus.figure.savefig(
+            self.canvas_contour_plot.figure.savefig(
                 filename,
                 dpi=300,
                 bbox_inches='tight',
@@ -2037,17 +2055,17 @@ class KneeFlexionExperiment(QMainWindow):
                                             bounds_error=False, fill_value='extrapolate')
                         x_smooth = f(y_smooth)
                         
-                        self.canvas_varus_valgus.ax.plot(x_smooth, y_smooth, 
+                        self.canvas_contour_plot.ax.plot(x_smooth, y_smooth, 
                                                         color=colors[tjx_bin_idx], 
                                                         linewidth=2.5, alpha=0.8)
                         
                     except Exception as e:
                         print(f"Smoothing failed for bin {tjx_bin_idx}: {e}")
-                        self.canvas_varus_valgus.ax.plot(x_values, y_values, 
+                        self.canvas_contour_plot.ax.plot(x_values, y_values, 
                                                         color=colors[tjx_bin_idx], 
                                                         linewidth=2.5, alpha=0.8)
                 else:
-                    self.canvas_varus_valgus.ax.plot(x_values, y_values, 
+                    self.canvas_contour_plot.ax.plot(x_values, y_values, 
                                                     color=colors[tjx_bin_idx], 
                                                     linewidth=2.5, alpha=0.8)
             
@@ -2056,7 +2074,7 @@ class KneeFlexionExperiment(QMainWindow):
             edge_color = 'black' if marker_style == 's' else 'white'
             edge_width = 0.5 if marker_style == 's' else 0.2
             
-            self.canvas_varus_valgus.ax.scatter(x_values, y_values, 
+            self.canvas_contour_plot.ax.scatter(x_values, y_values, 
                                                 c=[colors[tjx_bin_idx]], 
                                                 alpha=0.9, s=marker_size, marker=marker_style,
                                                 edgecolors=edge_color, linewidth=edge_width, zorder=5)
@@ -2080,11 +2098,11 @@ class KneeFlexionExperiment(QMainWindow):
             legend_label = f'{tjx_middle:.2f} [Nm] ({total_count})'
             
             # Add a dummy scatter for legend
-            self.canvas_varus_valgus.ax.scatter([], [], 
+            self.canvas_contour_plot.ax.scatter([], [], 
                                                 c=[colors[tjx_bin_idx]], 
                                                 label=legend_label, s=40)
             # After all your scatter plots and legend entries
-            self.canvas_varus_valgus.ax.legend(
+            self.canvas_contour_plot.ax.legend(
                 loc='best',
                 fontsize=6,
                 #frameon=True,  # Show frame around legend

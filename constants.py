@@ -6,7 +6,8 @@ import numpy as np
 HOLD_TIME = 40 #seconds to hold knee positions
 HOLD_INDIVIDUAL = 40 #seconds for individual data recording
 LACHMANN_TIME = 30 # seconds for lachmann test
-FLEXION_ANGLES = [0, 30, 60, 90, 120]
+#FLEXION_ANGLES = [0, 30, 60, 90, 120]
+FLEXION_ANGLES = [1, 2, 3, 4, 5]
 
 # current folder
 current_folder = os.path.dirname(os.path.abspath(__file__))
