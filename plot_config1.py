@@ -49,10 +49,11 @@ class MplCanvas(FigureCanvas):
             self.ax = self.fig.add_subplot(111)
             self.ax.set_xlabel('x-axis')
             self.ax.set_ylabel('Flexion Angle [°]')
+            self.ax.invert_yaxis()
             #self.ax.set_title('Real-time Flexion vs Varus/Valgus')
             self.ax.grid(True, alpha=0.3)
 
-            self.fig.subplots_adjust(left=0.15, bottom=0.15, right = 0.95, top =0.90)
+            self.fig.subplots_adjust(left=0.15, bottom=0.1, right = 0.95, top =0.95)
             
             # Set initial axis limits
             self.ax.set_xlim(-constants.X_LIM_ROT, constants.X_LIM_ROT)  # Adjust range as needed
@@ -199,90 +200,7 @@ class MplCanvas(FigureCanvas):
         self.draw()"""
 
     
-    def update_tibia_position_path(self, tibia_pos_x, tibia_pos_y, tibia_pos_z, time_array):
-        """Update the tibia position path visualization"""
-        if self.mode != "position_path":
-            return
-        
-        # Clear previous plots
-        if self.position_scatter:
-            self.position_scatter.remove()
-        if self.position_line:
-            self.position_line[0].remove()
-        if self.position_colorbar:
-            self.position_colorbar.remove()
-        
-        # Create new scatter plot with time-based coloring
-        self.position_scatter = self.axes_position.scatter(
-            tibia_pos_x, tibia_pos_y, tibia_pos_z,
-            c=time_array, cmap='viridis', s=40, alpha=0.8
-        )
-        
-        # Create trajectory line
-        self.position_line = self.axes_position.plot(
-            tibia_pos_x, tibia_pos_y, tibia_pos_z, 
-            'b-', linewidth=1.5
-        )
-        
-        # Add colorbar for time reference
-        self.position_colorbar = self.fig.colorbar(
-            self.position_scatter, ax=self.axes_position, pad=0.1
-        )
-        self.position_colorbar.set_label('Time (s)')
-        
-        # Adjust plot limits based on data
-        margin = 0.1
-        x_range = np.ptp(tibia_pos_x)
-        y_range = np.ptp(tibia_pos_y)
-        z_range = np.ptp(tibia_pos_z)
-        
-        self.axes_position.set_xlim([
-            np.min(tibia_pos_x) - margin * x_range,
-            np.max(tibia_pos_x) + margin * x_range
-        ])
-        self.axes_position.set_ylim([
-            np.min(tibia_pos_y) - margin * y_range,
-            np.max(tibia_pos_y) + margin * y_range
-        ])
-        self.axes_position.set_zlim([
-            np.min(tibia_pos_z) - margin * z_range,
-            np.max(tibia_pos_z) + margin * z_range
-        ])
-        
-        # Refresh the canvas
-        self.draw()
-
-
-class ColoredGLAxisItem(gl.GLAxisItem):
-    def __init__(self, size=(1,1,1)):
-        gl.GLAxisItem.__init__(self)
-        self.setSize(*size)
-        
-    def paint(self):
-        self.setupGLState()
-        
-        if self.antialias:
-            glEnable(GL_LINE_SMOOTH)
-            glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
-            
-        glBegin(GL_LINES)
-
-        # X axis (red)
-        glColor4f(*constants.SALMON)
-        glVertex3f(0, 0, 0)
-        glVertex3f(self.size()[0], 0, 0)
-        
-        # Y axis (green)
-        glColor4f(*constants.LIMEGREEN) 
-        glVertex3f(0, 0, 0)
-        glVertex3f(0, self.size()[1], 0)
-        
-        # Z axis (blue)
-        glColor4f(*constants.DEEPSKYBLUE)  # deepskyblue
-        glVertex3f(0, 0, 0)
-        glVertex3f(0, 0, self.size()[2])
-        
-        glEnd()
+    
 
 
 class ColoredGLAxisItem(gl.GLAxisItem):
@@ -418,7 +336,7 @@ class OptimizedVarusValgusPlot(QWidget):
     def _world_to_screen(self, x, y):
         """Convert world coordinates to screen coordinates."""
         screen_x = int(self.margin_left + (x - self.x_min) * self.x_scale)
-        screen_y = int(self.margin_top + self.plot_height - (y - self.y_min_flex) * self.y_scale)
+        screen_y = int(self.margin_top + (y - self.y_min_flex) * self.y_scale)
         return screen_x, screen_y
         
     def _draw_static_elements(self):
@@ -746,42 +664,58 @@ class OptimizedVarusValgusPlot(QWidget):
     def _draw_labels(self, painter):
         """Draw axis labels and title using QPainter."""
         painter.setPen(QPen(Qt.black))
-        painter.setFont(QFont("Arial", 10))
+        painter.setFont(QFont("Arial", 15))  # This is for tick labels
         
         # Draw tick labels first
         self._draw_tick_labels(painter)
         
-        # Y-axis label (rotated)
+        # Y-axis label (rotated) - CENTERED
         painter.save()
-        painter.translate(20, self.height//2)
+        painter.setFont(QFont("Arial", 12))
+        # Calculate the center of the plot area for Y-axis
+        plot_center_y = self.margin_top + self.plot_height // 2
+        painter.translate(20, plot_center_y)
         painter.rotate(-90)
-        painter.drawText(0, 0, "Flexion Angle [°]")
+        # Get text metrics to center the text
+        fm = painter.fontMetrics()
+        text_width = fm.horizontalAdvance("flexion angle [°]")
+        painter.drawText(-text_width // 2, 0, "Flexion Angle [°]")
         painter.restore()
         
-        # X-axis label
+        # X-axis label - CENTERED
+        painter.setFont(QFont("Arial", 12))
         if self.current_mode == "varus_valgus":
-            label = "medial joint gap          lateral joint gap"
+            label = "medial joint gap               lateral joint gap"
         elif self.current_mode == "rotation":
-            label = "external rotation         internal rotation"
+            label = "external rotation              internal rotation"
         elif self.current_mode == "adduction":
             label = "varus angle        valgus angle"
         elif self.current_mode == "anterior":
-            label = "anterior translation        posterior translation"
+            label = "anterior translation             posterior translation"
         elif self.current_mode == "medial":
-            label = "medial translation        lateral translation"    
+            label = "medial translation             lateral translation"    
         else:
             label = "x-axis"
-            
-        painter.drawText(self.width//2 - 100, self.height - 20, label)
         
-        # Title
-        painter.setFont(QFont("Arial", 12, QFont.Bold))
+        # Calculate the center of the plot area for X-axis
+        plot_center_x = self.margin_left + self.plot_width // 2
+        # Get text metrics to center the text
+        fm = painter.fontMetrics()
+        text_width = fm.horizontalAdvance(label)
+        painter.drawText(plot_center_x - text_width // 2, self.height - 20, label)
+        
+        # Title - CENTERED
+        painter.setFont(QFont("Arial", 14, QFont.Bold))
         if self.current_mode == "varus_valgus":
             title = "medial/lateral joint gap [mm]"
         else:
             title = f"{self.current_mode} [°]"
-            
-        painter.drawText(self.width//2 - 100, 20, title)
+        
+        # Center the title
+        fm = painter.fontMetrics()
+        title_width = fm.horizontalAdvance(title)
+        painter.drawText(self.width // 2 - title_width // 2, 20, title)
+    
     def clear_data(self):
         """Clear all plot data and reset the circular buffer."""
         # Reset all data arrays to zero

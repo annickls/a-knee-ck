@@ -404,18 +404,6 @@ class UpdateVisualization():
         #self.next_label.setAlignment(Qt.AlignCenter)
         # Update overall progress
         self.overall_progress.setValue(self.current_angle_index)
-            
-        # Load the appropriate image
-        try:
-            pixmap = QPixmap(f"KW{current_angle}.jpg")
-            if pixmap.isNull():
-                    self.image_label.setText(f"Image for {current_angle}° not found")
-            else:
-                # Scale the image to fit the frame while maintaining aspect ratio
-                pixmap = pixmap.scaled(self.image_frame.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                self.image_label.setPixmap(pixmap)
-        except Exception as e:
-            self.image_label.setText(f"Error loading image: {str(e)}")
 
 
     @staticmethod
@@ -901,46 +889,7 @@ class UpdateVisualization():
         self.Cosy_origin[name] = position
 
 
-    def update_tibia_path(self):
-        """Update the tibia position path visualization"""
-        #tibia_position_annick = UpdateVisualization.tibia_landmarks['tibia_distal']['position']
-        #print(tibia_position_annick)
-        #print(UpdateVisualization.tibia_landmarks)
-        try:
-            # Extract tibia position data
-            #tibia_position_annick = UpdateVisualization.tibia_landmarks['tibia_distal']['position']
-            tibia_position_annick = [1, 1, 1]
 
-            tibia_pos_x = tibia_position_annick[0]
-            tibia_pos_y = tibia_position_annick[1]
-            tibia_pos_z = tibia_position_annick[2]
-            
-            # Get time array (adjust column index as needed)
-            time_array = 1
-            
-            # Update the canvas
-            self.canvas_path.update_tibia_position_path(
-                tibia_pos_x, tibia_pos_y, tibia_pos_z, time_array
-            )
-            
-        except Exception as e:
-            print(f"Error updating tibia path: {e}")
-
-    def clear_tibia_path(self):
-        """Clear the tibia position path visualization"""
-        if hasattr(self.canvas_path, 'axes_position'):
-            self.canvas_path.axes_position.clear()
-            self.canvas_path._setup_position_plot()
-            self.canvas_path.draw()
-
-    # Alternative: If you want to automatically update when data changes
-    def on_data_update(self):
-        """Called whenever your data is updated"""
-        # Your existing data update code...
-        
-        # Automatically update the tibia path if tab4 is active
-        if hasattr(self, 'canvas_path') and self.canvas_path.mode == "position_path":
-            self.update_tibia_path()
 
     @staticmethod
     def create_legend(main_window):

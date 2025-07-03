@@ -85,9 +85,7 @@ class KneeFlexionExperiment(QMainWindow):
         self.current_test_name = ""
 
         self.axes_valgus_on = 0
-
-        self.diagram_mode = "varus_valgus"  # Can be "varus_valgus" or "rotation"
-        
+        self.diagram_mode = "rotation"  # Can be "varus_valgus" or "rotation"
         self.diagram_start_mode = "stop"
 
         
@@ -253,40 +251,8 @@ class KneeFlexionExperiment(QMainWindow):
                     if current_tab == 0:  # Current Data tab
                         UpdateVisualization.update_current_visualization(self, force, torque)
                     elif current_tab == 1:  # History tab
-                        if self.diagram_start_mode == "start":
-                            angles_new = UpdateVisualization.get_current_knee_angles()
-                            flexion_angle = angles_new['flexion']
-
-                            if self.diagram_mode == "varus_valgus":
-                                
-                                lateral_joint_gap = angles_new['lateral_tibia_femur']
-                                medial_joint_gap = angles_new['medial_tibia_femur']
-                                
-                                
-                                #self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, lateral_joint_gap, self.diagram_mode, self.diagram_point_mode)
-                                #self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, -medial_joint_gap, self.diagram_mode, self.diagram_point_mode)
-
-                                
-                            elif self.diagram_mode == 'rotation':  # rotation mode
-                                # Extract rotation angles from your angles_new dictionary
-                                #internal_rotation_angle = angles_new['rotation']
-                                internal_rotation_angle = angles_new['rotation'] # test for adduction angles
-                                
-                                
-                                #self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, internal_rotation_angle, self.diagram_mode, self.diagram_point_mode)
-                            else:
-                                # Extract adductionangles from your angles_new dictionary
-                                #internal_rotation_angle = angles_new['rotation']
-                                adduction_angle = angles_new['adduction'] # test for adduction angles
-                                
-                                
-                                #self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, adduction_angle, self.diagram_mode, self.diagram_point_mode)
-                            
-
-                        else:
-                            test = 0
-                            
                         UpdateVisualization.update_history_visualization(self)
+
                     elif current_tab == 2:  # Bone visualization tab
                         # Update bone positions/orientations with real data
                         if hasattr(self, 'femur_mesh') and hasattr(self, 'femur_original_vertices'):
@@ -360,11 +326,6 @@ class KneeFlexionExperiment(QMainWindow):
 
                                     
                                 elif self.diagram_mode == 'rotation':  # rotation mode
-                                    # Extract rotation angles from your angles_new dictionary
-                                    #internal_rotation_angle = angles_new['rotation']
-                                    #internal_rotation_angle = angles_new['rotation'] # test for adduction angles
-                                    
-                                    
                                     self.canvas_varus_valgus.update_varus_valgus_plot(
                                         flexion_angle, 
                                         internal_rotation_angle,
@@ -375,11 +336,6 @@ class KneeFlexionExperiment(QMainWindow):
                                         self.diagram_mode, 
                                         self.diagram_point_mode)
                                 elif self.diagram_mode == 'adduction':
-                                    # Extract adductionangles from your angles_new dictionary
-                                    #internal_rotation_angle = angles_new['rotation']
-                                    #adduction_angle = angles_new['adduction'] # test for adduction angles
-                                    
-                                    
                                     self.canvas_varus_valgus.update_varus_valgus_plot(
                                         flexion_angle, 
                                         adduction_angle,
@@ -533,9 +489,6 @@ class KneeFlexionExperiment(QMainWindow):
         
         # Rotation timer progress bar
         rotation_progress_layout = QVBoxLayout()
-        self.rotation_progress_label = QLabel("Please Flex the knee to the desired flexion angle, then hold the desired positions for the shown amount of time")
-        self.rotation_progress_label.setAlignment(Qt.AlignCenter)
-        rotation_progress_layout.addWidget(self.rotation_progress_label)
         self.rotation_progress = QProgressBar()
         self.rotation_progress.setRange(0, constants.HOLD_TIME)
         self.rotation_progress.setValue(constants.HOLD_TIME)
@@ -559,7 +512,6 @@ class KneeFlexionExperiment(QMainWindow):
         self.tab1 = QWidget()
         self.tab2 = QWidget()
         self.tab3 = QWidget()
-        #self.tab4 = QWidget()
          
         # Add tabs to the tab widget
         self.tabs.addTab(self.tab1, "current data")
@@ -657,14 +609,16 @@ class KneeFlexionExperiment(QMainWindow):
         # second tab
         tab_contour_plot_layout = QVBoxLayout()
         # Add force/torque visualization
-        viz_label_2 = QLabel("Filtered Point Diagram with contour lines")
-        viz_label_2.setAlignment(Qt.AlignCenter)
-        viz_label_2.setFont(QFont("Arial", 12, QFont.Bold))
-        tab_contour_plot_layout.addWidget(viz_label_2)
+        #viz_label_2 = QLabel("Filtered Point Diagram with contour lines")
+        #viz_label_2.setAlignment(Qt.AlignCenter)
+        #viz_label_2.setFont(QFont("Arial", 12, QFont.Bold))
+        #tab_contour_plot_layout.addWidget(viz_label_2)
         # Create matplotlib visualization
         self.canvas_contour_plot = MplCanvas(width=4, height=8, mode="varus_valgus")
+        self.canvas_contour_plot.ax.invert_yaxis()
         tab_contour_plot_layout.addWidget(self.canvas_contour_plot)
 
+        contour_buttons_sublayout = QHBoxLayout()
           # Add contour calculation button
         self.contour_button = QPushButton("Calculate Contour Plot")
         self.contour_button.clicked.connect(self.calculate_and_plot_contours)
@@ -685,8 +639,13 @@ class KneeFlexionExperiment(QMainWindow):
                 background-color: #3d8b40;
             }
         """)
+        contour_buttons_sublayout.addWidget(self.contour_button)
+        
+        self.save_plot_button = QPushButton("Save Plot")
+        self.save_plot_button.clicked.connect(self.save_current_plot)
+        contour_buttons_sublayout.addWidget(self.save_plot_button)
 
-        tab_contour_plot_layout.addWidget(self.contour_button)
+        tab_contour_plot_layout.addLayout(contour_buttons_sublayout)
 
         self.tab_contour.setLayout(tab_contour_plot_layout)
 
@@ -725,16 +684,14 @@ class KneeFlexionExperiment(QMainWindow):
         self.diagram_axes_medial_button.setFixedHeight(constants.BUTTON_HEIGHT_3)
         self.diagram_axes_medial_button.clicked.connect(self.toggle_diagram_axes_medial)
         diagram_buttons_translations_layout.addWidget(self.diagram_axes_medial_button)
-
+        
+        
 
         diagram_layout.addLayout(diagram_buttons_layout)
         diagram_layout.addLayout(diagram_buttons_translations_layout)
         #diagram_layout.addWidget(self.contour_button)
 
-        self.save_plot_button = QPushButton("Save Plot")
-        self.save_plot_button.clicked.connect(self.save_current_plot)
-
-        diagram_layout.addWidget(self.save_plot_button)
+       
         
 
         # Add both sections to horizontal layout
@@ -757,7 +714,7 @@ class KneeFlexionExperiment(QMainWindow):
         self.left_widget.setLayout(left_layout)
         bottom_splitter.addWidget(self.left_widget)
         
-        # Right part: Control buttons and image
+        # Right part: Control buttons
         right_widget = QWidget()
         right_layout = QGridLayout()
         
@@ -771,18 +728,6 @@ class KneeFlexionExperiment(QMainWindow):
         self.next_button.clicked.connect(self.next_angle)
         self.next_button.setEnabled(False)
         self.next_button.setFixedHeight(constants.BUTTON_HEIGHT)
-
-        # Next Angle Label
-        #self.next_label = QLabel("test1")
-        #font = self.next_label.font()
-        #font.setPointSize(12)
-        #self.next_label.setFont(font)
-
-        # Rotate Button
-        #self.rotate_button = QPushButton("Hold Flexion for 5 s")
-        #self.rotate_button.clicked.connect(self.start_rotation)
-        #self.rotate_button.setEnabled(False)
-        #self.rotate_button.setFixedHeight(constants.BUTTON_HEIGHT)
 
         # Varus Button
         self.varus_button = QPushButton("Apply Varus/Valgus Load")
@@ -816,23 +761,12 @@ class KneeFlexionExperiment(QMainWindow):
 
         record_data_label = QLabel("Record Data")
         record_data_label.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
-        
-        # Image frame
-        self.image_frame = QFrame()
-        #self.image_frame.setLineWidth(2)
-        #self.image_frame.setMinimumSize(300, 250)
-        image_layout = QVBoxLayout()
-        self.image_label = QLabel()
-        #self.image_label.setAlignment(Qt.AlignCenter)
-        image_layout.addWidget(self.image_label, alignment=Qt.AlignHCenter | Qt.AlignTop)
-        self.image_frame.setLayout(image_layout)
 
          # Start reading csv button
         self.start_buttoncsv = QPushButton("Start Reading")
-        #self.start_buttoncsv.setFixedSize(150, 40)
+        self.start_buttoncsv.setFixedHeight(constants.BUTTON_HEIGHT_2)
         self.start_buttoncsv.clicked.connect(self.toggle_monitoring)
 
-        
 
         # start stop plotting
         self.diagram_start_stop_button = QPushButton("start plot")
@@ -877,11 +811,8 @@ class KneeFlexionExperiment(QMainWindow):
         right_layout.addWidget(self.diagram_toggle_bar_point_button, 14,0, 2, 1)
         
         
-
-        
         right_widget.setLayout(right_layout)
         bottom_splitter.addWidget(right_widget)
-
         bottom_splitter.setSizes([1500, 100])  # adjust sizes for left and right part
         
         # Add the splitter to the main layout
@@ -927,8 +858,7 @@ class KneeFlexionExperiment(QMainWindow):
                 UpdateVisualization.update_history_visualization(self)
             elif current_tab == 2:  # Bone visualization tab
                 UpdateVisualization.update_bone_forces(self, self.current_data_index)
-            elif current_tab == 3:
-                UpdateVisualization.update_tibia_path(self)
+           
             
             # Record data if recording is active
             if self.recording:
@@ -988,8 +918,7 @@ class KneeFlexionExperiment(QMainWindow):
         self.current_angle_index = 0
         self.current_angle = constants.FLEXION_ANGLES[self.current_angle_index]
         self.overall_progress.setValue(0)
-        #self.next_label.setText(f"Please flex knee to {self.current_angle} degrees")
-        self.rotation_progress_label.show()
+        #self.rotation_progress_label.show()
         self.rotation_progress.show()
 
         # Reset progress bar range to match rotation time (5 seconds)
@@ -1004,18 +933,6 @@ class KneeFlexionExperiment(QMainWindow):
         self.force_history = []
         self.torque_history = []
         self.current_data_index = 0
-        
-        """try:
-            pixmap = QPixmap(f"KW{self.current_angle}.jpg")
-            
-            
-            if pixmap.isNull():
-                self.image_label.setText(f"Image for {self.current_angle}° not found")
-            else:
-                pixmap = pixmap.scaled(self.image_frame.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation) # Scale the image 
-                self.image_label.setPixmap(pixmap)
-        except Exception as e:
-            self.image_label.setText(f"Error loading image: {str(e)}")"""
         
         # Set experiment running flag
         self.experiment_running = True
@@ -1040,15 +957,6 @@ class KneeFlexionExperiment(QMainWindow):
         UpdateVisualization.update_display(self)
         self.next_button.setEnabled(False)
         self.varus_button.setEnabled(True)
-
-    """def start_rotation(self):
-        self.rotate_button.setEnabled(False) # Disable rotate button
-        self.varus_button.setEnabled(True) 
-        self.remaining_time = constants.HOLD_TIME
-        self.rotation_progress.setValue(self.remaining_time)
-        self.seconds_timer.start(1000)  # Update every second
-        self.next_button.setEnabled(False)
-        self.start_recording(f"neutral") # Start recording data"""
         
     def start_varus(self):
         self.varus_button.setEnabled(False) # Disable varus button
@@ -1083,21 +991,11 @@ class KneeFlexionExperiment(QMainWindow):
 
         self.lachmann_button.setEnabled(True)
 
-        """# Enable appropriate next button based on where we are in the test
-        if self.current_angle_index >= (len(constants.FLEXION_ANGLES) - 1):
-            self.lachmann_button.setEnabled(True) # last angle, enable Lachmann test button
-            self.next_button.setEnabled(False)
-        else:
-            self.next_button.setEnabled(True) # not last angle: enable next button
-            self.lachmann_button.setEnabled(False)"""
 
     def start_lachmann(self):  
         self.lachmann_button.setEnabled(False)
-        self.image_label.clear()
-        #self.next_label.hide()
-        
-        self.rotation_progress_label.setText("Performing Lachmann Test")
-        self.rotation_progress_label.show()
+        #self.rotation_progress_label.setText("Performing Lachmann Test")
+        #self.rotation_progress_label.show()
         self.remaining_time = constants.LACHMANN_TIME # Set timer for Lachmann test
         self.rotation_progress.setValue(self.remaining_time)
         self.rotation_progress.setRange(0, constants.LACHMANN_TIME)
@@ -1131,12 +1029,10 @@ class KneeFlexionExperiment(QMainWindow):
         
             #self.instruction_label.setText("Experiment Complete!")
             self.overall_progress.setValue(len(constants.FLEXION_ANGLES))
-            self.image_label.clear()
             self.start_button.setEnabled(True) # Enable start button again
 
             # Hide instructions
-            #self.next_label.hide()
-            self.rotation_progress_label.hide()
+            #self.rotation_progress_label.hide()
             self.rotation_progress.hide()
         
             # Stop visualization timer
@@ -1387,11 +1283,6 @@ class KneeFlexionExperiment(QMainWindow):
             traceback.print_exc()
             self.load_tibia_button.setText("Error")
 
-    def update_varus_valgus_diagram(self, flexion_angle, var_val_displacement):
-        """Call this method to update the dynamic diagram with new data"""
-        if hasattr(self, 'canvas_varus_valgus'):
-            self.canvas_varus_valgus.update_varus_valgus_plot(flexion_angle, var_val_displacement)
-
     def setup_legend_widget(self):
         """Create a separate widget for the legend"""
         legend_widget = QWidget()
@@ -1411,87 +1302,6 @@ class KneeFlexionExperiment(QMainWindow):
         legend_widget.setLayout(legend_layout)
         
         return legend_widget
-    
-    """def toggle_diagram_axes(self):
-        #Toggle between varus/valgus and rotation display modes
-        if self.diagram_mode == "varus_valgus":
-            self.diagram_mode = "rotation"
-            self.diagram_axes_button.setText("click to show var/val angle")
-            
-            # Update diagram title
-            if hasattr(self, 'canvas_varus_valgus'):
-                try:
-                    # Clear the plot and reset
-                    self.canvas_varus_valgus.ax.clear()
-                    self.canvas_varus_valgus.ax.set_ylabel('Flexion Angle [°]')
-                    self.canvas_varus_valgus.ax.set_title('Internal/External Rotation [°]')
-                    self.canvas_varus_valgus.ax.grid(True, alpha=0.3)
-                    self.canvas_varus_valgus.ax.set_xlim(-constants.X_LIM_ROT, constants.X_LIM_ROT)  
-                    self.canvas_varus_valgus.ax.set_ylim(constants.Y_MIN_FLEX, constants.Y_MAX_FLEX)
-                    self.canvas_varus_valgus.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
-                    
-                    # Clear the stored data arrays
-                    #self.canvas_varus_valgus.varus_valgus_data = []
-                    #self.canvas_varus_valgus.flexion_data = []
-                    
-                    #self.canvas_varus_valgus.draw()
-                    
-                except Exception as e:
-                    print(f"Error updating plot to rotation mode: {e}")
-                    
-        elif self.diagram_mode == "rotation":
-            self.diagram_mode = "adduction"
-            self.diagram_axes_button.setText("click to show medial/lateral joint gap")
-            
-            # Update diagram title back to varus/valgus
-            if hasattr(self, 'canvas_varus_valgus'):
-                try:
-                    # Clear the plot and reset
-                    self.canvas_varus_valgus.ax.clear()
-                    #self.canvas_varus_valgus.ax.set_xlabel('test1')
-                    self.canvas_varus_valgus.ax.set_ylabel('Flexion Angle [°]')
-                    self.canvas_varus_valgus.ax.set_title('var/val angle [°]')
-                    self.canvas_varus_valgus.ax.grid(True, alpha=0.3)
-                    self.canvas_varus_valgus.ax.set_xlim(-constants.X_LIM_VAL, constants.X_LIM_VAL)
-                    self.canvas_varus_valgus.ax.set_ylim(constants.Y_MIN_FLEX, constants.Y_MAX_FLEX)
-                    self.canvas_varus_valgus.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
-                    
-                    # Clear the stored data arrays
-                    #self.canvas_varus_valgus.varus_valgus_data = []
-                    #self.canvas_varus_valgus.flexion_data = []
-                    
-                    #self.canvas_varus_valgus.draw()
-                    
-                except Exception as e:
-                    print(f"Error updating plot to varus/valgus mode: {e}")
-
-        elif self.diagram_mode == "adduction":
-            self.diagram_mode = "varus_valgus"
-            self.diagram_axes_button.setText("click to show joint rotation")
-            
-            # Update diagram title back to varus/valgus
-            if hasattr(self, 'canvas_varus_valgus'):
-                try:
-                    # Clear the plot and reset
-                    self.canvas_varus_valgus.ax.clear()
-                    #self.canvas_varus_valgus.ax.set_xlabel('test1')
-                    self.canvas_varus_valgus.ax.set_ylabel('Flexion Angle [°]')
-                    self.canvas_varus_valgus.ax.set_title('medial/lateral joint gap [mm]')
-                    self.canvas_varus_valgus.ax.grid(True, alpha=0.3)
-                    self.canvas_varus_valgus.ax.set_xlim(-constants.X_LIM_VAL, constants.X_LIM_VAL)
-                    self.canvas_varus_valgus.ax.set_ylim(constants.Y_MIN_FLEX, constants.Y_MAX_FLEX)
-                    self.canvas_varus_valgus.ax.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
-                    
-                    # Clear the stored data arrays
-                    #self.canvas_varus_valgus.varus_valgus_data = []
-                    #self.canvas_varus_valgus.flexion_data = []
-                    
-                    #self.canvas_varus_valgus.draw()
-                    
-                except Exception as e:
-                    print(f"Error updating plot to varus/valgus mode: {e}")
-        
-        print(f"Diagram mode switched to: {self.diagram_mode}")"""
 
 
     def toggle_diagram_axes_rotation(self):
@@ -1590,6 +1400,8 @@ class KneeFlexionExperiment(QMainWindow):
             adduction = df.iloc[:, 22]
             medial_joint_gap = df.iloc[:, 27]  # Medial_Joint_Gap column
             lateral_joint_gap = df.iloc[:, 28]  # Lateral_Joint_Gap column
+            anterior = df.iloc[:, 24]
+            medial = df.iloc[:, 25]
 
             
 
@@ -1597,6 +1409,9 @@ class KneeFlexionExperiment(QMainWindow):
             #tjy = tx - fz * delta_y + fy * delta_z # not used anymore, because torques are recorded already calculated
             tjx = tx
             tjy = ty
+            fjx = fx
+            fjy = fy
+            fyz = fz
                 
             
             # Configuration parameters (you can make these class attributes for easy modification)
@@ -1616,6 +1431,11 @@ class KneeFlexionExperiment(QMainWindow):
             tjx_max = tjx.max()
             tjy_min = tjy.min()
             tjy_max = tjy.max()
+            fjx_min = fjx.min()
+            fjx_max = fjx.max()
+            fjy_min = fjy.min()
+            fjy_max = fjy.max()
+
 
             if self.diagram_mode == 'rotation':    
                 #bin_size = 0.2
@@ -1623,15 +1443,26 @@ class KneeFlexionExperiment(QMainWindow):
                 tjx_range_temp = tjx_max - tjx_min
                 bin_size_temp = tjx_range_temp / desired_bins
                 bin_size = round(bin_size_temp, 1)
-                #print(desired_bins )
-                #print(tjx_range_temp)
-                #print(bin_size_temp)
-                #print(bin_size)
-            else:
+            elif self.diagram_mode == 'varus_valgus':
                 #bin_size = 0.5
                 desired_bins = constants.BINS_VAR
                 tjy_range_temp = tjy_max - tjy_min
                 bin_size_temp = tjy_range_temp / desired_bins
+                bin_size = round(bin_size_temp, 1)
+            elif self.diagram_mode == 'adduction':
+                desired_bins = constants.BINS_ADD
+                tjy_range_temp = tjy_max - tjy_min
+                bin_size_temp = tjy_range_temp / desired_bins
+                bin_size = round(bin_size_temp, 1)
+            elif self.diagram_mode == 'anterior':
+                desired_bins = constants.BINS_ANT
+                fjx_range_temp = fjx_max - fjx_min
+                bin_size_temp = fjx_range_temp / desired_bins
+                bin_size = round(bin_size_temp, 1)
+            elif self.diagram_mode == 'medial':
+                desired_bins = constants.BINS_ANT
+                fjy_range_temp = fjy_max - fjy_min
+                bin_size_temp = fjy_range_temp / desired_bins
                 bin_size = round(bin_size_temp, 1)
 
 
@@ -1639,6 +1470,8 @@ class KneeFlexionExperiment(QMainWindow):
             
             tjx_bins = np.arange(tjx_min, tjx_max + bin_size, bin_size)
             tjy_bins = np.arange(tjy_min, tjy_max + bin_size, bin_size)
+            fjx_bins = np.arange(fjx_min, fjx_max + bin_size, bin_size)
+            fjy_bins = np.arange(fjy_min, fjy_max + bin_size, bin_size)
 
             
             # Create bins for flexion angles
@@ -1650,6 +1483,8 @@ class KneeFlexionExperiment(QMainWindow):
             tjx_bin_indices = pd.cut(tjx, tjx_bins, include_lowest=True, labels=False)
             flexion_bin_indices = pd.cut(flexion, flexion_bins, include_lowest=True, labels=False)
             tjy_bin_indices = pd.cut(tjy, tjy_bins, include_lowest=True, labels=False)
+            fjx_bin_indices = pd.cut(fjx, fjx_bins, include_lowest=True, labels=False)
+            fjy_bin_indices = pd.cut(fjy, fjy_bins, include_lowest=True, labels=False)
 
             
             # Create bin centers
@@ -1662,21 +1497,37 @@ class KneeFlexionExperiment(QMainWindow):
 
             bin_centers_tjy = (tjy_bins[:-1] + tjy_bins[1:]) / 2
             tjy_bin_centers = bin_centers_tjy[tjy_bin_indices.astype(int)]
+
+            bin_centers_fjx = (fjx_bins[:-1] + fjx_bins[1:]) / 2
+            fjx_bin_centers = bin_centers_fjx[fjx_bin_indices.astype(int)]
+
+            bin_centers_fjy = (fjy_bins[:-1] + fjy_bins[1:]) / 2
+            fjy_bin_centers = bin_centers_fjy[fjy_bin_indices.astype(int)]
+
            
             
             # Create DataFrame with bin indices and centers
             data_df = pd.DataFrame({
                 'tjx_bin': tjx_bin_indices,
                 'tjy_bin': tjy_bin_indices,
+                'fjx_bin': fjx_bin_indices,
+                'fjy_bin': fjy_bin_indices,
                 'flexion_bin': flexion_bin_indices,
                 'rotation': rotation,
                 'medial_joint_gap': medial_joint_gap,
                 'lateral_joint_gap': lateral_joint_gap,
+                'adduction': adduction,
+                'anterior': anterior,
+                'medial': medial,
                 'flexion': flexion,
                 'tjx': tjx,
                 'tjy': tjy,
+                'fjx': fjx,
+                'fjy': fjy,
                 'tjx_bin_center': tjx_bin_centers,
                 'tjy_bin_center': tjy_bin_centers,
+                'fjx_bin_center': fjx_bin_centers,
+                'fjy_bin_center': fjy_bin_centers,
                 'flexion_bin_center': flexion_bin_centers_mapped
             })
 
@@ -1717,7 +1568,7 @@ class KneeFlexionExperiment(QMainWindow):
                             'n_points': len(group),
                             'effective_n': total_weight
                         })
-            else:
+            elif self.diagram_mode == "varus_valgus":
                 for (tjy_bin_idx, flexion_bin_idx), group in data_df.groupby(['tjy_bin', 'flexion_bin']):
                     if len(group) < 1:
                         continue
@@ -1749,6 +1600,96 @@ class KneeFlexionExperiment(QMainWindow):
                             'n_points': len(group),
                             'effective_n': total_weight
                         })
+            elif self.diagram_mode == "adduction":
+                for (tjy_bin_idx, flexion_bin_idx), group in data_df.groupby(['tjy_bin', 'flexion_bin']):
+                    if len(group) < 1:
+                        continue
+                    
+                    # Calculate weights based on distance from torque bin center
+                    tjy_weights = self.calculate_bin_weights(
+                        group['tjy'].values, 
+                        group['tjy_bin_center'].values,
+                        WEIGHT_TYPE, 
+                        SIGMA_FACTOR,
+                        bin_size
+                    )
+                    
+                    # Calculate weighted averages
+                    total_weight = np.sum(tjy_weights)
+                    if total_weight > 0:
+                        weighted_adduction = np.sum(group['adduction'].values * tjy_weights) / total_weight
+                        weighted_flexion = np.sum(group['flexion'].values * tjy_weights) / total_weight
+                        weighted_tjy = np.sum(group['tjy'].values * tjy_weights) / total_weight
+                        
+                        weighted_groups.append({
+                            'tjy_bin': tjy_bin_idx,
+                            'flexion_bin': flexion_bin_idx,
+                            'adduction': weighted_adduction,
+                            'flexion': weighted_flexion,
+                            'tjy': weighted_tjy,
+                            'n_points': len(group),
+                            'effective_n': total_weight
+                        })
+            elif self.diagram_mode == "anterior":
+                for (fjx_bin_idx, flexion_bin_idx), group in data_df.groupby(['fjx_bin', 'flexion_bin']):
+                        if len(group) < 1:
+                            continue
+                        
+                        # Calculate weights based on distance from torque bin center
+                        fjx_weights = self.calculate_bin_weights(
+                            group['fjx'].values, 
+                            group['fjx_bin_center'].values,
+                            WEIGHT_TYPE, 
+                            SIGMA_FACTOR,
+                            bin_size
+                        )
+                        
+                        # Calculate weighted averages
+                        total_weight = np.sum(fjx_weights)
+                        if total_weight > 0:
+                            weighted_anterior = np.sum(group['anterior'].values * fjx_weights) / total_weight
+                            weighted_flexion = np.sum(group['flexion'].values * fjx_weights) / total_weight
+                            weighted_fjx = np.sum(group['fjx'].values * fjx_weights) / total_weight
+                            
+                            weighted_groups.append({
+                                'fjx_bin': fjx_bin_idx,
+                                'flexion_bin': flexion_bin_idx,
+                                'anterior': weighted_anterior,
+                                'flexion': weighted_flexion,
+                                'fjx': weighted_fjx,
+                                'n_points': len(group),
+                                'effective_n': total_weight
+                            })
+            elif self.diagram_mode == "medial":
+                for (fjy_bin_idx, flexion_bin_idx), group in data_df.groupby(['fjy_bin', 'flexion_bin']):
+                        if len(group) < 1:
+                            continue
+                        
+                        # Calculate weights based on distance from torque bin center
+                        fjy_weights = self.calculate_bin_weights(
+                            group['fjy'].values, 
+                            group['fjy_bin_center'].values,
+                            WEIGHT_TYPE, 
+                            SIGMA_FACTOR,
+                            bin_size
+                        )
+                        
+                        # Calculate weighted averages
+                        total_weight = np.sum(fjy_weights)
+                        if total_weight > 0:
+                            weighted_medial = np.sum(group['medial'].values * fjy_weights) / total_weight
+                            weighted_flexion = np.sum(group['flexion'].values * fjy_weights) / total_weight
+                            weighted_fjy = np.sum(group['fjy'].values * fjy_weights) / total_weight
+                            
+                            weighted_groups.append({
+                                'fjy_bin': fjy_bin_idx,
+                                'flexion_bin': flexion_bin_idx,
+                                'medial': weighted_medial,
+                                'flexion': weighted_flexion,
+                                'fjy': weighted_fjy,
+                                'n_points': len(group),
+                                'effective_n': total_weight
+                            })
             
             # Convert to DataFrame
             grouped_data = pd.DataFrame(weighted_groups)
@@ -1759,11 +1700,21 @@ class KneeFlexionExperiment(QMainWindow):
             # Create colormap
             n_tjx_bins = len(tjx_bins) - 1
             n_tjy_bins = len(tjy_bins) - 1
+            n_fjx_bins = len(fjx_bins) - 1
+            n_fjy_bins = len(fjy_bins) - 1
             if self.diagram_mode == 'rotation':
                 colors = plt.cm.viridis(np.linspace(0, 1, n_tjx_bins))
                 
-            else:
+            elif self.diagram_mode == 'varus_valgus' or self.diagram_mode == "adduction":
                 colors = plt.cm.viridis(np.linspace(0, 1, n_tjy_bins))
+
+            elif self.diagram_mode == 'anterior':
+                colors = plt.cm.viridis(np.linspace(0, 1, n_fjx_bins))
+
+            elif self.diagram_mode == 'medial':
+                colors = plt.cm.viridis(np.linspace(0, 1, n_fjy_bins))
+
+
             
             # Plot the contour lines
             plotted_lines = 0
@@ -1806,6 +1757,7 @@ class KneeFlexionExperiment(QMainWindow):
                 # Set labels and title
                 self.canvas_contour_plot.ax.set_xlabel('Internal Rotation [°]      External Rotation [°]', fontsize=12)
                 self.canvas_contour_plot.ax.set_ylabel('Flexion [°]', fontsize=12)
+                self.canvas_contour_plot.ax.invert_yaxis()
                 title = 'Rotation Torque Contour Lines'
                 """if APPLY_MOVING_AVERAGE:
                     title += f' + {MOVING_AVERAGE_METHOD.title()} Moving Average)'
@@ -1820,7 +1772,7 @@ class KneeFlexionExperiment(QMainWindow):
                 self.canvas_contour_plot.draw()
                 
                 print(f"Contour plot generated successfully with {plotted_lines} lines")
-            else:
+            elif self.diagram_mode == 'varus_valgus':
                 
                 for tjy_bin_idx in range(n_tjy_bins):
                     
@@ -1851,6 +1803,7 @@ class KneeFlexionExperiment(QMainWindow):
                 # Set labels and title
                 self.canvas_contour_plot.ax.set_xlabel('Medial Joint Gap [mm]     Lateral Joint Gap [mm]', fontsize=12)
                 self.canvas_contour_plot.ax.set_ylabel('Flexion [°]', fontsize=12)
+                self.canvas_contour_plot.ax.invert_yaxis()
                 title = 'Joint Gap Torque Contour Lines'
               
                 self.canvas_contour_plot.ax.set_title(title, fontsize=12)
@@ -1862,6 +1815,167 @@ class KneeFlexionExperiment(QMainWindow):
                 self.canvas_contour_plot.draw()
                 
                 print(f"Contour plot generated successfully with {plotted_lines} lines")
+            elif self.diagram_mode == 'adduction':
+                for tjy_bin_idx in range(n_tjy_bins):
+
+                    # Calculate the torque middle value for this bin
+                    tjy_range_start = tjy_bins[tjy_bin_idx]
+                    tjy_range_end = tjy_bins[tjy_bin_idx + 1]
+                    tjy_middle = (tjy_range_start + tjy_range_end) / 2
+                    
+                    # Skip bins where torque middle is between -0.1 and 0.1
+                    if -0.35 < tjy_middle < 0.2:
+                        continue
+                    
+                    # Get data for this tjx bin
+                    bin_data = grouped_data[grouped_data['tjy_bin'] == tjy_bin_idx].copy()
+                    
+                    if len(bin_data) < 10:
+                        continue
+
+                    
+                    # Sort by flexion for smooth line connection
+                    bin_data = bin_data.sort_values('flexion')
+                    
+                    # Apply moving average if enabled
+                    if APPLY_MOVING_AVERAGE and len(bin_data) >= 3:
+                        bin_data = self.apply_moving_average(bin_data, MOVING_AVERAGE_WINDOW, MOVING_AVERAGE_METHOD)
+                    
+                    # Plot the data
+                    self.plot_contour_subset(bin_data, tjy_bin_idx, colors, tjy_bins, 
+                                        INTERPOLATION_KIND, SMOOTHING_FACTOR, MIN_POINTS_FOR_SMOOTHING)
+                    plotted_lines += 1
+            
+                # Configure the plot
+                x_range = max(abs(adduction.min()), abs(adduction.max())) * 1.1
+                self.canvas_contour_plot.ax.set_xlim(-x_range, x_range)
+                self.canvas_contour_plot.ax.axvline(x=0, color='black', linestyle='--', alpha=0.5, linewidth=1)
+                
+                # Set labels and title
+                self.canvas_contour_plot.ax.set_xlabel('varus angle [°]      valgus angle [°]', fontsize=12)
+                self.canvas_contour_plot.ax.set_ylabel('Flexion [°]', fontsize=12)
+                self.canvas_contour_plot.ax.invert_yaxis()
+                title = 'Rotation Torque Contour Lines'
+                """if APPLY_MOVING_AVERAGE:
+                    title += f' + {MOVING_AVERAGE_METHOD.title()} Moving Average)'
+                else:
+                    title += ')'"""
+                self.canvas_contour_plot.ax.set_title(title, fontsize=12)
+                
+                # Add grid and legend
+                self.canvas_contour_plot.ax.grid(True, alpha=0.3)
+                
+                # Refresh the canvas
+                self.canvas_contour_plot.draw()
+                
+                print(f"Contour plot generated successfully with {plotted_lines} lines")
+            elif self.diagram_mode == 'anterior':
+                for fjx_bin_idx in range(n_fjx_bins):
+
+                    # Calculate the torque middle value for this bin
+                    fjx_range_start = fjx_bins[fjx_bin_idx]
+                    fjx_range_end = fjx_bins[fjx_bin_idx + 1]
+                    fjx_middle = (fjx_range_start + fjx_range_end) / 2
+                    
+                    # Skip bins where torque middle is between -0.1 and 0.1
+                    if -0.35 < fjx_middle < 0.2:
+                        continue
+                    
+                    # Get data for this tjx bin
+                    bin_data = grouped_data[grouped_data['fjx_bin'] == fjx_bin_idx].copy()
+                    
+                    if len(bin_data) < 10:
+                        continue
+
+                    
+                    # Sort by flexion for smooth line connection
+                    bin_data = bin_data.sort_values('flexion')
+                    
+                    # Apply moving average if enabled
+                    if APPLY_MOVING_AVERAGE and len(bin_data) >= 3:
+                        bin_data = self.apply_moving_average(bin_data, MOVING_AVERAGE_WINDOW, MOVING_AVERAGE_METHOD)
+                    
+                    # Plot the data
+                    self.plot_contour_subset(bin_data, fjx_bin_idx, colors, fjx_bins, 
+                                        INTERPOLATION_KIND, SMOOTHING_FACTOR, MIN_POINTS_FOR_SMOOTHING)
+                    plotted_lines += 1
+            
+                # Configure the plot
+                x_range = max(abs(anterior.min()), abs(anterior.max())) * 1.1
+                self.canvas_contour_plot.ax.set_xlim(-x_range, x_range)
+                self.canvas_contour_plot.ax.axvline(x=0, color='black', linestyle='--', alpha=0.5, linewidth=1)
+                
+                # Set labels and title
+                self.canvas_contour_plot.ax.set_xlabel('anterior translation [mm]      posterior translation [mm]', fontsize=12)
+                self.canvas_contour_plot.ax.set_ylabel('Flexion [°]', fontsize=12)
+                self.canvas_contour_plot.ax.invert_yaxis()
+                title = 'Rotation Torque Contour Lines'
+                """if APPLY_MOVING_AVERAGE:
+                    title += f' + {MOVING_AVERAGE_METHOD.title()} Moving Average)'
+                else:
+                    title += ')'"""
+                self.canvas_contour_plot.ax.set_title(title, fontsize=12)
+                
+                # Add grid and legend
+                self.canvas_contour_plot.ax.grid(True, alpha=0.3)
+                
+                # Refresh the canvas
+                self.canvas_contour_plot.draw()
+                
+                print(f"Contour plot generated successfully with {plotted_lines} lines")
+            elif self.diagram_mode == 'medial':
+                for fjy_bin_idx in range(n_fjy_bins):
+
+                    # Calculate the torque middle value for this bin
+                    fjy_range_start = fjy_bins[fjy_bin_idx]
+                    fjy_range_end = fjy_bins[fjy_bin_idx + 1]
+                    fjy_middle = (fjy_range_start + fjy_range_end) / 2
+                    
+                    # Skip bins where torque middle is between -0.1 and 0.1
+                    if -0.35 < fjy_middle < 0.2:
+                        continue
+                    
+                    # Get data for this tjx bin
+                    bin_data = grouped_data[grouped_data['fjy_bin'] == fjy_bin_idx].copy()
+                    
+                    if len(bin_data) < 10:
+                        continue
+
+                    
+                    # Sort by flexion for smooth line connection
+                    bin_data = bin_data.sort_values('flexion')
+                    
+                    # Apply moving average if enabled
+                    if APPLY_MOVING_AVERAGE and len(bin_data) >= 3:
+                        bin_data = self.apply_moving_average(bin_data, MOVING_AVERAGE_WINDOW, MOVING_AVERAGE_METHOD)
+                    
+                    # Plot the data
+                    self.plot_contour_subset(bin_data, fjy_bin_idx, colors, fjy_bins, 
+                                        INTERPOLATION_KIND, SMOOTHING_FACTOR, MIN_POINTS_FOR_SMOOTHING)
+                    plotted_lines += 1
+            
+                # Configure the plot
+                x_range = max(abs(medial.min()), abs(medial.max())) * 1.1
+                self.canvas_contour_plot.ax.set_xlim(-x_range, x_range)
+                self.canvas_contour_plot.ax.axvline(x=0, color='black', linestyle='--', alpha=0.5, linewidth=1)
+                
+                # Set labels and title
+                self.canvas_contour_plot.ax.set_xlabel('medial translation [mm]      lateral translation [mm]', fontsize=12)
+                self.canvas_contour_plot.ax.set_ylabel('Flexion [°]', fontsize=12)
+                title = 'Rotation Torque Contour Lines'
+                """if APPLY_MOVING_AVERAGE:
+                    title += f' + {MOVING_AVERAGE_METHOD.title()} Moving Average)'
+                else:
+                    title += ')'"""
+                self.canvas_contour_plot.ax.set_title(title, fontsize=12)
+                
+                # Add grid and legend
+                self.canvas_contour_plot.ax.grid(True, alpha=0.3)
+                
+                # Refresh the canvas
+                self.canvas_contour_plot.draw()
+                
+                print(f"Contour plot generated successfully with {plotted_lines} lines")     
         
         except FileNotFoundError:
             print(f"File not found: {file_path}")
@@ -1923,7 +2037,7 @@ class KneeFlexionExperiment(QMainWindow):
                 smoothed_data['tjx'] = data['tjx'].rolling(
                     window=window_size, center=True, min_periods=1
                 ).mean()
-            else:
+            elif self.diagram_mode == 'varus_valgus':
                 smoothed_data['medial_joint_gap'] = data['medial_joint_gap'].rolling(
                     window=window_size, center=True, min_periods=1
                 ).mean()
@@ -1934,6 +2048,36 @@ class KneeFlexionExperiment(QMainWindow):
                     window=window_size, center=True, min_periods=1
                 ).mean()
                 smoothed_data['tjy'] = data['tjy'].rolling(
+                    window=window_size, center=True, min_periods=1
+                ).mean()
+            elif self.diagram_mode == 'adduction':
+                smoothed_data['adduction'] = data['adduction'].rolling(
+                    window=window_size, center=True, min_periods=1
+                ).mean()
+                smoothed_data['flexion'] = data['flexion'].rolling(
+                    window=window_size, center=True, min_periods=1
+                ).mean()
+                smoothed_data['tjy'] = data['tjy'].rolling(
+                    window=window_size, center=True, min_periods=1
+                ).mean()
+            elif self.diagram_mode == 'anterior':
+                smoothed_data['anterior'] = data['anterior'].rolling(
+                    window=window_size, center=True, min_periods=1
+                ).mean()
+                smoothed_data['flexion'] = data['flexion'].rolling(
+                    window=window_size, center=True, min_periods=1
+                ).mean()
+                smoothed_data['fjx'] = data['fjx'].rolling(
+                    window=window_size, center=True, min_periods=1
+                ).mean()
+            elif self.diagram_mode == 'medial':
+                smoothed_data['medial'] = data['medial'].rolling(
+                    window=window_size, center=True, min_periods=1
+                ).mean()
+                smoothed_data['flexion'] = data['flexion'].rolling(
+                    window=window_size, center=True, min_periods=1
+                ).mean()
+                smoothed_data['fjy'] = data['fjy'].rolling(
                     window=window_size, center=True, min_periods=1
                 ).mean()
             
@@ -1966,11 +2110,23 @@ class KneeFlexionExperiment(QMainWindow):
                 smoothed_data['rotation'] = weighted_average(data['rotation'], window_size)
                 smoothed_data['flexion'] = weighted_average(data['flexion'], window_size)
                 smoothed_data['tjx'] = weighted_average(data['tjx'], window_size)
-            else:
+            elif self.diagram_mode == 'varus_valgus':
                 smoothed_data['medial_joint_gap'] = weighted_average(data['medial_joint_gap'], window_size)
                 smoothed_data['lateral_joint_gap'] = weighted_average(data['lateral_joint_gap'], window_size)
                 smoothed_data['flexion'] = weighted_average(data['flexion'], window_size)
                 smoothed_data['tjy'] = weighted_average(data['tjy'], window_size)
+            elif self.diagram_mode == 'adduction':
+                smoothed_data['adduction'] = weighted_average(data['adduction'], window_size)
+                smoothed_data['flexion'] = weighted_average(data['flexion'], window_size)
+                smoothed_data['tjy'] = weighted_average(data['tjy'], window_size)
+            elif self.diagram_mode == 'anterior':
+                smoothed_data['anterior'] = weighted_average(data['anterior'], window_size)
+                smoothed_data['flexion'] = weighted_average(data['flexion'], window_size)
+                smoothed_data['fjx'] = weighted_average(data['fjx'], window_size)
+            elif self.diagram_mode == 'medial':
+                smoothed_data['medial'] = weighted_average(data['medial'], window_size)
+                smoothed_data['flexion'] = weighted_average(data['flexion'], window_size)
+                smoothed_data['fjy'] = weighted_average(data['fjy'], window_size)
             
         elif method == 'exponential':
             if self.diagram_mode == 'rotation':
@@ -1978,12 +2134,27 @@ class KneeFlexionExperiment(QMainWindow):
                 smoothed_data['rotation'] = data['rotation'].ewm(alpha=alpha, adjust=False).mean()
                 smoothed_data['flexion'] = data['flexion'].ewm(alpha=alpha, adjust=False).mean()
                 smoothed_data['tjx'] = data['tjx'].ewm(alpha=alpha, adjust=False).mean()
-            else:
+            elif self.diagram_mode == 'varus_valgus':
                 alpha = 2.0 / (window_size + 1)
                 smoothed_data['medial_joint_gap'] = data['medial_joint_gap'].ewm(alpha=alpha, adjust=False).mean()
                 smoothed_data['lateral_joint_gap'] = data['lateral_joint_gap'].ewm(alpha=alpha, adjust=False).mean()
                 smoothed_data['flexion'] = data['flexion'].ewm(alpha=alpha, adjust=False).mean()
                 smoothed_data['tjy'] = data['tjy'].ewm(alpha=alpha, adjust=False).mean()
+            elif self.diagram_mode == 'adduction':
+                alpha = 2.0 / (window_size + 1)
+                smoothed_data['adduction'] = data['aduction'].ewm(alpha=alpha, adjust=False).mean()
+                smoothed_data['flexion'] = data['flexion'].ewm(alpha=alpha, adjust=False).mean()
+                smoothed_data['tjy'] = data['tjy'].ewm(alpha=alpha, adjust=False).mean()
+            elif self.diagram_mode == 'anterior':
+                alpha = 2.0 / (window_size + 1)
+                smoothed_data['anterior'] = data['anterior'].ewm(alpha=alpha, adjust=False).mean()
+                smoothed_data['flexion'] = data['flexion'].ewm(alpha=alpha, adjust=False).mean()
+                smoothed_data['fjx'] = data['fjx'].ewm(alpha=alpha, adjust=False).mean()
+            elif self.diagram_mode == 'medial':
+                alpha = 2.0 / (window_size + 1)
+                smoothed_data['medial'] = data['medial'].ewm(alpha=alpha, adjust=False).mean()
+                smoothed_data['flexion'] = data['flexion'].ewm(alpha=alpha, adjust=False).mean()
+                smoothed_data['fjy'] = data['fjy'].ewm(alpha=alpha, adjust=False).mean()
         
         return smoothed_data
     
@@ -1994,7 +2165,7 @@ class KneeFlexionExperiment(QMainWindow):
             os.makedirs(save_dir, exist_ok=True)
             
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = os.path.join(save_dir, f"varus_valgus_plot_{timestamp}.png")
+            filename = os.path.join(save_dir, f"contour_plot_{timestamp}.png")
             
             self.canvas_contour_plot.figure.savefig(
                 filename,
@@ -2020,10 +2191,25 @@ class KneeFlexionExperiment(QMainWindow):
             positive_data = bin_data[bin_data['rotation'] > 0].copy()
             negative_data = bin_data[bin_data['rotation'] < 0].copy()
             zero_data = bin_data[bin_data['rotation'] == 0].copy()
-        else:
+        elif self.diagram_mode == 'varus_valgus':
             positive_data  = bin_data[bin_data['medial_joint_gap'] > 0].copy()
             negative_data = bin_data[bin_data['lateral_joint_gap'] > 0].copy()
             zero_data = pd.DataFrame() 
+        elif self.diagram_mode == 'adduction':
+            # Separate positive, negative, and zero rotation values
+            positive_data = bin_data[bin_data['adduction'] > 0].copy()
+            negative_data = bin_data[bin_data['adduction'] < 0].copy()
+            zero_data = bin_data[bin_data['adduction'] == 0].copy()  
+        elif self.diagram_mode == 'anterior':
+            # Separate positive, negative, and zero rotation values
+            positive_data = bin_data[bin_data['anterior'] > 0].copy()
+            negative_data = bin_data[bin_data['anterior'] < 0].copy()
+            zero_data = bin_data[bin_data['anterior'] == 0].copy()  
+        elif self.diagram_mode == 'medial':
+            # Separate positive, negative, and zero rotation values
+            positive_data = bin_data[bin_data['medial'] > 0].copy()
+            negative_data = bin_data[bin_data['medial'] < 0].copy()
+            zero_data = bin_data[bin_data['medial'] == 0].copy()  
             
         
         def plot_subset(subset_data, test, marker_style='o'):
@@ -2033,11 +2219,17 @@ class KneeFlexionExperiment(QMainWindow):
             subset_data = subset_data.sort_values('flexion')
             if self.diagram_mode == 'rotation':
                 x_values = subset_data['rotation'].values
-            else:
+            elif self.diagram_mode == 'varus_valgus':
                 if test == 0:
                     x_values = -(subset_data['medial_joint_gap'].values)
                 else:
                     x_values = subset_data['lateral_joint_gap'].values
+            elif self.diagram_mode == 'adduction':
+                x_values = subset_data['adduction'].values
+            elif self.diagram_mode == 'anterior':
+                x_values = subset_data['anterior'].values
+            elif self.diagram_mode == 'medial':
+                x_values = subset_data['medial'].values
 
             y_values = subset_data['flexion'].values
             
