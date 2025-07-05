@@ -323,8 +323,14 @@ class KneeFlexionExperiment(QMainWindow):
                             
                             if self.diagram_start_mode == "start":
                                 # Calculate flexion/I-E/Varus-Valgus and joint gap
+                                t_start = time.time()
                                 angles_new = UpdateVisualization.get_current_knee_angles()
-
+                                t_end = time.time()
+#                                print(f"Calculating gap and angles took {t_end-t_start:.5f}")
+                                UpdateVisualization.update_landmark_alex(self, self.femur_contact_medial, np.array([1,0,0,0]), "femur_contact_medial")
+                                UpdateVisualization.update_landmark_alex(self, self.femur_contact_lateral, np.array([1,0,0,0]), "femur_contact_lateral")
+                                dist_medial_new = np.linalg.norm(UpdateVisualization.femur_landmarks['femur_contact_medial']['position']-UpdateVisualization.tibia_landmarks['tibia_medial']['position'])
+                                print(f"Distance stl: {angles_new['medial_tibia_femur']:.3f}, \tDistance direction: {dist_medial_new:.3f}")
                                 # Set angles and newly calculated joint gaps
                                 flexion_angle = angles_new['flexion']
                                 lateral_joint_gap = angles_new['lateral_tibia_femur']
@@ -1161,6 +1167,7 @@ class KneeFlexionExperiment(QMainWindow):
             femur_vertices, femur_faces = MeshUtils.load_stl_as_mesh(constants.FEMUR)
             warnings.filterwarnings("ignore", message="invalid value encountered in divide", category=RuntimeWarning)
             self.femur_original_vertices = femur_vertices.copy()
+            self.femur_original_faces = femur_faces.copy()
             
             # Store vertices in a numpy array for faster operations
             femur_vertices = np.array(femur_vertices, dtype=np.float32)
@@ -1266,7 +1273,9 @@ class KneeFlexionExperiment(QMainWindow):
             UpdateVisualization.add_landmark(self, femur_center_lateral_2_rot, "femur_center_lateral_2")
             UpdateVisualization.add_landmark(self, femur_sphere_center_medial_rot, "femur_sphere_center_medial")
             UpdateVisualization.add_landmark(self, femur_sphere_center_lateral_rot, "femur_sphere_center_lateral")
-         
+            UpdateVisualization.add_landmark(self, np.array([0,0,0]), "femur_contact_medial")
+            UpdateVisualization.add_landmark(self, np.array([0,0,0]), "femur_contact_lateral")
+
         except Exception as e:
             print(f"Error loading femur: {e}")
             import traceback

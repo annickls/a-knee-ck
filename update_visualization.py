@@ -521,8 +521,17 @@ class UpdateVisualization():
             shader='shaded',
             glOptions='translucent'
         )
+        if name=="femur_contact_medial" or name=="femur_contact_lateral":
+            landmark_sphere = gl.GLMeshItem(
+                meshdata=gl.MeshData.sphere(rows=10, cols=10, radius=8),
+                smooth=True,
+                color=(1, 1, 0, 1),
+                shader='shaded',
+                glOptions='translucent'
+            )
+
         # add sphere to visualization
-        #self.gl_view.addItem(landmark_sphere)
+        self.gl_view.addItem(landmark_sphere)
         landmark_sphere.translate(position[0], position[1], position[2])
         
         # Add Sphere to class to update it later on
@@ -820,13 +829,51 @@ class UpdateVisualization():
         tibia_medial_init = instanceGUI.femur_kabsch_rot.T@tibia_medial_opti-instanceGUI.femur_kabsch_trans
         tibia_lateral_init = instanceGUI.femur_kabsch_rot.T@tibia_lateral_opti-instanceGUI.femur_kabsch_trans
 
+        # Get proximal-distal axis of the tibia and rotate into femur stl CoSy
+        tibia_axis = UpdateVisualization.tibiaproximaldistal
+        tibia_axis_opti = femur_rot.T@tibia_axis
+        tibia_axis_init = instanceGUI.femur_kabsch_rot.T@tibia_axis_opti
+
         # Calculate distance from point to femur model
-        distance_medial, _ = instanceGUI.femur_kdtree.query(tibia_medial_init, k=100)
-        distance_lateral, _ = instanceGUI.femur_kdtree.query(tibia_lateral_init, k=100)
+        distance_medial, medial_face_ids = instanceGUI.femur_kdtree.query(tibia_medial_init, k=200)
+        distance_lateral, lateral_face_ids = instanceGUI.femur_kdtree.query(tibia_lateral_init, k=200)
+
+        # Get potential candidates for closest point
+        faces_min_medial = instanceGUI.femur_original_faces[medial_face_ids]
+        potential_vertices_medial = np.unique(faces_min_medial)
+        points_min_medial = instanceGUI.femur_original_vertices[potential_vertices_medial]
+        faces_min_lateral = instanceGUI.femur_original_faces[lateral_face_ids]
+        potential_vertices_lateral = np.unique(faces_min_lateral)
+        points_min_lateral = instanceGUI.femur_original_vertices[potential_vertices_lateral]
+
+        # Project the distance along the desired direction
+        points_medial_projected = np.dot(points_min_medial, tibia_axis_init)
+        tibia_medial_projected = np.dot(tibia_medial_init, tibia_axis_init)
+        points_lateral_projected = np.dot(points_min_lateral, tibia_axis_init)
+        tibia_lateral_projected = np.dot(tibia_lateral_init, tibia_axis_init)
+
+        # Calculate minimal distance
+        distance_medial_projected = np.abs(tibia_medial_projected-points_medial_projected)
+        pos_min_dist_medial = np.argmin(distance_medial_projected)
+        min_dist_medial = distance_medial_projected[pos_min_dist_medial]
+        pt_min_medial = points_min_medial[pos_min_dist_medial]
+        distance_lateral_projected = np.abs(tibia_lateral_projected-points_lateral_projected)
+        pos_min_dist_lateral = np.argmin(distance_lateral_projected)
+        min_dist_lateral = distance_lateral_projected[pos_min_dist_lateral]
+        pt_min_lateral = points_min_lateral[pos_min_dist_lateral]
+
+        # Transform the minimal point back to optitrack CoSy
+        pt_min_medial_opti = instanceGUI.femur_kabsch_rot@(pt_min_medial+instanceGUI.femur_kabsch_trans)
+        pt_min_medial_live = femur_rot@pt_min_medial_opti + femur_trans
+        instanceGUI.femur_contact_medial = pt_min_medial_live
+        pt_min_lateral_opti = instanceGUI.femur_kabsch_rot@(pt_min_lateral+instanceGUI.femur_kabsch_trans)
+        pt_min_lateral_live = femur_rot@pt_min_lateral_opti + femur_trans
+        instanceGUI.femur_contact_lateral = pt_min_lateral_live
 
         # Minimal distance
         medial_gap = min(distance_medial)
         lateral_gap = min(distance_lateral)
+#        print(f"Medial gap absolute: {medial_gap:.2f}, medial gap richtung: {min_dist_medial:.2f}")
 
         return medial_gap, lateral_gap
 
