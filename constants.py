@@ -1,6 +1,28 @@
 import os
 import glob
 import numpy as np
+import pandas as pd
+import csv
+
+def create_df_from_fcsv(filePath):
+    data = {}
+    with open(filePath, 'r') as f:
+        csv_reader = csv.reader(f)
+        # Skip the header rows
+        for _ in range(3):  # Skip the first n lines
+            next(csv_reader)
+        
+        # Extract the point data
+        for row in csv_reader:
+            if row:
+                x = float(row[1])
+                y = float(row[2])
+                z = float(row[3])
+                name = row[11]
+                data[name] = x,y,z
+    # Create the DataFrame and transpose it
+    df = pd.DataFrame(data, index=['x', 'y', 'z'])
+    return df
 
 # experiment parameters
 HOLD_TIME = 40 #seconds to hold knee positions
@@ -32,14 +54,31 @@ DATA_CSV = "data_new.csv"
 
 #landmarks of femur and tibia for grood & suntay calculations 
 #knee model
-FEMUR_LATERAL = np.array([110.0960693359375, -108.0730972290039, 1385.2410888671875])
-FEMUR_MEDIAL = np.array([96.95680236816406,-164.77444458007812,1386.5252685546875])
-FEMUR_PROXIMAL= np.array([75,-130,935])
-FEMUR_DISTAL = np.array([83.05928802490234,-130.9730682373047,1373.7659912109375])
-TIBIA_LATERAL = np.array([80,-105,1401.037])
-TIBIA_MEDIAL= np.array([69.4353256225586,-142.4228515625,1407.4371337890625])
-TIBIA_PROXIMAL = np.array([66.03421783447266,-120.49935913085938,1400.6976318359375])
-TIBIA_DISTAL = np.array([56.0771484375,-104.6276626586914,1806.37841796875])
+# FEMUR_LATERAL = np.array([110.0960693359375, -108.0730972290039, 1385.2410888671875])
+# FEMUR_MEDIAL = np.array([96.95680236816406,-164.77444458007812,1386.5252685546875])
+# FEMUR_PROXIMAL= np.array([75,-130,935])
+# FEMUR_DISTAL = np.array([83.05928802490234,-130.9730682373047,1373.7659912109375])
+# TIBIA_LATERAL = np.array([80,-105,1401.037])
+# TIBIA_MEDIAL= np.array([69.4353256225586,-142.4228515625,1407.4371337890625])
+# TIBIA_PROXIMAL = np.array([66.03421783447266,-120.49935913085938,1400.6976318359375])
+# TIBIA_DISTAL = np.array([56.0771484375,-104.6276626586914,1806.37841796875])
+
+# Read in femur landmarks
+femur_landmarks_fileName = "femur_landmarks.fcsv"
+femur_landmarks_path = os.path.join(current_folder, "data_for_gui", femur_landmarks_fileName)
+df_femur_landmarks = create_df_from_fcsv(femur_landmarks_path)
+FEMUR_LATERAL = df_femur_landmarks["femur_lateral"].to_numpy()
+FEMUR_MEDIAL = df_femur_landmarks["femur_medial"].to_numpy()
+FEMUR_PROXIMAL= df_femur_landmarks["femur_proximal"].to_numpy()
+FEMUR_DISTAL = df_femur_landmarks["femur_distal"].to_numpy()
+# Read in tibial landmarks
+tibia_landmarks_fileName = "tibia_landmarks.fcsv"
+tibia_landmarks_path = os.path.join(current_folder, "data_for_gui", tibia_landmarks_fileName)
+df_tibia_landmarks = create_df_from_fcsv(tibia_landmarks_path)
+TIBIA_LATERAL = df_tibia_landmarks["tibia_lateral"].to_numpy()
+TIBIA_MEDIAL= df_tibia_landmarks["tibia_medial"].to_numpy()
+TIBIA_PROXIMAL = df_tibia_landmarks["tibia_proximal"].to_numpy()
+TIBIA_DISTAL = df_tibia_landmarks["tibia_distal"].to_numpy()
 
 # femur definitions spheres for joint gap measurement
 SURFACE_MEDIAL_1 = np.array([96.53736877441406,-173.56982421875,1377.37841796875])
@@ -57,9 +96,6 @@ TIBIA_CENTER = np.array([72.936, -123.872, 1396.834])
 
 TEST_POINT_MEDIAL = np.array([70,-160,1375])
 TEST_POINT_LATERAL = np.array([84,-100,1365])
-
-FT_ORIGIN = np.array([])
-
 
 #calculation torques - distances FT-Dose to Tibia Origin
 DELTA_X = 0.077
