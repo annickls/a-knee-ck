@@ -35,8 +35,6 @@ from update_visualization import UpdateVisualization
 
 
 
-
-
 class KneeFlexionExperiment(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -263,14 +261,14 @@ class KneeFlexionExperiment(QMainWindow):
                             UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_proximal")
                             UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_distal")
 
-                            UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_center_axis_medial")
-                            UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_center_axis_lateral")
-                            UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_center_medial_1")
-                            UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_center_medial_2")
-                            UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_center_lateral_1")
-                            UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_center_lateral_2")
-                            UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_sphere_center_medial")
-                            UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_sphere_center_lateral")
+                            #UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_center_axis_medial")
+                            #UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_center_axis_lateral")
+                            #UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_center_medial_1")
+                            #UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_center_medial_2")
+                            #UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_center_lateral_1")
+                            #UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_center_lateral_2")
+                            #UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_sphere_center_medial")
+                            #UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_sphere_center_lateral")
                         
                         if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
                             MeshUtils.update_mesh_with_data(self.tibia_mesh, tibia_position, tibia_quaternion)
@@ -374,7 +372,6 @@ class KneeFlexionExperiment(QMainWindow):
                                 test = 0
                             
                             
-                        
                         # Update force visualization
                         UpdateVisualization.update_bone_forces(self, self.current_data_index)
 
@@ -559,7 +556,7 @@ class KneeFlexionExperiment(QMainWindow):
         # Create your GLViewWidget
         self.gl_view = gl.GLViewWidget()
         self.gl_view.setCameraPosition(distance=constants.DISTANCE_BONE_VIZ, elevation=10, azimuth=90) #55 ausgangsposition
-        self.gl_view.setMinimumHeight(580)
+        self.gl_view.setMinimumHeight(650)
         # Add axes for reference
         self.axes = ColoredGLAxisItem(size=(100, 100, 100))  # defined colors
         self.gl_view.addItem(self.axes)
@@ -602,17 +599,13 @@ class KneeFlexionExperiment(QMainWindow):
         # Right side - Dynamic diagram section
         diagram_layout = QVBoxLayout()
         tab_live_layout = QVBoxLayout()
-        self.canvas_varus_valgus = OptimizedVarusValgusPlot(self, width=600, height=600)
+        self.canvas_varus_valgus = OptimizedVarusValgusPlot(self, width=600, height=700)
         tab_live_layout.addWidget(self.canvas_varus_valgus)
         self.tab_live.setLayout(tab_live_layout)
 
         # second tab
         tab_contour_plot_layout = QVBoxLayout()
-        # Add force/torque visualization
-        #viz_label_2 = QLabel("Filtered Point Diagram with contour lines")
-        #viz_label_2.setAlignment(Qt.AlignCenter)
-        #viz_label_2.setFont(QFont("Arial", 12, QFont.Bold))
-        #tab_contour_plot_layout.addWidget(viz_label_2)
+     
         # Create matplotlib visualization
         self.canvas_contour_plot = MplCanvas(width=4, height=8, mode="varus_valgus")
         self.canvas_contour_plot.ax.invert_yaxis()
@@ -783,6 +776,10 @@ class KneeFlexionExperiment(QMainWindow):
         self.diagram_clear_button = QPushButton("clear plot")
         self.diagram_clear_button.setFixedHeight(constants.BUTTON_HEIGHT_2)
         self.diagram_clear_button.clicked.connect(self.clear_diagram)
+        
+        self.offset_button = QPushButton("zero angles and translations")
+        self.offset_button.setFixedHeight(constants.BUTTON_HEIGHT_2)
+        self.offset_button.clicked.connect(self.zero_angles)
 
 
         #button to record data
@@ -809,6 +806,8 @@ class KneeFlexionExperiment(QMainWindow):
         right_layout.addWidget(self.diagram_start_stop_button, 12,0, 2, 1)
         right_layout.addWidget(self.diagram_clear_button, 13,0, 2, 1)
         right_layout.addWidget(self.diagram_toggle_bar_point_button, 14,0, 2, 1)
+        right_layout.addWidget(self.offset_button, 15,0, 2, 1)
+        
         
         
         right_widget.setLayout(right_layout)
@@ -1127,41 +1126,41 @@ class KneeFlexionExperiment(QMainWindow):
             femur_lateral = constants.FEMUR_LATERAL
             femur_proximal = constants.FEMUR_PROXIMAL
             femur_distal = constants.FEMUR_DISTAL
-            femur_center_axis_medial = constants.CENTER_AXIS_MEDIAL
-            femur_center_axis_lateral = constants.CENTER_AXIS_LATERAL
-            femur_center_medial_1 = constants.SURFACE_MEDIAL_1
-            femur_center_medial_2 = constants.SURFACE_MEDIAL_2
-            femur_center_lateral_1 = constants.SURFACE_LATERAL_1
-            femur_center_lateral_2 = constants.SURFACE_LATERAL_2
-            femur_sphere_center_medial = constants.TEST_POINT_MEDIAL
-            femur_sphere_center_lateral = constants.TEST_POINT_LATERAL
+            #femur_center_axis_medial = constants.CENTER_AXIS_MEDIAL
+            #femur_center_axis_lateral = constants.CENTER_AXIS_LATERAL
+            #femur_center_medial_1 = constants.SURFACE_MEDIAL_1
+            #femur_center_medial_2 = constants.SURFACE_MEDIAL_2
+            #femur_center_lateral_1 = constants.SURFACE_LATERAL_1
+            #femur_center_lateral_2 = constants.SURFACE_LATERAL_2
+            #femur_sphere_center_medial = constants.TEST_POINT_MEDIAL
+            #femur_sphere_center_lateral = constants.TEST_POINT_LATERAL
 
             femur_medial_rot = rotation@(femur_medial+translation)
             femur_lateral_rot = rotation@(femur_lateral+translation)
             femur_proximal_rot = rotation@(femur_proximal+translation)
             femur_distal_rot = rotation@(femur_distal+translation)
-            femur_center_axis_medial_rot = rotation@(femur_center_axis_medial+translation)
-            femur_center_axis_lateral_rot = rotation@(femur_center_axis_lateral+translation)
-            femur_center_medial_1_rot = rotation@(femur_center_medial_1+translation)
-            femur_center_medial_2_rot = rotation@(femur_center_medial_2+translation)
-            femur_center_lateral_1_rot = rotation@(femur_center_lateral_1+translation)
-            femur_center_lateral_2_rot = rotation@(femur_center_lateral_2+translation)
-            femur_sphere_center_medial_rot = rotation@(femur_sphere_center_medial+translation)
-            femur_sphere_center_lateral_rot = rotation@(femur_sphere_center_lateral+translation)
+            #femur_center_axis_medial_rot = rotation@(femur_center_axis_medial+translation)
+            #femur_center_axis_lateral_rot = rotation@(femur_center_axis_lateral+translation)
+            #femur_center_medial_1_rot = rotation@(femur_center_medial_1+translation)
+            #femur_center_medial_2_rot = rotation@(femur_center_medial_2+translation)
+            #femur_center_lateral_1_rot = rotation@(femur_center_lateral_1+translation)
+            #femur_center_lateral_2_rot = rotation@(femur_center_lateral_2+translation)
+            #femur_sphere_center_medial_rot = rotation@(femur_sphere_center_medial+translation)
+            #femur_sphere_center_lateral_rot = rotation@(femur_sphere_center_lateral+translation)
 
 
             UpdateVisualization.add_landmark(self, femur_medial_rot, "femur_medial")
             UpdateVisualization.add_landmark(self, femur_lateral_rot, "femur_lateral")
             UpdateVisualization.add_landmark(self, femur_proximal_rot, "femur_proximal")
             UpdateVisualization.add_landmark(self, femur_distal_rot, "femur_distal")
-            UpdateVisualization.add_landmark(self, femur_center_axis_medial_rot, "femur_center_axis_medial")
-            UpdateVisualization.add_landmark(self, femur_center_axis_lateral_rot, "femur_center_axis_lateral")
-            UpdateVisualization.add_landmark(self, femur_center_medial_1_rot, "femur_center_medial_1")
-            UpdateVisualization.add_landmark(self, femur_center_medial_2_rot, "femur_center_medial_2")
-            UpdateVisualization.add_landmark(self, femur_center_lateral_1_rot, "femur_center_lateral_1")
-            UpdateVisualization.add_landmark(self, femur_center_lateral_2_rot, "femur_center_lateral_2")
-            UpdateVisualization.add_landmark(self, femur_sphere_center_medial_rot, "femur_sphere_center_medial")
-            UpdateVisualization.add_landmark(self, femur_sphere_center_lateral_rot, "femur_sphere_center_lateral")
+            #UpdateVisualization.add_landmark(self, femur_center_axis_medial_rot, "femur_center_axis_medial")
+            #UpdateVisualization.add_landmark(self, femur_center_axis_lateral_rot, "femur_center_axis_lateral")
+            #UpdateVisualization.add_landmark(self, femur_center_medial_1_rot, "femur_center_medial_1")
+            #UpdateVisualization.add_landmark(self, femur_center_medial_2_rot, "femur_center_medial_2")
+            #UpdateVisualization.add_landmark(self, femur_center_lateral_1_rot, "femur_center_lateral_1")
+            #UpdateVisualization.add_landmark(self, femur_center_lateral_2_rot, "femur_center_lateral_2")
+            #UpdateVisualization.add_landmark(self, femur_sphere_center_medial_rot, "femur_sphere_center_medial")
+            #UpdateVisualization.add_landmark(self, femur_sphere_center_lateral_rot, "femur_sphere_center_lateral")
          
         except Exception as e:
             print(f"Error loading femur: {e}")
@@ -1346,6 +1345,30 @@ class KneeFlexionExperiment(QMainWindow):
     def clear_diagram(self):
         self.canvas_varus_valgus.clear_data()
 
+    def zero_angles(self):
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"recorded_data/{timestamp}_offsets.csv"
+        
+        # Get current angles from the correct location
+        current_angles = UpdateVisualization.current_knee_angles
+        
+        # Open file in write mode and write the variable
+        with open(filename, 'w') as file:
+            file.write(f"rotation angle: {current_angles['rotation']}\n")
+            file.write(f"adduction angle: {current_angles['adduction']}\n")
+            file.write(f"anterior translation: {current_angles['anterior_posterior']}\n")
+            file.write(f"medial translation: {current_angles['medial_lateral']}\n")
+            file.write(f"proximal translation: {current_angles['proximal_distal']}")
+        
+        # Set the offsets using the current values
+        UpdateVisualization.offset_rotation = current_angles['rotation']
+        UpdateVisualization.offset_adduction = current_angles['adduction']
+        UpdateVisualization.offset_anterior = current_angles['anterior_posterior']
+        UpdateVisualization.offset_medial = current_angles['medial_lateral']
+        UpdateVisualization.offset_proximal = current_angles['proximal_distal']
+        
+        
+        
 
     def calculate_and_plot_contours(self):
         """
@@ -2287,7 +2310,10 @@ class KneeFlexionExperiment(QMainWindow):
             tjx_range_end = tjx_bins[tjx_bin_idx + 1]
             tjx_middle = (tjx_range_start + tjx_range_end) / 2
             
-            legend_label = f'{tjx_middle:.2f} [Nm] ({total_count})'
+            if self.diagram_mode == 'varus_valgus' or self.diagram_mode == 'adduction' or self.diagram_mode == 'rotation':
+                legend_label = f'{tjx_middle:.2f} Nm ({total_count})'
+            else:
+                legend_label = f'{tjx_middle:.2f} N ({total_count})'
             
             # Add a dummy scatter for legend
             self.canvas_contour_plot.ax.scatter([], [], 

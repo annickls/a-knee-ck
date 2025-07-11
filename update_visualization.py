@@ -14,6 +14,7 @@ import math
 from mpl_toolkits.mplot3d import Axes3D
 
 
+
 class UpdateVisualization():
         # Add class variables to store landmark positions for angle calculations
     tibia_landmarks = {}
@@ -30,17 +31,19 @@ class UpdateVisualization():
                            'medial_translation': 0.0}
     femurmediallateral = [0,0,0]
     femurproximaldistal = [0, 0, 0]
-    femurvarusaxis = [0, 0, 0]
-
-    tibiamediallateral = [0, 0, 0]
     tibiaproximaldistal = [0, 0, 0]
-    tibiavarusaxis = [0, 0, 0]
-
     floatingaxis = [0, 0, 0]
-
     e1t_store = [0, 0, 0]
     e2t_store = [0, 0, 0]
-    e3t_store = [0, 0, 0]
+    offset_rotation = 0
+    offset_adduction = 0
+    offset_anterior = 0
+    offset_medial = 0
+    offset_proximal = 0
+    rotation_angle = 0
+    adduction_angle = 0
+    anterior_posterior = 0
+    medial_lateral = 0
 
 
     def update_current_visualization(self, force, torque):
@@ -339,7 +342,7 @@ class UpdateVisualization():
             self.gl_view.addItem(self.torque_arrow_head)
 
 
-        """# visualize important axes for grood and suntay
+        # visualize important axes for grood and suntay
         femurdistal= UpdateVisualization.femur_landmarks['femur_distal']['position']
         femurmedial= UpdateVisualization.femur_landmarks['femur_medial']['position']
         femurlateral= UpdateVisualization.femur_landmarks['femur_lateral']['position']
@@ -387,7 +390,7 @@ class UpdateVisualization():
             self.gl_view.addItem(self.tibia_axis_shaft_pd)
 
         if self.tibia_femur_floating_axis is not None:
-            self.gl_view.addItem(self.tibia_femur_floating_axis)"""
+            self.gl_view.addItem(self.tibia_femur_floating_axis)
 
         # Create/update legend
         UpdateVisualization.create_legend(self)
@@ -510,7 +513,7 @@ class UpdateVisualization():
             glOptions='translucent'
         )
         # add sphere to visualization
-        #self.gl_view.addItem(landmark_sphere)
+        self.gl_view.addItem(landmark_sphere)
         landmark_sphere.translate(position[0], position[1], position[2])
         
         # Add Sphere to class to update it later on
@@ -555,7 +558,7 @@ class UpdateVisualization():
             
             instanceGUI.joint_angles_text.setText(
                     f"Joint Angles: \n Flexion: {int(angles['flexion'])}°\n "
-                    f"Varus (-) / Valgus (+): {int(angles['adduction'])}°\n "
+                    f"Valgus (-) / Varus (+): {int(angles['adduction'])}°\n "
                     f"Int (-) and Ext (+) Rotation: {int(angles['rotation'])}°"
                 )
             
@@ -597,90 +600,64 @@ class UpdateVisualization():
             femur_lateral = UpdateVisualization.femur_landmarks['femur_lateral']['position']
             femur_proximal = UpdateVisualization.femur_landmarks['femur_proximal']['position']
             femur_distal = UpdateVisualization.femur_landmarks['femur_distal']['position']
-            femur_center_axis_medial = UpdateVisualization.femur_landmarks['femur_center_axis_medial']['position']
-            femur_center_axis_lateral = UpdateVisualization.femur_landmarks['femur_center_axis_lateral']['position']
-            femur_center_medial_1 = UpdateVisualization.femur_landmarks['femur_center_medial_1']['position']
-            femur_center_medial_2 = UpdateVisualization.femur_landmarks['femur_center_medial_2']['position']
-            femur_center_lateral_1 = UpdateVisualization.femur_landmarks['femur_center_lateral_1']['position']
-            femur_center_lateral_2 = UpdateVisualization.femur_landmarks['femur_center_lateral_2']['position']
-            femur_sphere_center_medial = UpdateVisualization.femur_landmarks['femur_sphere_center_medial']['position']
-            femur_sphere_center_lateral = UpdateVisualization.femur_landmarks['femur_sphere_center_lateral']['position']
+            #femur_center_axis_medial = UpdateVisualization.femur_landmarks['femur_center_axis_medial']['position']
+            #femur_center_axis_lateral = UpdateVisualization.femur_landmarks['femur_center_axis_lateral']['position']
+            #femur_center_medial_1 = UpdateVisualization.femur_landmarks['femur_center_medial_1']['position']
+            #femur_center_medial_2 = UpdateVisualization.femur_landmarks['femur_center_medial_2']['position']
+            #femur_center_lateral_1 = UpdateVisualization.femur_landmarks['femur_center_lateral_1']['position']
+            #femur_center_lateral_2 = UpdateVisualization.femur_landmarks['femur_center_lateral_2']['position']
+            #femur_sphere_center_medial = UpdateVisualization.femur_landmarks['femur_sphere_center_medial']['position']
+            #femur_sphere_center_lateral = UpdateVisualization.femur_landmarks['femur_sphere_center_lateral']['position']
             
             # Define coordinate systems according to Grood and Suntay
             
             # Femoral coordinate system
             # e1f: femoral flexion-extension axis (lateral - medial direction)
             e1f = femur_lateral - femur_medial
-            if np.linalg.norm(e1f) < 1e-10:
-                print("Warning: Femur medial-lateral vector is too small")
-                return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
             e1f = e1f / np.linalg.norm(e1f)
             UpdateVisualization.femurmediallateral = e1f
             
             # Temporary femoral long axis (proximal - distal direction)
             temp_femur = femur_proximal - femur_distal
-            if np.linalg.norm(temp_femur) < 1e-10:
-                print("Warning: Femur proximal-distal vector is too small")
-                return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
             temp_femur = temp_femur / np.linalg.norm(temp_femur)
             
             # e2f: femoral anterior-posterior axis (perpendicular to e1f and temp_femur)
             e2f = np.cross(e1f, temp_femur)
-            if np.linalg.norm(e2f) < 1e-10:
-                print("Warning: Femur coordinate system is degenerate")
-                return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
             e2f = e2f / np.linalg.norm(e2f)
 
-            UpdateVisualization.femurvarusaxis = e2f
             
             # e3f: femoral long axis (corrected, perpendicular to e3f and e1f)
             e3f = np.cross(e2f, e1f)
             e3f = e3f / np.linalg.norm(e3f)
 
-            UpdateVisualization.femurproximaldistal = e2f
+            UpdateVisualization.femurproximaldistal = e3f
             
             # Tibial coordinate system
             # e3t: tibial long axis (proximal - distal direction)
             e3t = tibia_proximal - tibia_distal
-            if np.linalg.norm(e3t) < 1e-10:
-                print("Warning: Tibia proximal-distal vector is too small")
-                return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
             e3t = e3t / np.linalg.norm(e3t)
 
             UpdateVisualization.tibiaproximaldistal = e3t
-            UpdateVisualization.e3t_store = e3t
             
             # Temporary tibial medial-lateral axis
             temp_tibia = tibia_lateral - tibia_medial
-            if np.linalg.norm(temp_tibia) < 1e-10:
-                print("Warning: Tibia medial-lateral vector is too small")
-                return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
             temp_tibia = temp_tibia / np.linalg.norm(temp_tibia)
 
             
             
             # e2t: tibial anterior-posterior axis
             e2t = np.cross(temp_tibia, e3t)
-            if np.linalg.norm(e2t) < 1e-10:
-                print("Warning: Tibia coordinate system is degenerate")
-                return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
-            e2t = e2t / np.linalg.norm(e3t)
+            e2t = e2t / np.linalg.norm(e2t)
             UpdateVisualization.e2t_store = e2t
-            
-            #UpdateVisualization.tibiavarusaxis = e2t
 
             # e1t: tibial medial-lateral axis 
             e1t = np.cross(e3t, e2t)
             e1t = e1t / np.linalg.norm(e1t)
 
-            UpdateVisualization.tibiamediallateral = e1t
             UpdateVisualization.e1t_store = e1t
             
             # Calculate floating axis (common perpendicular to e1f and e2t)
             floating_axis = np.cross(e1f, e3t)
-            if np.linalg.norm(floating_axis) < 1e-10:
-                print("Warning: Floating axis is degenerate")
-                return {'flexion': 0.0, 'adduction': 0.0, 'rotation': 0.0}
             floating_axis = floating_axis / np.linalg.norm(floating_axis)
 
             UpdateVisualization.floatingaxis = floating_axis
@@ -706,8 +683,9 @@ class UpdateVisualization():
                 flexion_sign = 1
             else:
                 flexion_sign = -1
-            flexion = math.acos(cos_flexion)
+            flexion = -math.acos(cos_flexion)
             flexion_angle = flexion_sign * flexion * 180.0 / np.pi
+            flexion_angle +=6
             
             
             # 2. ABDUCTION/ADDUCTION ANGLE  
@@ -717,7 +695,10 @@ class UpdateVisualization():
             magnitude_e3t = np.linalg.norm(e3t)
             cos_adduction = dot_product / (magnitude_e1f * magnitude_e3t )
             adduction = math.acos(cos_adduction)
-            adduction_angle = (adduction -(np.pi/2))* 180.0 / np.pi
+            adduction_angle = (adduction - (np.pi/2))* 180.0 / np.pi
+            #adduction_angle+= constants.ADDUCTION_OFFSET
+            adduction_angle-=UpdateVisualization.offset_adduction
+        
             
             # 3. INTERNAL/EXTERNAL ROTATION ANGLE
 
@@ -725,8 +706,11 @@ class UpdateVisualization():
             magnitude_e1t = np.linalg.norm(e1t)
             magnitude_floating_axis = np.linalg.norm(floating_axis)
             sin_rotation = dot_product / (magnitude_e1t * magnitude_floating_axis )
-            rotation = math.asin(-sin_rotation)
+            rotation = -math.asin(-sin_rotation)
             rotation_angle = rotation * 180.0 / np.pi
+            #rotation_angle += constants.ROTATION_OFFSET
+            rotation_angle-=UpdateVisualization.offset_rotation
+            
 
 
             # ============= TRANSLATION CALCULATIONS =============
@@ -738,16 +722,21 @@ class UpdateVisualization():
             # Anterior-Posterior translation: along floating axis
             # (+ = anterior, - = posterior)
             anterior_posterior = -np.dot(translation_vector, floating_axis)
+            #anterior_posterior += constants.ANTERIOR_TRANSLATION_OFFSET
+            anterior_posterior -= UpdateVisualization.offset_anterior
 
             # Medial-Lateral translation: along femoral flexion-extension axis (e1f)
             # (+ = medial, - = lateral)  get's influenced by adduction angle
             s1 = np.dot(translation_vector, e1f)
             s3 = np.dot(translation_vector, e3t)
             medial_lateral = s1 + s3 * math.cos(adduction)
-            
+            #medial_lateral += constants.MEDIAL_TRANSLATION_OFFSET
+            medial_lateral -= UpdateVisualization.offset_medial
+
             # Proximal-Distal translation: along tibial long axis (e3t)
             # (+ = proximal, - = distal) also gets influenced by adduction angle
-            proximal_distal = -(-s3 -s1 *math.cos(adduction))
+            proximal_distal = -s3 -s1 *math.cos(adduction)
+            proximal_distal -= UpdateVisualization.offset_proximal 
             
 
             #===========Clalculation distances femur condyles - tibia plateau medial and lateral======== 
@@ -1046,14 +1035,10 @@ class UpdateVisualization():
         Returns:
             3x3 rotation matrix R such that: point_in_axes_system = R @ point_in_quat_system
         """
-        #x_axis = UpdateVisualization.e1t_store
-        #y_axis = UpdateVisualization.e2t_store
-        #z_axis = UpdateVisualization.e3t_store
 
         x_axis = UpdateVisualization.e2t_store
         y_axis = UpdateVisualization.e1t_store
-        #y_axis = - y_axis
-        z_axis = UpdateVisualization.e3t_store
+        z_axis = UpdateVisualization.tibiaproximaldistal
 
         # Get rotation matrices for both coordinate systems
         R_quat = UpdateVisualization.quaternion_to_rotation_matrix(FT_quaternion)

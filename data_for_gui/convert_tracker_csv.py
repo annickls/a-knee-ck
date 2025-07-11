@@ -77,7 +77,7 @@ def convert_csv_to_yaml(csv_files, yaml_file):
         point_name = csv_file.removeprefix(current_folder+"/").removesuffix(".fcsv")
         point_array = convert_dict_list_to_point_array(point_data)
         point_data = []
-        point_name_stripped = point_name.removesuffix("_marker")
+        point_name_stripped = point_name.removesuffix("_tracker")
         ref_point_array = convert_dict_list_to_point_array(ref_points[point_name_stripped])
         point_array_sorted, ref_point_array_sorted = sort_points_relative(point_array, ref_point_array)
         yaml_data[point_name_stripped+"_slicer"] = convert_point_array_to_dict_list(point_array_sorted)
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     current_folder = os.path.dirname(os.path.abspath(__file__))
     config_folder = os.path.join(current_folder, "config")
     config_folder = current_folder
-    csv_files = [os.path.join(config_folder, file) for file in os.listdir(config_folder) if file.endswith("_marker.fcsv")]
+    csv_files = [os.path.join(config_folder, file) for file in os.listdir(config_folder) if file.endswith("_tracker.fcsv")]
 
     convert_csv_to_yaml(csv_files, config_folder+"/marker_coordinates.yaml")
     print("Conversion completed. YAML file created successfully.")
