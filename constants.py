@@ -25,8 +25,8 @@ def create_df_from_fcsv(filePath):
     return df
 
 # experiment parameters
-HOLD_TIME = 40 #seconds to hold knee positions
-HOLD_INDIVIDUAL = 40 #seconds for individual data recording
+HOLD_TIME = 30 #seconds to hold knee positions
+HOLD_INDIVIDUAL = 30 #seconds for individual data recording
 LACHMANN_TIME = 30 # seconds for lachmann test
 #FLEXION_ANGLES = [0, 30, 60, 90, 120]
 FLEXION_ANGLES = [1, 2, 3, 4, 5]

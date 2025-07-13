@@ -1430,8 +1430,8 @@ class KneeFlexionExperiment(QMainWindow):
 
             #tjx = tz + fy * delta_x + fx * delta_y -tx 
             #tjy = tx - fz * delta_y + fy * delta_z # not used anymore, because torques are recorded already calculated
-            tjx = tx
-            tjy = ty
+            tjx = ty #achtung change
+            tjy = tx
             fjx = fx
             fjy = fy
             fyz = fz
