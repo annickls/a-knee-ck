@@ -558,7 +558,7 @@ class UpdateVisualization():
             
             instanceGUI.joint_angles_text.setText(
                     f"Joint Angles: \n Flexion: {int(angles['flexion'])}°\n "
-                    f"Valgus (-) / Varus (+): {int(angles['adduction'])}°\n "
+                    f"Valgus (+) / Varus (-): {int(angles['adduction'])}°\n "
                     f"Int (-) and Ext (+) Rotation: {int(angles['rotation'])}°"
                 )
             

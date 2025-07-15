@@ -366,11 +366,8 @@ class KneeFlexionExperiment(QMainWindow):
                                         medial_translation,
                                         self.diagram_mode, 
                                         self.diagram_point_mode)
-                                
-
                             else:
                                 test = 0
-                            
                             
                         # Update force visualization
                         UpdateVisualization.update_bone_forces(self, self.current_data_index)
@@ -392,7 +389,9 @@ class KneeFlexionExperiment(QMainWindow):
                             tibia_quaternion[0], tibia_quaternion[1], tibia_quaternion[2], tibia_quaternion[3],
                             angles['flexion'], angles['adduction'], angles['rotation'],
                             angles['anterior_posterior'], angles['medial_lateral'], angles['proximal_distal'],
-                            angles['medial_tibia_femur'], angles['lateral_tibia_femur']
+                            angles['medial_tibia_femur'], angles['lateral_tibia_femur'],
+                            FT_position[0], FT_position[1], FT_position[2],
+                            FT_quaternion[0], FT_quaternion[1], FT_quaternion[2], FT_quaternion[3]
                         ]
                         
                         self.current_recording_data.append(data_point)
@@ -437,7 +436,16 @@ class KneeFlexionExperiment(QMainWindow):
         #with open(filename, 'w') as main_file, open(relevant_filename, 'w') as angle_file:
         with open(filename, 'w') as main_file:    
             # Write main data
-            main_file.write("# Timestamp, Fx, Fy, Fz, Tx, Ty, Tz, FemurPosX, FemurPosY, FemurPosZ, FemurQuatW, FemurQuatX, FemurQuatY, FemurQuatZ, TibiaPosX, TibiaPosY, TibiaPosZ, TibiaQuatW, TibiaQuatX, TibiaQuatY, TibiaQuatZ, Flexion, Adduction, Rotation, Anterior_Posterior, Medial_Lateral, Proximal_Distal, Medial_Joint_Gap, Lateral_Joint_Gap\n")
+            #main_file.write("# Timestamp, Fx, Fy, Fz, Tx, Ty, Tz, FemurPosX, FemurPosY, FemurPosZ, FemurQuatW, FemurQuatX, FemurQuatY, FemurQuatZ, TibiaPosX, TibiaPosY, TibiaPosZ, TibiaQuatW, TibiaQuatX, TibiaQuatY, TibiaQuatZ, Flexion, Adduction, Rotation, Anterior_Posterior, Medial_Lateral, Proximal_Distal, Medial_Joint_Gap, Lateral_Joint_Gap, FTPosX, FTPosY, FTPosZ, TibiaPosZ, FTQuatW, FTQuatX, FTQuatY, FTQuatZ\n")
+            headers = [
+                "Timestamp", "Fx", "Fy", "Fz", "Tx", "Ty", "Tz",
+                "FemurPosX", "FemurPosY", "FemurPosZ", "FemurQuatW", "FemurQuatX", "FemurQuatY", "FemurQuatZ",
+                "TibiaPosX", "TibiaPosY", "TibiaPosZ", "TibiaQuatW", "TibiaQuatX", "TibiaQuatY", "TibiaQuatZ",
+                "Flexion", "Adduction", "Rotation", "Anterior_Posterior", "Medial_Lateral", "Proximal_Distal",
+                "Medial_Joint_Gap", "Lateral_Joint_Gap", "FTPosX", "FTPosY", "FTPosZ", "FTPosZ",
+                "FTQuatW", "FTQuatX", "FTQuatY", "FTQuatZ"
+            ]
+            main_file.write("# " + ", ".join(headers) + "\n")
             for data_point in self.current_recording_data:
                 main_file.write(','.join(map(str, data_point)) + '\n')
             
@@ -722,25 +730,31 @@ class KneeFlexionExperiment(QMainWindow):
         self.next_button.setEnabled(False)
         self.next_button.setFixedHeight(constants.BUTTON_HEIGHT)
 
-        # Varus Button
+        # neutral axis button
+        self.neutral_axis_button = QPushButton("Neutral Axis")
+        self.neutral_axis_button.clicked.connect(self.neutral_axis)
+        self.neutral_axis_button.setEnabled(False)
+        self.neutral_axis_button.setFixedHeight(constants.BUTTON_HEIGHT)
+
+        # Varus Valgus Button 
         self.varus_button = QPushButton("Apply Varus/Valgus Load")
         self.varus_button.clicked.connect(self.start_varus)
         self.varus_button.setEnabled(False)
         self.varus_button.setFixedHeight(constants.BUTTON_HEIGHT)
 
-        # Valgus Button
+        # Rotation Button (weird naming because of quick changes)
         self.valgus_button = QPushButton("Rotate Tibia int/ext")
         self.valgus_button.clicked.connect(self.start_valgus)
         self.valgus_button.setEnabled(False)
         self.valgus_button.setFixedHeight(constants.BUTTON_HEIGHT)
 
-        # IR Button
+        # anterior translation Button
         self.internal_rot_button = QPushButton("Translate Tibia anterior/posterior")
         self.internal_rot_button.clicked.connect(self.start_internal_rot)
         self.internal_rot_button.setEnabled(False)
         self.internal_rot_button.setFixedHeight(constants.BUTTON_HEIGHT)
 
-        # ER Button
+        # medial translation Button
         self.external_rot_button = QPushButton("Translate Tibia medial/lateral")
         self.external_rot_button.clicked.connect(self.start_external_rot)
         self.external_rot_button.setEnabled(False)
@@ -791,11 +805,9 @@ class KneeFlexionExperiment(QMainWindow):
         subsub_layout = QHBoxLayout()
         subsub_layout.addWidget(self.start_button)
         subsub_layout.addWidget(self.next_button)
-
         right_layout.addLayout(subsub_layout, 0, 0)
-        
         right_layout.addWidget(record_data_label, 2, 0, 2, 1)
-        #right_layout.addWidget(self.rotate_button, 3, 0)
+        right_layout.addWidget(self.neutral_axis_button, 3, 0)
         right_layout.addWidget(self.varus_button, 4, 0)
         right_layout.addWidget(self.valgus_button, 5, 0)
         right_layout.addWidget(self.internal_rot_button, 6, 0)
@@ -863,7 +875,7 @@ class KneeFlexionExperiment(QMainWindow):
             if self.recording:
                 current_time = time.time() - self.recording_start_time
                 
-                # Use real CSV data for recording
+                """# Use real CSV data for recording
                 force = self.forces[self.current_data_index].copy()
                 torque = self.torques[self.current_data_index].copy()
                 
@@ -888,7 +900,7 @@ class KneeFlexionExperiment(QMainWindow):
                         angles['medial_tibia_femur'], angles['lateral_tibia_femur']
                     ]
                     
-                    self.current_recording_data.append(data_point)
+                    self.current_recording_data.append(data_point)"""
         
     def update_visualization(self, data_index=0):
         """Update only the active visualization tab"""
@@ -939,7 +951,7 @@ class KneeFlexionExperiment(QMainWindow):
         # Enable only needed buttons
         #self.next_label.show()
         self.start_button.setEnabled(False)
-        self.varus_button.setEnabled(True)
+        self.neutral_axis_button.setEnabled(True)
         
         # Start visualization timer immediately and keep it running throughout the experiment
         if not self.viz_timer.isActive():
@@ -950,12 +962,21 @@ class KneeFlexionExperiment(QMainWindow):
         
         # Also update bone forces explicitly
         UpdateVisualization.update_bone_forces(self, 0)
+
     
     def next_angle(self):
         self.current_angle_index += 1
         UpdateVisualization.update_display(self)
         self.next_button.setEnabled(False)
+        self.neutral_axis_button.setEnabled(True)
+
+    def neutral_axis(self):
+        self.neutral_axis_button.setEnabled(False)
+        self.remaining_time = constants.HOLD_TIME
+        self.rotation_progress.setValue(self.remaining_time)
+        self.seconds_timer.start(1000)  
         self.varus_button.setEnabled(True)
+        self.start_recording(f"neutral") # Start recording data
         
     def start_varus(self):
         self.varus_button.setEnabled(False) # Disable varus button
@@ -971,7 +992,7 @@ class KneeFlexionExperiment(QMainWindow):
         self.rotation_progress.setValue(constants.HOLD_TIME)
         self.seconds_timer.start(1000)  
         self.internal_rot_button.setEnabled(True)
-        self.start_recording(f"val") # Start recording data
+        self.start_recording(f"rot") # Start recording data
 
     def start_internal_rot(self):
         self.internal_rot_button.setEnabled(False) # Disable internal rotation button
@@ -979,17 +1000,16 @@ class KneeFlexionExperiment(QMainWindow):
         self.rotation_progress.setValue(self.remaining_time)
         self.seconds_timer.start(1000)  # Update every second
         self.external_rot_button.setEnabled(True)
-        self.start_recording(f"int")# Start recording data
+        self.start_recording(f"anterior")# Start recording data
 
     def start_external_rot(self):
         self.external_rot_button.setEnabled(False) # Disable external rotation button
         self.remaining_time = constants.HOLD_TIME
         self.rotation_progress.setValue(self.remaining_time)
         self.seconds_timer.start(1000)  # Update every second
-        self.start_recording(f"ext") # Start recording data
+        self.start_recording(f"medial") # Start recording data
 
         self.lachmann_button.setEnabled(True)
-
 
     def start_lachmann(self):  
         self.lachmann_button.setEnabled(False)
@@ -1302,7 +1322,6 @@ class KneeFlexionExperiment(QMainWindow):
         
         return legend_widget
 
-
     def toggle_diagram_axes_rotation(self):
         self.diagram_mode = "rotation"
         print(f"Diagram mode switched to: {self.diagram_mode}")
@@ -1325,7 +1344,6 @@ class KneeFlexionExperiment(QMainWindow):
         self.diagram_mode = "medial"
         print(f"Diagram mode switched to: {self.diagram_mode}") 
         
-
     def start_stop_diagram(self):
         if self.diagram_start_mode == "stop":
             self.diagram_start_mode = "start"
@@ -1366,8 +1384,6 @@ class KneeFlexionExperiment(QMainWindow):
         UpdateVisualization.offset_anterior = current_angles['anterior_posterior']
         UpdateVisualization.offset_medial = current_angles['medial_lateral']
         UpdateVisualization.offset_proximal = current_angles['proximal_distal']
-        
-        
         
 
     def calculate_and_plot_contours(self):
