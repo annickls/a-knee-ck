@@ -1416,42 +1416,102 @@ class KneeFlexionExperiment(QMainWindow):
             print(f"Using newest CSV file: {os.path.basename(file_path)}")
 
             # Load data
-            df = pd.read_csv(file_path, comment='#')
+            df = pd.read_csv(file_path, header=0)
+
             print(f"Successfully loaded data from: {file_path}")
             print(f"Data shape: {df.shape}")
-            
-            # Extract the relevant columns (same as your original code)
-            tx = df.iloc[:, 4]  # Tx column
-            ty = df.iloc[:, 5]
-            tz = df.iloc[:, 6]
-            
-            fx = df.iloc[:, 1]
-            fy = df.iloc[:, 2]
-            fz = df.iloc[:, 3]
-            delta_x = constants.DELTA_X
-            delta_y = constants.DELTA_Y
-            delta_z = constants.DELTA_Z
 
 
+            # Debug: Check the dataframe itself
+            #print(f"DataFrame shape: {df.shape}")
+            #print(f"DataFrame info:")
+            #print(df.info())
 
-            flexion = df.iloc[:, 21]  # Flexion column
-            rotation = df.iloc[:, 23]  # Rotation column
-            adduction = df.iloc[:, 22]
-            medial_joint_gap = df.iloc[:, 27]  # Medial_Joint_Gap column
-            lateral_joint_gap = df.iloc[:, 28]  # Lateral_Joint_Gap column
-            anterior = df.iloc[:, 24]
-            medial = df.iloc[:, 25]
+            # Clean column names
+            df.columns = df.columns.str.strip()
 
+
+            # Extract force data using cleaned column headers
+            fx = df['Fx']  # Using the second set of force columns
+            fy = df['Fy']
+            fz = df['Fz']
             
 
-            #tjx = tz + fy * delta_x + fx * delta_y -tx 
-            #tjy = tx - fz * delta_y + fy * delta_z # not used anymore, because torques are recorded already calculated
-            tjx = ty #achtung change
-            tjy = tx
+            # Extract torque data using column headers
+            tx = df['Tx']  # Using the second set of torque columns
+            ty = df['Ty']
+            tz = df['Tz']
+            
+
+            # Extract kinematic data
+            flexion = df['Flexion']
+            rotation = df['Rotation']
+            adduction = df['Adduction']
+
+            # Extract gap measurements
+            medial_joint_gap = df['Medial_Joint_Gap']
+            lateral_joint_gap = df['Lateral_Joint_Gap']
+
+            # Extract position measurements
+            anterior = df['Anterior_Posterior']
+            medial = df['Medial_Lateral']
+
+
+            # Extract tibia position data
+            tib_position = np.zeros((len(df), 3))
+            tib_position[:, 0] = df['TibiaPosX']  # Using the second set of tibia columns
+            tib_position[:, 1] = df['TibiaPosY']
+            tib_position[:, 2] = df['TibiaPosZ']
+
+            # Extract tibia quaternion data
+            tib_quaternion = np.zeros((len(df), 4))
+            tib_quaternion[:, 0] = df['TibiaQuatW']  # w component first
+            tib_quaternion[:, 1] = df['TibiaQuatX']  # x component
+            tib_quaternion[:, 2] = df['TibiaQuatY']  # y component
+            tib_quaternion[:, 3] = df['TibiaQuatZ']  # z component
+
+            """# Extract force/torque sensor position data
+            ft_position = np.zeros((len(df), 3))
+            ft_position[:, 0] = df['sensor_x']  # Using the second set of sensor columns
+            ft_position[:, 1] = df['sensor_y']
+            ft_position[:, 2] = df['sensor_z']
+
+            # Extract force/torque sensor quaternion data
+            ft_quaternion = np.zeros((len(df), 4))
+            ft_quaternion[:, 0] = df['sensor_qw']  # w component first
+            ft_quaternion[:, 1] = df['sensor_qx']  # x component
+            ft_quaternion[:, 2] = df['sensor_qy']  # y component
+            ft_quaternion[:, 3] = df['sensor_qz']  # z component"""
+            
+            
             fjx = fx
             fjy = fy
-            fyz = fz
-                
+            fjz = fz
+            tjx = tx
+            tjy = ty
+            tjz = tz
+
+            # rotate forces back to sensor joint coosys (for now tibia cosys because of data)
+            for i in range(len(fx)):
+                rotation_tibia_plot = MeshUtils.quaternion_to_transform_matrix(tib_quaternion[i])[:3,:3]
+                forces_plot = np.array([fx[i], fy[i], fz[i]])
+                forces_tibia_coord = rotation_tibia_plot.T @ forces_plot
+                torques_plot = np.array([tx[i], ty[i], tz[i]])
+                torques_tibia_coord = rotation_tibia_plot.T @ torques_plot
+                fjx[i] = forces_tibia_coord[0]
+                fjy[i] = forces_tibia_coord[1]
+                fjz[i] = forces_tibia_coord[2]
+                tjx[i] = torques_tibia_coord[0]
+                tjy[i] = torques_tibia_coord[1]
+                tjz[i] = torques_tibia_coord[2]
+            
+            tjy=tjz # correspondng torque for adduction
+            placeholder = fjz
+            fjx = placeholder
+            fjz = fjx
+
+
+            
             
             # Configuration parameters (you can make these class attributes for easy modification)
             
@@ -1505,7 +1565,7 @@ class KneeFlexionExperiment(QMainWindow):
                 bin_size = round(bin_size_temp, 1)
 
 
-
+            print(bin_size)
             
             tjx_bins = np.arange(tjx_min, tjx_max + bin_size, bin_size)
             tjy_bins = np.arange(tjy_min, tjy_max + bin_size, bin_size)
@@ -1945,7 +2005,7 @@ class KneeFlexionExperiment(QMainWindow):
                 self.canvas_contour_plot.ax.axvline(x=0, color='black', linestyle='--', alpha=0.5, linewidth=1)
                 
                 # Set labels and title
-                self.canvas_contour_plot.ax.set_xlabel('anterior translation [mm]      posterior translation [mm]', fontsize=12)
+                self.canvas_contour_plot.ax.set_xlabel('posterior translation [mm]      anterior translation [mm]', fontsize=12)
                 self.canvas_contour_plot.ax.set_ylabel('Flexion [°]', fontsize=12)
                 self.canvas_contour_plot.ax.invert_yaxis()
                 title = 'Rotation Torque Contour Lines'
@@ -1999,7 +2059,7 @@ class KneeFlexionExperiment(QMainWindow):
                 self.canvas_contour_plot.ax.axvline(x=0, color='black', linestyle='--', alpha=0.5, linewidth=1)
                 
                 # Set labels and title
-                self.canvas_contour_plot.ax.set_xlabel('medial translation [mm]      lateral translation [mm]', fontsize=12)
+                self.canvas_contour_plot.ax.set_xlabel('lateral translation [mm]      medial translation [mm]', fontsize=12)
                 self.canvas_contour_plot.ax.set_ylabel('Flexion [°]', fontsize=12)
                 title = 'Rotation Torque Contour Lines'
                 """if APPLY_MOVING_AVERAGE:
@@ -2288,22 +2348,22 @@ class KneeFlexionExperiment(QMainWindow):
                         
                         self.canvas_contour_plot.ax.plot(x_smooth, y_smooth, 
                                                         color=colors[tjx_bin_idx], 
-                                                        linewidth=2.5, alpha=0.8)
+                                                        linewidth=2, alpha=0.8)
                         
                     except Exception as e:
                         print(f"Smoothing failed for bin {tjx_bin_idx}: {e}")
                         self.canvas_contour_plot.ax.plot(x_values, y_values, 
                                                         color=colors[tjx_bin_idx], 
-                                                        linewidth=2.5, alpha=0.8)
+                                                        linewidth=2, alpha=0.8)
                 else:
                     self.canvas_contour_plot.ax.plot(x_values, y_values, 
                                                     color=colors[tjx_bin_idx], 
-                                                    linewidth=2.5, alpha=0.8)
+                                                    linewidth=2, alpha=0.8)
             
             # Plot the actual averaged points
-            marker_size = 2 if marker_style == 's' else 15
+            marker_size = 2 if marker_style == 's' else 8
             edge_color = 'black' if marker_style == 's' else 'white'
-            edge_width = 0.5 if marker_style == 's' else 0.2
+            edge_width = 0.3 if marker_style == 's' else 0.1
             
             self.canvas_contour_plot.ax.scatter(x_values, y_values, 
                                                 c=[colors[tjx_bin_idx]], 
@@ -2344,6 +2404,7 @@ class KneeFlexionExperiment(QMainWindow):
                 #shadow=True     # Drop shadow
             )
             
+    
 
 
 

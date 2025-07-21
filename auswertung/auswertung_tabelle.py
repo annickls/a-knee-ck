@@ -97,14 +97,14 @@ def diagnose_knee_data(csv_file_path):
         def categorize_torque_range(tx_value):
             if pd.isna(tx_value):
                 return 'NaN'
-            if 0 <= tx_value <= 0.5:
-                return '0-0.5 Nm'
-            elif 0.5 < tx_value <= 1.0:
-                return '0.5-1.0 Nm'
-            elif -0.5 <= tx_value < 0:
-                return '-0.5-0 Nm'
-            elif -1.0 <= tx_value < -0.5:
-                return '-1.0--0.5 Nm'
+            if 0 <= tx_value <= 2:
+                return '0-2.0 Nm'
+            elif 2 < tx_value <= 4:
+                return '2.0-4.0 Nm'
+            elif -2 <= tx_value < 0:
+                return '-2.0-0 Nm'
+            elif -4<= tx_value < -2:
+                return '-4.0--2.0 Nm'
             else:
                 return 'Other'
         
@@ -225,7 +225,7 @@ def create_torque_range_table_tjx_tjy(csv_file_path, torque_tolerance=0.1):
                               include_lowest=True)
     
     # Define target torque values to analyze
-    target_torques = [-1.0, -0.5, 0.0, 0.5, 1.0]  # You can modify this list
+    target_torques = [-4.0, -2.0, 0.0, 2.0, 4.0]  # You can modify this list
     
     result_data = []
     
@@ -427,7 +427,7 @@ def save_csv_safely(df, filename, output_dir='.'):
 
 def main():
     # Use a more flexible path approach
-    csv_file_path = "/home/annick/a-knee-ck/auswertung/20250623_094501_0deg_individual.csv"
+    csv_file_path = "/home/annick/a-knee-ck/recorded_data/rot_p6_all.csv"
     
     # Check if file exists
     if not os.path.exists(csv_file_path):

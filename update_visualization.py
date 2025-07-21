@@ -558,7 +558,7 @@ class UpdateVisualization():
             
             instanceGUI.joint_angles_text.setText(
                     f"Joint Angles: \n Flexion: {int(angles['flexion'])}°\n "
-                    f"Valgus (+) / Varus (-): {int(angles['adduction'])}°\n "
+                    f"Valgus (-) / Varus (+): {int(angles['adduction'])}°\n "
                     f"Int (-) and Ext (+) Rotation: {int(angles['rotation'])}°"
                 )
             
@@ -685,7 +685,7 @@ class UpdateVisualization():
                 flexion_sign = -1
             flexion = -math.acos(cos_flexion)
             flexion_angle = flexion_sign * flexion * 180.0 / np.pi
-            flexion_angle +=6
+            flexion_angle +=0
             
             
             # 2. ABDUCTION/ADDUCTION ANGLE  
