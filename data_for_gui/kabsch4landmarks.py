@@ -2,12 +2,24 @@ import numpy as np
 import pandas as pd
 import os
 import glob
+from scipy.spatial.distance import pdist, squareform
 
+def sort_points_relative(points1, points2):
 
-originalPtsFile = 
-newPtsFile = 
+    # Compute pairwise distances for each list
+    distances_1 = squareform(pdist(points1))
+    distances_2 = squareform(pdist(points2))
+    # Sum the distances for each point
+    sum_distances_1 = np.sum(distances_1, axis=1)
+    sum_distances_2 = np.sum(distances_2, axis=1)
+    # Get the sorted indices based on the sum of distances
+    sorted_indices_1 = np.argsort(sum_distances_1)
+    sorted_indices_2 = np.argsort(sum_distances_2)
+    # Sort the points based on the computed indices
+    sorted_points1 = points1[sorted_indices_1]
+    sorted_points2 = points2[sorted_indices_2]
 
-oldLandmarksFile = 
+    return sorted_points1, sorted_points2
 
 def kabsch(p, q):
     """Calculate the optimal rigid transformation matrix from Q -> P using Kabsch algorithm"""
@@ -20,7 +32,7 @@ def kabsch(p, q):
 
     H = np.dot(p_centered.T, q_centered)
 
-    U, vt = np.linalg.svd(H)
+    U, _, vt = np.linalg.svd(H)
 
     R = np.dot(vt.T, U.T)
 
@@ -76,5 +88,92 @@ def read_fcsv(filename):
     
     return df
 
+def write_fcsv(filename, df, original_file):
+    """
+    Write a DataFrame to .fcsv format, preserving the original file structure.
+    
+    Parameters:
+    filename (str): Path to output .fcsv file
+    df (pandas.DataFrame): DataFrame with x, y, z columns and labels as index
+    original_file (str): Path to original .fcsv file to copy header and format from
+    """
+    # Read original file to get header and format
+    with open(original_file, 'r') as file:
+        lines = file.readlines()
+    
+    # Extract header lines and data format
+    header_lines = [line for line in lines if line.strip().startswith('#')]
+    data_lines = [line for line in lines if not line.strip().startswith('#') and line.strip()]
+    
+    # Write new file
+    with open(filename, 'w') as file:
+        # Write header
+        for header_line in header_lines:
+            file.write(header_line)
+        
+        # Write data with same format as original
+        for i, (label, row) in enumerate(df.iterrows(), 1):
+            # Use original format but update coordinates
+            if data_lines:
+                original_parts = data_lines[min(i-1, len(data_lines)-1)].strip().split(',')
+                # Replace coordinates and label
+                original_parts[1] = str(row['x'])
+                original_parts[2] = str(row['y'])
+                original_parts[3] = str(row['z'])
+                if len(original_parts) > 11:
+                    original_parts[11] = str(label)
+                file.write(','.join(original_parts) + '\n')
+            else:
+                # Fallback format
+                file.write(f"{i},{row['x']},{row['y']},{row['z']},0,0,0,1,1,1,0,{label},,vtkMRMLScalarVolumeNode1,2,0\n")
 
 
+def transform_landmarks(bone_name):
+    """
+    Transform landmarks for a specific bone (femur or tibia) from preOP to postOP coordinates.
+    
+    Parameters:
+    bone_name (str): Either 'femur' or 'tibia'
+    """
+    # Read kabsch points for transformation
+    preop_kabsch = read_fcsv(os.path.join(folderPreOP, f"kabsch_{bone_name}.fcsv"))
+    postop_kabsch = read_fcsv(os.path.join(folderPostOP, f"kabsch_{bone_name}.fcsv"))
+    
+    # Sort points to ensure correspondence
+    preop_points, postop_points = sort_points_relative(
+        preop_kabsch[['x', 'y', 'z']].values,
+        postop_kabsch[['x', 'y', 'z']].values
+    )
+    
+    # Calculate transformation matrix
+    T = kabsch(preop_points, postop_points)
+    
+    # Read landmarks to transform
+    landmarks = read_fcsv(os.path.join(folderPreOP, f"{bone_name}_landmarks.fcsv"))
+    
+    # Apply transformation
+    landmarks_coords = landmarks[['x', 'y', 'z']].values
+    # Convert to homogeneous coordinates
+    landmarks_homogeneous = np.hstack([landmarks_coords, np.ones((landmarks_coords.shape[0], 1))])
+    # Apply transformation
+    transformed_homogeneous = (T @ landmarks_homogeneous.T).T
+    # Extract coordinates
+    transformed_coords = transformed_homogeneous[:, :3]
+    
+    # Create transformed DataFrame
+    transformed_landmarks = landmarks.copy()
+    transformed_landmarks[['x', 'y', 'z']] = transformed_coords
+    
+    # Write to postOP folder
+    output_file = os.path.join(folderPostOP, f"{bone_name}_landmarks.fcsv")
+    original_file = os.path.join(folderPreOP, f"{bone_name}_landmarks.fcsv")
+    write_fcsv(output_file, transformed_landmarks, original_file)
+    
+    print(f"Transformed {bone_name} landmarks saved to {output_file}")
+
+folderPreOP = "data_for_gui/preOP"
+folderPostOP = "data_for_gui"
+
+# Process both femur and tibia
+transform_landmarks("femur")
+transform_landmarks("tibia")
