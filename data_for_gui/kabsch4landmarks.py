@@ -139,11 +139,23 @@ def transform_landmarks(bone_name):
     preop_kabsch = read_fcsv(os.path.join(folderPreOP, f"kabsch_{bone_name}.fcsv"))
     postop_kabsch = read_fcsv(os.path.join(folderPostOP, f"kabsch_{bone_name}.fcsv"))
     
-    # Sort points to ensure correspondence
-    preop_points, postop_points = sort_points_relative(
-        preop_kabsch[['x', 'y', 'z']].values,
-        postop_kabsch[['x', 'y', 'z']].values
-    )
+    # Check if specific labels are present in both point lists
+    specific_labels = ["spitze_distal", "spitze_proximal", "knochen_distal", "knochen_proximal"]
+    labels_present = any(label in preop_kabsch.index and label in postop_kabsch.index 
+                        for label in specific_labels)
+
+    if labels_present:
+        # Sort points by their name (labels)
+        common_labels = sorted(set(preop_kabsch.index) & set(postop_kabsch.index))
+        preop_points = preop_kabsch.loc[common_labels][['x', 'y', 'z']].values
+        postop_points = postop_kabsch.loc[common_labels][['x', 'y', 'z']].values
+        print(f"Sort by names was used for bone {bone_name}")
+    else:
+        # Sort points to ensure correspondence using distance-based method
+        preop_points, postop_points = sort_points_relative(
+            preop_kabsch[['x', 'y', 'z']].values,
+            postop_kabsch[['x', 'y', 'z']].values
+        )
     
     # Calculate transformation matrix
     T = kabsch(preop_points, postop_points)
