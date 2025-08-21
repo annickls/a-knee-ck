@@ -141,7 +141,9 @@ def transform_landmarks(bone_name):
     
     # Check if specific labels are present in both point lists
     specific_labels = ["spitze_distal", "spitze_proximal", "knochen_distal", "knochen_proximal"]
-    labels_present = any(label in preop_kabsch.index and label in postop_kabsch.index 
+    labels_present = all(label in preop_kabsch.index and label in postop_kabsch.index 
+                        for label in specific_labels)
+    label_warning = any(label in preop_kabsch.index and label in postop_kabsch.index 
                         for label in specific_labels)
 
     if labels_present:
@@ -151,6 +153,8 @@ def transform_landmarks(bone_name):
         postop_points = postop_kabsch.loc[common_labels][['x', 'y', 'z']].values
         print(f"Sort by names was used for bone {bone_name}")
     else:
+        if label_warning:
+            print("Some corresponding labels were found but not all of them!")
         # Sort points to ensure correspondence using distance-based method
         preop_points, postop_points = sort_points_relative(
             preop_kabsch[['x', 'y', 'z']].values,

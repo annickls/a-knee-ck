@@ -12,18 +12,18 @@ ref_points = {
         {"x":0.025, "y": 0.0, "z":0.025},
         {"x":0.025, "y": 0.0, "z":-0.027},
         {"x":0.0455, "y": 0.0, "z":0.0}],
-    "femur": [ # "main"
-        {"x":-0.02, "y": 0.0, "z":0.0},
-        {"x":0.0185, "y": 0.0, "z":0.0},
-        {"x":0.0, "y": -0.0176, "z":-0.018},
-        {"x":0.0, "y": 0.0194, "z":-0.018},
-        {"x":0.0, "y": 0.0, "z":-0.0254}],
-    "tibia": [ # "V3"
+    "femur": [ # "B2"
         {"x":0.018, "y": 0.0, "z":0.0},
         {"x":-0.028, "y": 0.0, "z":0.0},
-        {"x":0.0, "y": -0.0176, "z":-0.02},
-        {"x":0.0, "y": 0.0234, "z":-0.02},
-        {"x":0.0, "y": 0.0, "z":-0.0354}]
+        {"x":0.0, "y": -0.0185, "z":-0.02},
+        {"x":0.0, "y": 0.0225, "z":-0.02},
+        {"x":0.0, "y": 0.0, "z":-0.035}],
+    "tibia": [ # "B1"
+        {"x":-0.02, "y": 0.0, "z":0.0},
+        {"x":0.018, "y": 0.0, "z":0.0},
+        {"x":0.0, "y": -0.0185, "z":-0.015},
+        {"x":0.0, "y": 0.0185, "z":-0.015},
+        {"x":0.0, "y": 0.0, "z":-0.0255}]
 }
 #%%
 
@@ -61,6 +61,9 @@ def convert_csv_to_yaml(csv_files, yaml_file):
 
         with open(csv_file, 'r') as f:
             csv_reader = csv.reader(f)
+            # Print entire content
+            # content = f.read()
+            # print(content)
             # Skip the header rows
             for _ in range(3):  # Skip the first n lines
                 next(csv_reader)
@@ -74,10 +77,10 @@ def convert_csv_to_yaml(csv_files, yaml_file):
                     point_data.append({"x": x, "y": y, "z": z})
 
         # Find the corresponding reference marker
-        point_name = csv_file.removeprefix(current_folder+"/").removesuffix(".fcsv")
+        point_name = csv_file.removeprefix(current_folder+"\\").removesuffix(".fcsv")
         point_array = convert_dict_list_to_point_array(point_data)
         point_data = []
-        point_name_stripped = point_name.removesuffix("_tracker")
+        point_name_stripped = point_name.removesuffix("_marker")
         ref_point_array = convert_dict_list_to_point_array(ref_points[point_name_stripped])
         point_array_sorted, ref_point_array_sorted = sort_points_relative(point_array, ref_point_array)
         yaml_data[point_name_stripped+"_slicer"] = convert_point_array_to_dict_list(point_array_sorted)
@@ -93,7 +96,7 @@ if __name__ == "__main__":
     current_folder = os.path.dirname(os.path.abspath(__file__))
     config_folder = os.path.join(current_folder, "config")
     config_folder = current_folder
-    csv_files = [os.path.join(config_folder, file) for file in os.listdir(config_folder) if file.endswith("_tracker.fcsv")]
+    csv_files = [os.path.join(config_folder, file) for file in os.listdir(config_folder) if file.endswith("_marker.fcsv")]
 
     convert_csv_to_yaml(csv_files, config_folder+"/marker_coordinates.yaml")
     print("Conversion completed. YAML file created successfully.")
