@@ -99,7 +99,7 @@ class KneeFlexionExperiment(QMainWindow):
             
             # Find latest csv file
             root_folder = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            pattern = os.path.join(root_folder, "knee_eval_ws", "data*.csv")
+            pattern = os.path.join(root_folder, "A-KNEE-CK", "data.csv")
 
             try: 
                 self.csv_path = max(glob.glob(pattern), key=os.path.getmtime)
@@ -242,6 +242,11 @@ class KneeFlexionExperiment(QMainWindow):
                             self.torques = np.vstack([self.torques, torque])
                     
                     self.current_data_index = len(self.forces) - 1
+
+                    # Validation for post-experiment visualization of forces along the anatomical axes
+                    self.force_AP = np.array([float(parts[28]), float(parts[29]), float(parts[30])])
+                    self.force_medLat = np.array([float(parts[31]), float(parts[32]), float(parts[33])])
+                    self.force_proxDist = np.array([float(parts[34]), float(parts[35]), float(parts[36])])
                     
                     # Update visualization based on current tab
                     current_tab = self.tabs.currentIndex()
