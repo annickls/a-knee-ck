@@ -220,6 +220,11 @@ class KneeFlexionExperiment(QMainWindow):
                     torque[1] = tjy
                     torque[2] = tjz
 
+                    # # Set some values to 0 for debuggung purpose
+                    # torque[0] = 0
+                    # torque[1] = 0
+                    # torque[2] = 10
+
                     # Transform calculated force and torque back to init CoSy for visualization
                     force = R_sensor @ force
                     torque = R_sensor @ torque
@@ -243,10 +248,11 @@ class KneeFlexionExperiment(QMainWindow):
                     
                     self.current_data_index = len(self.forces) - 1
 
-                    # Validation for post-experiment visualization of forces along the anatomical axes
-                    self.force_AP = np.array([float(parts[28]), float(parts[29]), float(parts[30])])
-                    self.force_medLat = np.array([float(parts[31]), float(parts[32]), float(parts[33])])
-                    self.force_proxDist = np.array([float(parts[34]), float(parts[35]), float(parts[36])])
+                    # Validation for post-experiment visualization of torque along the anatomical axes
+                    index_vector_start = 42
+                    self.force_AP = np.array([float(parts[index_vector_start]), float(parts[index_vector_start+1]), float(parts[index_vector_start+2])])
+                    self.force_medLat = np.array([float(parts[index_vector_start+3]), float(parts[index_vector_start+4]), float(parts[index_vector_start+5])])
+                    self.force_proxDist = np.array([float(parts[index_vector_start+6]), float(parts[index_vector_start+7]), float(parts[index_vector_start+8])])
                     
                     # Update visualization based on current tab
                     current_tab = self.tabs.currentIndex()

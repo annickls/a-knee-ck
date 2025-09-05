@@ -1,4 +1,4 @@
-import csv
+import pandas as pd
 import time
 import os
 
@@ -13,29 +13,27 @@ def write_csv_at_100hz(source_filePath, data_filePath):
         print(f"Error: {source_filePath} not found!")
         return
     
-    # Read all data from source.csv
-    source_data = []
+    # Read all data from source.csv as DataFrame
     try:
-        with open(source_filePath, 'r', newline='') as source_file:
-            reader = csv.reader(source_file)
-            source_data = list(reader)
+        source_df = pd.read_csv(source_filePath, index_col=False)
     except Exception as e:
         print(f"Error reading {source_filePath}: {e}")
         return
     
-    if not source_data:
-        print("Error: {source_filePath} is empty!")
+    if source_df.empty:
+        print(f"Error: {source_filePath} is empty!")
         return
     
-    print(f"Loaded {len(source_data)} rows from source.csv")
-    
-    # Initialize data.csv with headers if source has headers
+    print(f"Loaded {len(source_df)} rows from {source_filePath}")
+
+    # Modify the source file for debugging purposes
+    source_df.columns = source_df.columns.str.strip()
+    source_df[["torque_x","torque_y"]] = 0
+    source_df[["torque_z"]] = 10
+    # Initialize data.csv with headers
     try:
-        with open(data_filePath, 'w', newline='') as data_file:
-            writer = csv.writer(data_file)
-            # Write header if it exists (assume first row is header)
-            if source_data:
-                writer.writerow(source_data[0])
+        # Write just the header to initialize the file
+        source_df.iloc[:0].to_csv(data_filePath, index=False)
     except Exception as e:
         print(f"Error initializing {data_filePath}: {e}")
         return
@@ -43,7 +41,7 @@ def write_csv_at_100hz(source_filePath, data_filePath):
     # Calculate timing for 100Hz (10ms intervals)
     interval = 1.0 / 100.0  # 0.01 seconds
     
-    current_row = 1 if len(source_data) > 1 else 0  # Start from second row if header exists
+    current_row = 0  # Start from first row
     start_time = time.time()
     iteration = 0
     
@@ -60,20 +58,21 @@ def write_csv_at_100hz(source_filePath, data_filePath):
             if sleep_time > 0:
                 time.sleep(sleep_time)
             
-            # Write current row to data.csv
+            # Get current row as Series and write to data.csv
             try:
-                with open(data_filePath, 'a', newline='') as data_file:
-                    writer = csv.writer(data_file)
-                    writer.writerow(source_data[current_row])
+                current_row_data = source_df.iloc[current_row]
+                # Convert Series to DataFrame for proper CSV writing
+                row_df = pd.DataFrame([current_row_data])
+                row_df.to_csv(data_filePath, mode='a', header=False, index=False)
             except Exception as e:
                 print(f"Error writing to {data_filePath}: {e}")
                 break
             
             # Move to next row (cycle through source data)
             current_row += 1
-            if current_row >= len(source_data):
-                current_row = 1 if len(source_data) > 1 else 0  # Reset to first data row
-                print("End of file reached, restart at beginning")
+            if current_row >= len(source_df):
+                current_row = 0  # Reset to first data row
+                print("End of DataFrame reached, restarting at beginning")
             
             iteration += 1
             
@@ -94,7 +93,7 @@ def write_csv_at_100hz(source_filePath, data_filePath):
 if __name__ == "__main__":
     # Set Path to source and data file
     currentDir = os.path.dirname(os.path.abspath(__file__))
-    source_fileName = "source.csv"
+    source_fileName = "C:\\Users\\ga94bow\\Documents\\codesandstuff\\knee_analysis\\data_processed\\P1_pre_debug\\var.csv"
     data_fileName = "data.csv"
     source_filePath = os.path.join(currentDir, source_fileName)
     data_filePath = os.path.join(currentDir, data_fileName)

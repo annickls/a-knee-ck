@@ -273,38 +273,37 @@ class UpdateVisualization():
         idx = data_index % len(self.forces)
         force = self.forces[idx].copy()
 
-        
-        # Scale forces for better visualization
-        force_scaled = force * constants.SCALE_FACTOR_ARROW
-
         # Set the position of the force arrow - attach to tibia at specific point
         tibiaproximal= UpdateVisualization.tibia_landmarks['tibia_proximal']['position']
+
+        # # Scale forces for better visualization
+        # force_scaled = force * constants.SCALE_FACTOR_ARROW
+
+        # # Calculate end point for the arrow
+        # end_point = tibiaproximal + force_scaled
         
-        # Calculate end point for the arrow
-        end_point = tibiaproximal + force_scaled
-        
-        # First, remove old arrows if they exist
-        if hasattr(self, 'force_arrow_shaft') and self.force_arrow_shaft is not None:
-            self.gl_view.removeItem(self.force_arrow_shaft)
-        if hasattr(self, 'force_arrow_head') and self.force_arrow_head is not None:
-            self.gl_view.removeItem(self.force_arrow_head)
+        # # First, remove old arrows if they exist
+        # if hasattr(self, 'force_arrow_shaft') and self.force_arrow_shaft is not None:
+        #     self.gl_view.removeItem(self.force_arrow_shaft)
+        # if hasattr(self, 'force_arrow_head') and self.force_arrow_head is not None:
+        #     self.gl_view.removeItem(self.force_arrow_head)
         
         
-        # Create new arrows
-        self.force_arrow_shaft, self.force_arrow_head = MeshUtils.create_arrow(
-            tibiaproximal, 
-            end_point, 
-            color=(1, 0, 0, 1), 
-            arrow_size=constants.ARROW_SIZE_FORCE, 
-            shaft_width=constants.SHAFT_WIDTH,
-            mode = 'force'
-        )
+        # # Create new arrows
+        # self.force_arrow_shaft, self.force_arrow_head = MeshUtils.create_arrow(
+        #     tibiaproximal, 
+        #     end_point, 
+        #     color=(1, 0, 0, 1), 
+        #     arrow_size=constants.ARROW_SIZE_FORCE, 
+        #     shaft_width=constants.SHAFT_WIDTH,
+        #     mode = 'force'
+        # )
         
-        # Add new arrows to view
-        if self.force_arrow_shaft is not None:
-            self.gl_view.addItem(self.force_arrow_shaft)
-        if self.force_arrow_head is not None:
-            self.gl_view.addItem(self.force_arrow_head)
+        # # Add new arrows to view
+        # if self.force_arrow_shaft is not None:
+        #     self.gl_view.addItem(self.force_arrow_shaft)
+        # if self.force_arrow_head is not None:
+        #     self.gl_view.addItem(self.force_arrow_head)
 
             # Add additional vectors to visualize forces along anatomical axes
         # AP axis
@@ -318,7 +317,7 @@ class UpdateVisualization():
         self.AP_arrow_shaft, self.AP_arrow_head = MeshUtils.create_arrow(
             tibiaproximal, 
             end_point, 
-            color=(1, 0, 1, 1), 
+            color=(1, 0, 0, 1), 
             arrow_size=constants.ARROW_SIZE_FORCE, 
             shaft_width=constants.SHAFT_WIDTH,
             mode = 'force'
@@ -340,7 +339,7 @@ class UpdateVisualization():
         self.medLat_arrow_shaft, self.medLat_arrow_head = MeshUtils.create_arrow(
             tibiaproximal, 
             end_point, 
-            color=(1, 0, 1, 1), 
+            color=(0, 1, 0, 1), 
             arrow_size=constants.ARROW_SIZE_FORCE, 
             shaft_width=constants.SHAFT_WIDTH,
             mode = 'force'
@@ -362,7 +361,7 @@ class UpdateVisualization():
         self.proxDist_arrow_shaft, self.proxDist_arrow_head = MeshUtils.create_arrow(
             tibiaproximal, 
             end_point, 
-            color=(1, 0, 1, 1), 
+            color=(0, 0, 1, 1), 
             arrow_size=constants.ARROW_SIZE_FORCE, 
             shaft_width=constants.SHAFT_WIDTH,
             mode = 'force'
@@ -373,39 +372,39 @@ class UpdateVisualization():
         if self.proxDist_arrow_head is not None:
             self.gl_view.addItem(self.proxDist_arrow_head)
         
-        # # same with torques
-        # # Get current data point
-        # idx = data_index % len(self.torques)
-        # torque = self.torques[idx].copy()
+        # same with torques
+        # Get current data point
+        idx = data_index % len(self.torques)
+        torque = self.torques[idx].copy()
         
 
-        #  # Scale forces for better visualization
-        # torque_scaled = torque * constants.SCALE_FACTOR_ARROW
+         # Scale forces for better visualization
+        torque_scaled = torque * constants.SCALE_FACTOR_ARROW
 
-        # # Calculate end point for the arrow
-        # end_point_torque = tibiaproximal + torque_scaled
+        # Calculate end point for the arrow
+        end_point_torque = tibiaproximal + torque_scaled
 
-        # # First, remove old arrows if they exist
-        # if hasattr(self, 'torque_arrow_shaft') and self.torque_arrow_shaft is not None:
-        #     self.gl_view.removeItem(self.torque_arrow_shaft)
-        # if hasattr(self, 'torque_arrow_head') and self.torque_arrow_head is not None:
-        #     self.gl_view.removeItem(self.torque_arrow_head)
+        # First, remove old arrows if they exist
+        if hasattr(self, 'torque_arrow_shaft') and self.torque_arrow_shaft is not None:
+            self.gl_view.removeItem(self.torque_arrow_shaft)
+        if hasattr(self, 'torque_arrow_head') and self.torque_arrow_head is not None:
+            self.gl_view.removeItem(self.torque_arrow_head)
 
-        # # Create new arrows
-        # self.torque_arrow_shaft, self.torque_arrow_head = MeshUtils.create_arrow(
-        #     tibiaproximal, 
-        #     end_point_torque, 
-        #     color=constants.DEEPSKYBLUE, 
-        #     arrow_size=constants.ARROW_SIZE_TORQUE, 
-        #     shaft_width=constants.SHAFT_WIDTH,
-        #     mode = 'torque'
-        # )
+        # Create new arrows
+        self.torque_arrow_shaft, self.torque_arrow_head = MeshUtils.create_arrow(
+            tibiaproximal, 
+            end_point_torque, 
+            color=constants.DEEPSKYBLUE, 
+            arrow_size=constants.ARROW_SIZE_TORQUE, 
+            shaft_width=constants.SHAFT_WIDTH,
+            mode = 'torque'
+        )
 
-        # # Add new arrows to view
-        # if self.torque_arrow_shaft is not None:
-        #     self.gl_view.addItem(self.torque_arrow_shaft)
-        # if self.torque_arrow_head is not None:
-        #     self.gl_view.addItem(self.torque_arrow_head)
+        # Add new arrows to view
+        if self.torque_arrow_shaft is not None:
+            self.gl_view.addItem(self.torque_arrow_shaft)
+        if self.torque_arrow_head is not None:
+            self.gl_view.addItem(self.torque_arrow_head)
 
 
         # visualize important axes for grood and suntay
