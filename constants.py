@@ -24,6 +24,8 @@ def create_df_from_fcsv(filePath):
     df = pd.DataFrame(data, index=['x', 'y', 'z'])
     return df
 
+DEBUG = True
+
 # experiment parameters
 HOLD_TIME = 30 #seconds to hold knee positions
 HOLD_INDIVIDUAL = 30 #seconds for individual data recording
@@ -115,7 +117,7 @@ HISTORY_SIZE = 100
 FORCE_MAX = 12
 TORQUE_MAX = 3
 ARROW_SIZE_FORCE = 6.0
-ARROW_LENGTH_FACTOR_FORCE = 0.7
+ARROW_LENGTH_FACTOR_FORCE = 3.5
 HEAD_SIZE_FACTOR_FORCE = 0.15
 ARROW_SIZE_TORQUE = 6.0
 ARROW_LENGTH_FACTOR_TORQUE = 3.5
