@@ -24,7 +24,7 @@ def create_df_from_fcsv(filePath):
     df = pd.DataFrame(data, index=['x', 'y', 'z'])
     return df
 
-DEBUG = True
+DEBUG = False
 
 # experiment parameters
 HOLD_TIME = 30 #seconds to hold knee positions
@@ -42,11 +42,12 @@ ANTERIOR_TRANSLATION_OFFSET = 0
 current_folder = os.path.dirname(os.path.abspath(__file__))
 
 # Bone STLs
+data_folderName = "P1_pre"
 femur_fileName = "Femur.stl"
-FEMUR = os.path.join(current_folder, "data_for_gui", femur_fileName)
+FEMUR = os.path.join(current_folder, "data_for_gui", data_folderName, femur_fileName)
 
 tibia_fileName = "Tibia.stl"
-TIBIA = os.path.join(current_folder, "data_for_gui", tibia_fileName)
+TIBIA = os.path.join(current_folder, "data_for_gui", data_folderName, tibia_fileName)
 
 # recorded data
 RECORDED = os.path.join(current_folder, "recorded_data")
@@ -72,7 +73,7 @@ DATA_CSV = "data_new.csv"
 
 # Read in femur landmarks
 femur_landmarks_fileName = "femur_landmarks.fcsv"
-femur_landmarks_path = os.path.join(current_folder, "data_for_gui", femur_landmarks_fileName)
+femur_landmarks_path = os.path.join(current_folder, "data_for_gui", data_folderName, femur_landmarks_fileName)
 df_femur_landmarks = create_df_from_fcsv(femur_landmarks_path)
 FEMUR_LATERAL = df_femur_landmarks["femur_lateral"].to_numpy()
 FEMUR_MEDIAL = df_femur_landmarks["femur_medial"].to_numpy()
@@ -80,7 +81,7 @@ FEMUR_PROXIMAL= df_femur_landmarks["femur_proximal"].to_numpy()
 FEMUR_DISTAL = df_femur_landmarks["femur_distal"].to_numpy()
 # Read in tibial landmarks
 tibia_landmarks_fileName = "tibia_landmarks.fcsv"
-tibia_landmarks_path = os.path.join(current_folder, "data_for_gui", tibia_landmarks_fileName)
+tibia_landmarks_path = os.path.join(current_folder, "data_for_gui", data_folderName, tibia_landmarks_fileName)
 df_tibia_landmarks = create_df_from_fcsv(tibia_landmarks_path)
 TIBIA_LATERAL = df_tibia_landmarks["tibia_lateral"].to_numpy()
 TIBIA_MEDIAL= df_tibia_landmarks["tibia_medial"].to_numpy()
