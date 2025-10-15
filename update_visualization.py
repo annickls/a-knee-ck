@@ -271,9 +271,15 @@ class UpdateVisualization():
 
         # Set the position of the force arrow - attach to tibia at specific point
         tibiaproximal= UpdateVisualization.tibia_landmarks['tibia_proximal']['position']
+        tibiamedial= UpdateVisualization.tibia_landmarks['tibia_medial']['position']
+
 
         # Display force and torque vectors
-        if not constants.DEBUG:
+
+            #!!!!!!!!!!!!!!!!!!!!!!!!!!
+        if not constants.DEBUG and False: 
+            #!!!!!!!!!!!!!!!!!!!!!!!!!!
+
                 # Plot force vector
             # Get current data point
             idx = data_index % len(self.forces)
@@ -333,7 +339,11 @@ class UpdateVisualization():
         # ------------------------------------
         # Add additional vectors to visualize torque along anatomical axes
         # ------------------------------------
-        if constants.DEBUG:
+
+            #!!!!!!!!!!!!!!!!!!!!!!!!!!
+        if constants.DEBUG and False: 
+            #!!!!!!!!!!!!!!!!!!!!!!!!!!
+
                 # Total torque
             # First, remove old arrows if they exist
             if hasattr(self, 'torque_debug_shaft') and self.torque_debug_shaft is not None:
@@ -359,13 +369,13 @@ class UpdateVisualization():
                 # Individual components of the total torque
             # AP axis
             # First, remove old arrows if they exist
-            if hasattr(self, 'AP_arrow_shaft') and self.AP_arrow_shaft is not None:
-                self.gl_view.removeItem(self.AP_arrow_shaft)
-            if hasattr(self, 'AP_arrow_head') and self.AP_arrow_head is not None:
-                self.gl_view.removeItem(self.AP_arrow_head)
+            if hasattr(self, 'var_arrow_shaft') and self.var_arrow_shaft is not None:
+                self.gl_view.removeItem(self.var_arrow_shaft)
+            if hasattr(self, 'var_arrow_head') and self.var_arrow_head is not None:
+                self.gl_view.removeItem(self.var_arrow_head)
             # Create arrow
-            end_point = tibiaproximal + self.torque_AP * constants.SCALE_FACTOR_ARROW
-            self.AP_arrow_shaft, self.AP_arrow_head = MeshUtils.create_arrow(
+            end_point = tibiaproximal + self.torque_var * constants.SCALE_FACTOR_ARROW
+            self.var_arrow_shaft, self.var_arrow_head = MeshUtils.create_arrow(
                 tibiaproximal, 
                 end_point, 
                 color=(1, 0, 0, 1), 
@@ -374,20 +384,20 @@ class UpdateVisualization():
                 mode = 'torque'
             )
             # Add new arrows to view
-            if self.AP_arrow_shaft is not None:
-                self.gl_view.addItem(self.AP_arrow_shaft)
-            if self.AP_arrow_head is not None:
-                self.gl_view.addItem(self.AP_arrow_head)
+            if self.var_arrow_shaft is not None:
+                self.gl_view.addItem(self.var_arrow_shaft)
+            if self.var_arrow_head is not None:
+                self.gl_view.addItem(self.var_arrow_head)
 
             # Medial-lateral axis
             # First, remove old arrows if they exist
-            if hasattr(self, 'medLat_arrow_shaft') and self.medLat_arrow_shaft is not None:
-                self.gl_view.removeItem(self.medLat_arrow_shaft)
-            if hasattr(self, 'medLat_arrow_head') and self.medLat_arrow_head is not None:
-                self.gl_view.removeItem(self.medLat_arrow_head)
+            if hasattr(self, 'flex_arrow_shaft') and self.flex_arrow_shaft is not None:
+                self.gl_view.removeItem(self.flex_arrow_shaft)
+            if hasattr(self, 'flex_arrow_head') and self.flex_arrow_head is not None:
+                self.gl_view.removeItem(self.flex_arrow_head)
             # Create arrow
-            end_point = tibiaproximal + self.torque_medLat * constants.SCALE_FACTOR_ARROW
-            self.medLat_arrow_shaft, self.medLat_arrow_head = MeshUtils.create_arrow(
+            end_point = tibiaproximal + self.torque_flex * constants.SCALE_FACTOR_ARROW
+            self.flex_arrow_shaft, self.flex_arrow_head = MeshUtils.create_arrow(
                 tibiaproximal, 
                 end_point, 
                 color=(0, 1, 0, 1), 
@@ -396,20 +406,20 @@ class UpdateVisualization():
                 mode = 'torque'
             )
             # Add new arrows to view
-            if self.medLat_arrow_shaft is not None:
-                self.gl_view.addItem(self.medLat_arrow_shaft)
-            if self.medLat_arrow_head is not None:
-                self.gl_view.addItem(self.medLat_arrow_head)
+            if self.flex_arrow_shaft is not None:
+                self.gl_view.addItem(self.flex_arrow_shaft)
+            if self.flex_arrow_head is not None:
+                self.gl_view.addItem(self.flex_arrow_head)
 
             # proximal-distal axis
             # First, remove old arrows if they exist
-            if hasattr(self, 'proxDist_arrow_shaft') and self.proxDist_arrow_shaft is not None:
-                self.gl_view.removeItem(self.proxDist_arrow_shaft)
-            if hasattr(self, 'proxDist_arrow_head') and self.proxDist_arrow_head is not None:
-                self.gl_view.removeItem(self.proxDist_arrow_head)
+            if hasattr(self, 'rot_arrow_shaft') and self.rot_arrow_shaft is not None:
+                self.gl_view.removeItem(self.rot_arrow_shaft)
+            if hasattr(self, 'rot_arrow_head') and self.rot_arrow_head is not None:
+                self.gl_view.removeItem(self.rot_arrow_head)
             # Create arrow
-            end_point = tibiaproximal + self.torque_proxDist * constants.SCALE_FACTOR_ARROW
-            self.proxDist_arrow_shaft, self.proxDist_arrow_head = MeshUtils.create_arrow(
+            end_point = tibiaproximal + self.torque_rot * constants.SCALE_FACTOR_ARROW
+            self.rot_arrow_shaft, self.rot_arrow_head = MeshUtils.create_arrow(
                 tibiaproximal, 
                 end_point, 
                 color=(0, 0, 1, 1), 
@@ -418,10 +428,10 @@ class UpdateVisualization():
                 mode = 'torque'
             )
             # Add new arrows to view
-            if self.proxDist_arrow_shaft is not None:
-                self.gl_view.addItem(self.proxDist_arrow_shaft)
-            if self.proxDist_arrow_head is not None:
-                self.gl_view.addItem(self.proxDist_arrow_head)
+            if self.rot_arrow_shaft is not None:
+                self.gl_view.addItem(self.rot_arrow_shaft)
+            if self.rot_arrow_head is not None:
+                self.gl_view.addItem(self.rot_arrow_head)
 
 
         # visualize important axes for grood and suntay
@@ -440,6 +450,8 @@ class UpdateVisualization():
         if hasattr(self, 'tibia_femur_floating_axis') and self.tibia_femur_floating_axis  is not None:
             self.gl_view.removeItem(self.tibia_femur_floating_axis)
 
+        if hasattr(self, 'tibia_axis_shaft_ap') and self.tibia_axis_shaft_ap  is not None:
+            self.gl_view.removeItem(self.tibia_axis_shaft_ap)
 
         #Femur medial-lateral axis
         self.femur_axis_shaft_ml = MeshUtils.create_tibia_axis(
@@ -463,6 +475,13 @@ class UpdateVisualization():
             arrow_size=500, 
             shaft_width=2
         )
+        #Tibia e1t (gives rotation with crossproduct of floating axis)
+        self.tibia_axis_shaft_ap = MeshUtils.create_tibia_axis(
+            tibiaproximal, 
+            tibiaproximal + UpdateVisualization.e2t_store, 
+            color="k", 
+            arrow_size=500, shaft_width=2
+        )
 
 
         if self.femur_axis_shaft_ml is not None:
@@ -473,6 +492,9 @@ class UpdateVisualization():
 
         if self.tibia_femur_floating_axis is not None:
             self.gl_view.addItem(self.tibia_femur_floating_axis)
+
+        if self.tibia_axis_shaft_ap is not None:
+            self.gl_view.addItem(self.tibia_axis_shaft_ap)
 
         # Create/update legend
         UpdateVisualization.create_legend(self)
@@ -724,7 +746,7 @@ class UpdateVisualization():
             # Temporary tibial medial-lateral axis
             temp_tibia = tibia_lateral - tibia_medial
             temp_tibia = temp_tibia / np.linalg.norm(temp_tibia)
-
+            UpdateVisualization.temp_tibia = temp_tibia
             
             
             # e2t: tibial anterior-posterior axis

@@ -246,9 +246,9 @@ class KneeFlexionExperiment(QMainWindow):
                             # Validation for post-experiment visualization of torque along the anatomical axes
                         # Get individual torques along anatomical axes
                         index_vector_start = 42
-                        self.torque_AP = np.array([float(parts[index_vector_start]), float(parts[index_vector_start+1]), float(parts[index_vector_start+2])])
-                        self.torque_medLat = np.array([float(parts[index_vector_start+3]), float(parts[index_vector_start+4]), float(parts[index_vector_start+5])])
-                        self.torque_proxDist = np.array([float(parts[index_vector_start+6]), float(parts[index_vector_start+7]), float(parts[index_vector_start+8])])
+                        self.torque_var = np.array([float(parts[index_vector_start]), float(parts[index_vector_start+1]), float(parts[index_vector_start+2])])
+                        self.torque_flex = np.array([float(parts[index_vector_start+3]), float(parts[index_vector_start+4]), float(parts[index_vector_start+5])])
+                        self.torque_rot = np.array([float(parts[index_vector_start+6]), float(parts[index_vector_start+7]), float(parts[index_vector_start+8])])
                         # Get total torque along anatomical axes
                         self.torque_debug = np.array([float(parts[index_vector_start+9]), float(parts[index_vector_start+10]), float(parts[index_vector_start+11])])
                     
@@ -1101,7 +1101,7 @@ class KneeFlexionExperiment(QMainWindow):
 
             # Run kabsch algorithm
             current_folder = os.path.dirname(os.path.abspath(__file__))
-            yaml_path = os.path.join(current_folder, "data_for_gui/marker_coordinates.yaml")
+            yaml_path = os.path.join(current_folder, "data_for_gui", constants.data_folderName, "marker_coordinates.yaml")
             translation, rotation = MeshUtils.kabsch(yaml_path, "femur")
             femur_vertices_centered = femur_vertices + translation
             femur_vertices_transformed = (rotation@(femur_vertices_centered.T)).T
@@ -1219,7 +1219,7 @@ class KneeFlexionExperiment(QMainWindow):
 
             # Run kabsch algorithm
             current_folder = os.path.dirname(os.path.abspath(__file__))
-            yaml_path = os.path.join(current_folder, "data_for_gui/marker_coordinates.yaml")
+            yaml_path = os.path.join(current_folder, "data_for_gui", constants.data_folderName, "marker_coordinates.yaml")
             translation, rotation = MeshUtils.kabsch(yaml_path, "tibia")
             tibia_vertices_centered = tibia_vertices + translation
             tibia_vertices_transformed = (rotation@(tibia_vertices_centered.T)).T
