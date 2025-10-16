@@ -290,7 +290,6 @@ class OptimizedVarusValgusPlot(QWidget):
         self.axis_color = np.array([100, 100, 100], dtype=np.uint8)
         self.salmon_color = np.array([250, 128, 114], dtype=np.uint8)
         self.limegreen_color = np.array([50, 205, 50], dtype=np.uint8)
-        self.current_point_color = np.array([255, 0, 0], dtype=np.uint8)
         
         # Pre-compute coordinate transform parameters
         self._update_transform_params()
@@ -607,43 +606,62 @@ class OptimizedVarusValgusPlot(QWidget):
             flexion, vv, rotation, adduction, anterior, medial, modes)
         
         
-        if len(flex_filtered) == 0:
-            return
-        
         # Determine which angle to plot based on current mode
         if self.current_mode == "rotation":
-            angle_to_plot = rotation_filtered
+            angle_filtered = rotation_filtered
+            angle_full = rotation
         elif self.current_mode == "adduction":
-            angle_to_plot = adduction_filtered
+            angle_filtered = adduction_filtered
+            angle_full = adduction
         elif self.current_mode == "varus_valgus":  # varus_valgus
-            angle_to_plot = vv_filtered
+            angle_filtered = vv_filtered
+            angle_full = vv
         elif self.current_mode == "anterior":
-            angle_to_plot = anterior_filtered
+            angle_filtered = anterior_filtered
+            angle_full = anterior
         elif self.current_mode == "medial":
-            angle_to_plot = medial_filtered
+            angle_filtered = medial_filtered
+            angle_full = medial
             
+        # Set colors and sizes for the different cases
+        color_current_valid = np.array([0, 0, 255], dtype=np.uint8)
+        color_current_invalid = np.array([255, 0, 0], dtype=np.uint8)
+        color_all_valid = np.array([0, 255, 0], dtype=np.uint8)
+        color_all_invalid = np.array([1, 1, 1], dtype=np.uint8)
+        # Draw all points in red (if one of the position is valid it will be overwritten in blue)
+        self._draw_points(flexion, angle_full, color=color_all_invalid)
+        # If no valid values where found yet, only display current position in red
+        if len(flex_filtered) == 0:
+            latest_flex = flexion[-1]
+            latest_angle = angle_full[-1]
+            self._draw_point(latest_angle, latest_flex, color_current_invalid, size=3)
+            return
+
+        # If current position is within acceptable range, set color of active point to blue
+        if flexion[-1]==flex_filtered[-1]:
+            active_point_color = color_current_valid
+        else:
+            active_point_color = color_current_invalid
+
         # Draw points based on mode
         if self.current_point_mode == "bars":
-            self._draw_bars(flex_filtered, angle_to_plot)
+            self._draw_bars(flex_filtered, angle_filtered)
         else:
-            self._draw_points(flex_filtered, angle_to_plot)
-            
-        # Draw current point (most recent)
-        if len(flex_filtered) > 0:
-            latest_flex = flex_filtered[-1]
-            latest_angle = angle_to_plot[-1]
-            self._draw_point(latest_angle, latest_flex, self.current_point_color, size=3)
+            self._draw_points(flex_filtered, angle_filtered, color_all_valid)
+            self._draw_point(angle_full[-1], flexion[-1], active_point_color, size=3)
     
+
     def _draw_bars(self, flexion, vv):
         #Draw horizontal bars from 0 to displacement value.
         for i in range(len(flexion)):
             color = self.salmon_color if vv[i] > 0 else self.limegreen_color
             self._draw_line(0, flexion[i], vv[i], flexion[i], color, thickness=2)
             
-    def _draw_points(self, flexion, vv):
+    def _draw_points(self, flexion, vv, color=None):
         """Draw simple scatter points."""
         for i in range(len(flexion)):
-            color = self.salmon_color if vv[i] > 0 else self.limegreen_color
+            if not np.any(color):
+                color = self.salmon_color if vv[i] > 0 else self.limegreen_color
             self._draw_point(vv[i], flexion[i], color, size=3)  # size=3 for 3x3 squares
     
     def paintEvent(self, event):
