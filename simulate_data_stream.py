@@ -74,11 +74,14 @@ def write_csv_at_100hz(source_filePath, data_filePath):
 
     source_df.columns = source_df.columns.str.strip()
 
-    # # Modify the source file for debugging purposes
-    # source_df[["force_x", "force_y", "force_z"]] = 0
-    # source_df[["torque_y","torque_z"]] = 0
-    # source_df[["torque_x"]] = 10
-
+    # Modify the source file for debugging purposes
+    # source_df["tibia_x"] = source_df["tibia_x"][0]
+    # source_df["tibia_y"] = source_df["tibia_y"][0]
+    # source_df["tibia_z"] = source_df["tibia_z"][0]
+    # source_df["tibia_qx"] = source_df["tibia_qx"][0]
+    # source_df["tibia_qy"] = source_df["tibia_qy"][0]
+    # source_df["tibia_qz"] = source_df["tibia_qz"][0]
+    # source_df["tibia_qw"] = source_df["tibia_qw"][0]
     # Initialize data.csv with headers
     try:
         # Write just the header to initialize the file
@@ -179,7 +182,7 @@ def write_csv_at_100hz(source_filePath, data_filePath):
             current_row += 1
             if current_row >= len(source_df):
                 current_row = 0  # Reset to first data row
-                print("End of DataFrame reached, restarting at beginning")
+                print("End of DataFrame reached, restarting at beginning") if len(source_df)>50 else None
             
             iteration += 1
             
@@ -208,11 +211,24 @@ def write_csv_at_100hz(source_filePath, data_filePath):
         print(f"Data written to {data_filePath}")
 
 if __name__ == "__main__":
-    # Set Path to source and data file
+    # Set Path to source and data folder
     currentDir = os.path.dirname(os.path.abspath(__file__))
-    source_fileName = "C:\\Users\\ga94bow\\Documents\\codesandstuff\\knee_analysis\\data_processed\\P1_pre\\neutral.csv"
-    data_fileName = "data.csv"
-    source_filePath = os.path.join(currentDir, source_fileName)
-    data_filePath = os.path.join(currentDir, data_fileName)
+    sourceDir = "C:\\Users\\ga94bow\\Documents\\codesandstuff\\knee_analysis\\data_processed"
+    source_fileName = os.path.join("neutral.csv")
+
+    # Set Patients name and examiner if needed
+    patientName = "P4_pre"
+    examinerName = "Claudio"
+
+    # Set name of the test
+    testName = "neutral.csv"
+    output_fileName = "data.csv"
+
+    # Combine Paths; If debug is set, then take the measuremung where the leg is supposed to be straight
+    if examinerName == "debug":
+        source_filePath = os.path.join(currentDir, "data_for_gui", patientName, "streckung_GUI.csv")
+    else:
+        source_filePath = os.path.join(sourceDir, patientName, examinerName, testName)
+    output_filePath = os.path.join(currentDir, output_fileName)
     # Start script
-    write_csv_at_100hz(source_filePath, data_filePath)
+    write_csv_at_100hz(source_filePath, output_filePath)
