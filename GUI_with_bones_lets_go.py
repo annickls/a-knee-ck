@@ -33,7 +33,8 @@ from plot_config1 import MplCanvas, ColoredGLAxisItem, OptimizedVarusValgusPlot
 from mesh_utils import MeshUtils
 from update_visualization import UpdateVisualization
 
-
+# Import the rotation control widget
+from rotation_control_widget import RotationControlWidget
 
 class KneeFlexionExperiment(QMainWindow):
     def __init__(self):
@@ -76,6 +77,11 @@ class KneeFlexionExperiment(QMainWindow):
         
         # Setup UI
         self.setup_ui()
+
+        # Setup rotation window
+        self.rotation_window = None
+        self.create_rotation_control_window()
+        self.current_rotation_offset = np.array([0,0,0,1])
         
         self.recording = False
         self.current_recording_data = []
@@ -89,7 +95,107 @@ class KneeFlexionExperiment(QMainWindow):
         
         # Ensure directory exists for data files
         os.makedirs("recorded_data", exist_ok=True)
+
+    def create_rotation_control_window(self):
+        """
+        Create a separate window for rotation control.
         
+        Design Decision - Separate Window vs. Embedded Widget:
+        =======================================================
+        
+        Option 1: Embedded Widget
+        - Add rotation_control to main window layout
+        - Pros: Everything in one place, simpler management
+        - Cons: Takes up screen space, can't position independently
+        
+        Option 2: Separate Window (chosen)
+        - Create QWidget with the rotation control
+        - Pros: Flexible positioning, can hide when not needed, cleaner main view
+        - Cons: Need to manage two windows
+        
+        We chose Option 2 because:
+        1. The main window is already crowded with visualizations
+        2. Users may want to adjust rotations while viewing full 3D view
+        3. Professional applications often use tool palettes/panels
+        
+        Window Hierarchy:
+        - Main window (self): The primary application window
+        - Rotation window: A child window, but can be independent
+        - Setting parent=self makes it stay associated with the main window
+        - It will close when the main window closes
+        """
+        # Create a new window (QWidget that acts as a window)
+        self.rotation_window = QWidget()
+        self.rotation_window.setWindowTitle("Rotation Control")
+        self.rotation_window.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
+        
+        # Set up layout for the window
+        layout = QVBoxLayout()
+        
+        # Create the rotation control widget
+        self.rotation_control = RotationControlWidget()
+        
+        # Connect the rotation_changed signal to our handler
+        # This is where the Observer pattern shines!
+        # Whenever rotation changes in the widget, our method is called
+        self.rotation_control.rotation_changed.connect(self.on_rotation_changed)
+        
+        # Add the rotation control to the window
+        layout.addWidget(self.rotation_control)
+        
+        # Add some helpful text
+        info_label = QLabel(
+            "Adjust these values to apply rotation offsets to the tibia.\n"
+            "Changes are applied in real-time to the visualization."
+        )
+        info_label.setWordWrap(True)
+        info_label.setStyleSheet("color: #666; font-size: 10px; padding: 10px;")
+        layout.addWidget(info_label)
+        
+        self.rotation_window.setLayout(layout)
+        
+        # Position the rotation window next to the main window
+        main_geometry = self.geometry()
+        self.rotation_window.setGeometry(
+            main_geometry.x() + main_geometry.width() + 10,  # To the right of main window
+            main_geometry.y(),
+            450,  # Width
+            500   # Height
+        )
+        
+        # Show the rotation window
+        self.rotation_window.show()
+    
+    def on_rotation_changed(self, quaternion):
+        """
+        Called whenever the rotation sliders are changed.
+        
+        This is a SLOT that receives the SIGNAL from RotationControlWidget.
+        
+        Signal/Slot Pattern Explanation:
+        =================================
+        Think of signals and slots like a radio broadcast:
+        - The RotationControlWidget is the radio station (emitter)
+        - It "broadcasts" rotation_changed signals
+        - This method is a "radio receiver" (slot)
+        - Multiple receivers can listen to the same signal
+        - The broadcaster doesn't know or care who's listening
+        
+        This loose coupling means:
+        - We can add more listeners later without changing RotationControlWidget
+        - We can reuse RotationControlWidget in other projects
+        - Testing is easier (we can test components independently)
+        
+        Args:
+            quaternion: Tuple of (qx, qy, qz, qw) representing the rotation offset
+        """
+        # Store the rotation offset as a numpy array
+        self.current_rotation_offset = np.array(quaternion)
+        
+        # Note: We don't force an update here because the visualization
+        # is already updating continuously via self.viz_timer
+        # The next timer tick will use the new rotation automatically
+
     def toggle_monitoring(self):
         if not self.monitoring:
         # Start monitoring real data
@@ -179,6 +285,11 @@ class KneeFlexionExperiment(QMainWindow):
                     tibia_quaternion = np.array([float(parts[13]), float(parts[10]), float(parts[11]), float(parts[12])])
                     # Note the order change: CSV has qx,qy,qz,qw but your system expects qw,qx,qy,qz
                     
+                    # Apply the custom rotation from the GUI
+                    quat_debug_x, quat_debug_y, quat_debug_z, quat_debug_w = self.current_rotation_offset
+                    quat_debug = np.array([quat_debug_w, quat_debug_x, quat_debug_y, quat_debug_z])
+                    tibia_quaternion = MeshUtils.multiply_quaternions(quat_orig=tibia_quaternion, quat_debug=quat_debug)
+
                     # Femur position and quaternion
                     femur_position = np.array([float(parts[14]), float(parts[15]), float(parts[16])])
                     femur_quaternion = np.array([float(parts[20]), float(parts[17]), float(parts[18]), float(parts[19])])
@@ -280,7 +391,9 @@ class KneeFlexionExperiment(QMainWindow):
                             #UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_sphere_center_lateral")
                         
                         if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
-                            MeshUtils.update_mesh_with_data(self.tibia_mesh, tibia_position, tibia_quaternion)
+                            quat_debug_x, quat_debug_y, quat_debug_z, quat_debug_w = self.current_rotation_offset
+                            quat_debug = np.array([quat_debug_w, quat_debug_x, quat_debug_y, quat_debug_z])
+                            MeshUtils.update_mesh_with_data(self.tibia_mesh, tibia_position, tibia_quaternion, quaternion_debug=None)
 
                             UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_medial")
                             UpdateVisualization.update_landmark_alex(self, tibia_position*1000, tibia_quaternion, "tibia_lateral")
