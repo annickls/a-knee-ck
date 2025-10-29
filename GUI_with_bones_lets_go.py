@@ -81,7 +81,8 @@ class KneeFlexionExperiment(QMainWindow):
         # Setup rotation window
         self.rotation_window = None
         self.create_rotation_control_window()
-        self.current_rotation_offset = np.array([0,0,0,1])
+        self.tibia_rotation_offset = np.array([0,0,0,1])
+        self.femur_rotation_offset = np.array([0,0,0,1])
         
         self.recording = False
         self.current_recording_data = []
@@ -138,7 +139,8 @@ class KneeFlexionExperiment(QMainWindow):
         # Connect the rotation_changed signal to our handler
         # This is where the Observer pattern shines!
         # Whenever rotation changes in the widget, our method is called
-        self.rotation_control.rotation_changed.connect(self.on_rotation_changed)
+        self.rotation_control.tibia_rotation_changed.connect(self.on_tibia_rotation_changed)
+        self.rotation_control.femur_rotation_changed.connect(self.on_femur_rotation_changed)
         
         # Add the rotation control to the window
         layout.addWidget(self.rotation_control)
@@ -166,7 +168,7 @@ class KneeFlexionExperiment(QMainWindow):
         # Show the rotation window
         self.rotation_window.show()
     
-    def on_rotation_changed(self, quaternion):
+    def on_tibia_rotation_changed(self, quaternion):
         """
         Called whenever the rotation sliders are changed.
         
@@ -190,11 +192,10 @@ class KneeFlexionExperiment(QMainWindow):
             quaternion: Tuple of (qx, qy, qz, qw) representing the rotation offset
         """
         # Store the rotation offset as a numpy array
-        self.current_rotation_offset = np.array(quaternion)
-        
-        # Note: We don't force an update here because the visualization
-        # is already updating continuously via self.viz_timer
-        # The next timer tick will use the new rotation automatically
+        self.tibia_rotation_offset  = np.array(quaternion)
+
+    def on_femur_rotation_changed(self, quaternion):
+        self.femur_rotation_offset = np.array(quaternion)
 
     def toggle_monitoring(self):
         if not self.monitoring:
@@ -286,7 +287,7 @@ class KneeFlexionExperiment(QMainWindow):
                     # Note the order change: CSV has qx,qy,qz,qw but your system expects qw,qx,qy,qz
                     
                     # Apply the custom rotation from the GUI
-                    quat_debug_x, quat_debug_y, quat_debug_z, quat_debug_w = self.current_rotation_offset
+                    quat_debug_x, quat_debug_y, quat_debug_z, quat_debug_w = self.tibia_rotation_offset
                     quat_debug = np.array([quat_debug_w, quat_debug_x, quat_debug_y, quat_debug_z])
                     tibia_quaternion = MeshUtils.multiply_quaternions(quat_orig=tibia_quaternion, quat_debug=quat_debug)
 
@@ -294,6 +295,11 @@ class KneeFlexionExperiment(QMainWindow):
                     femur_position = np.array([float(parts[14]), float(parts[15]), float(parts[16])])
                     femur_quaternion = np.array([float(parts[20]), float(parts[17]), float(parts[18]), float(parts[19])])
                     # Same reordering for quaternion components
+
+                    # Apply the custom rotation from the GUI
+                    quat_debug_x, quat_debug_y, quat_debug_z, quat_debug_w = self.femur_rotation_offset
+                    quat_debug = np.array([quat_debug_w, quat_debug_x, quat_debug_y, quat_debug_z])
+                    femur_quaternion = MeshUtils.multiply_quaternions(quat_orig=femur_quaternion, quat_debug=quat_debug)
 
                     #FT position and quaternion
                     FT_position = np.array([float(parts[21]), float(parts[22]), float(parts[23])])
@@ -391,7 +397,7 @@ class KneeFlexionExperiment(QMainWindow):
                             #UpdateVisualization.update_landmark_alex(self, femur_position*1000, femur_quaternion, "femur_sphere_center_lateral")
                         
                         if hasattr(self, 'tibia_mesh') and hasattr(self, 'tibia_original_vertices'):
-                            quat_debug_x, quat_debug_y, quat_debug_z, quat_debug_w = self.current_rotation_offset
+                            quat_debug_x, quat_debug_y, quat_debug_z, quat_debug_w = self.tibia_rotation_offset
                             quat_debug = np.array([quat_debug_w, quat_debug_x, quat_debug_y, quat_debug_z])
                             MeshUtils.update_mesh_with_data(self.tibia_mesh, tibia_position, tibia_quaternion, quaternion_debug=None)
 
