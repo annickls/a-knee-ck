@@ -4,7 +4,7 @@ import os
 import threading
 import sys
 
-# Windows-compatible keyboard input handler
+# Platform-specific keyboard input handler
 if sys.platform == 'win32':
     import msvcrt
     
@@ -21,8 +21,56 @@ if sys.platform == 'win32':
                 return 'PAUSE'
         return None
 else:
-    # Unix-like systems (placeholder)
+    # Unix-like systems (Linux and macOS)
+    import select
+    import termios
+    import tty
+    
+    # Store original terminal settings
+    original_settings = None
+    
+    def init_terminal():
+        """Initialize terminal for non-blocking key input"""
+        global original_settings
+        if original_settings is None:
+            original_settings = termios.tcgetattr(sys.stdin)
+            tty.setcbreak(sys.stdin.fileno())
+    
+    def restore_terminal():
+        """Restore original terminal settings"""
+        global original_settings
+        if original_settings is not None:
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, original_settings)
+    
     def get_key():
+        """
+        Non-blocking keyboard input for Unix/Linux/macOS.
+        Returns 'LEFT', 'RIGHT', 'PAUSE', or None.
+        
+        Note: Both macOS and Linux use the same ANSI escape sequences for arrow keys.
+        """
+        # Check if there's input available (non-blocking)
+        if select.select([sys.stdin], [], [], 0)[0]:
+            ch = sys.stdin.read(1)
+            
+            # Check for 'p' or 'P' for pause
+            if ch in ('p', 'P'):
+                return 'PAUSE'
+            
+            # Check for escape sequence (arrow keys)
+            # Arrow keys send: ESC [ A/B/C/D
+            # ESC = \x1b, [ = \x5b
+            if ch == '\x1b':  # ESC character
+                # Read the next character if available
+                if select.select([sys.stdin], [], [], 0.1)[0]:
+                    ch2 = sys.stdin.read(1)
+                    if ch2 == '[':  # This is an arrow key sequence
+                        if select.select([sys.stdin], [], [], 0.1)[0]:
+                            ch3 = sys.stdin.read(1)
+                            if ch3 == 'D':  # Left arrow
+                                return 'LEFT'
+                            elif ch3 == 'C':  # Right arrow
+                                return 'RIGHT'
         return None
 
 # Global control variables
@@ -33,6 +81,10 @@ control_lock = threading.Lock()
 def keyboard_handler():
     """Handle keyboard input in a separate thread"""
     global paused, skip_request
+    
+    # Initialize terminal for Unix systems
+    if sys.platform != 'win32':
+        init_terminal()
     
     while True:
         key = get_key()
@@ -106,17 +158,18 @@ def write_csv_at_100hz(source_filePath, data_filePath):
     keyboard_thread.start()
     
     print("Starting 100Hz data writing...")
-    print("Controls: 'p' = pause/resume, Left arrow = skip back 200 rows, Right arrow = skip forward 200 rows")
+    print("Controls: 'p' = pause/resume (paused: repeats current row), Left arrow = skip back 200 rows, Right arrow = skip forward 200 rows")
     print("Press Ctrl+C to stop")
     
     try:
         while True:
             # Handle pause state changes and timing
             with control_lock:
-                # Track pause/resume timing
+                # Track pause/resume timing for statistics
                 if paused and pause_start_time is None:
                     # Just entered pause state
                     pause_start_time = time.time()
+                    print(f"Row {current_row} will be repeated continuously while paused")
                 elif not paused and pause_start_time is not None:
                     # Just resumed from pause state
                     total_paused_time += time.time() - pause_start_time
@@ -128,35 +181,10 @@ def write_csv_at_100hz(source_filePath, data_filePath):
                     skip_request = None
                     print(f"Skipped forward 200 rows to row {current_row}")
                     
-                    # If paused, write single row and stay paused
-                    if paused:
-                        try:
-                            current_row_data = source_df.iloc[current_row]
-                            row_df = pd.DataFrame([current_row_data])
-                            row_df.to_csv(data_filePath, mode='a', header=False, index=False)
-                        except Exception as e:
-                            print(f"Error writing to {data_filePath}: {e}")
-                        continue
-                        
                 elif skip_request == 'BACKWARD':
                     current_row = (current_row - 200) % len(source_df)
                     skip_request = None
                     print(f"Skipped backward 200 rows to row {current_row}")
-                    
-                    # If paused, write single row and stay paused
-                    if paused:
-                        try:
-                            current_row_data = source_df.iloc[current_row]
-                            row_df = pd.DataFrame([current_row_data])
-                            row_df.to_csv(data_filePath, mode='a', header=False, index=False)
-                        except Exception as e:
-                            print(f"Error writing to {data_filePath}: {e}")
-                        continue
-                
-                # If paused and no skip request, just wait
-                if paused:
-                    time.sleep(0.01)
-                    continue
             
             # Calculate next target time (adjusted for total paused time)
             adjusted_start_time = start_time + total_paused_time
@@ -178,13 +206,14 @@ def write_csv_at_100hz(source_filePath, data_filePath):
                 print(f"Error writing to {data_filePath}: {e}")
                 break
             
-            # Move to next row (cycle through source data)
-            current_row += 1
-            if current_row >= len(source_df):
-                current_row = 0  # Reset to first data row
-                print("End of DataFrame reached, restarting at beginning") if len(source_df)>50 else None
-            
-            iteration += 1
+            # Move to next row ONLY if not paused (cycle through source data)
+            if not paused:
+                # If paused, current_row stays the same and will be written again
+                current_row += 1
+                iteration += 1
+                if current_row >= len(source_df):
+                    current_row = 0  # Reset to first data row
+                    print("End of DataFrame reached, restarting at beginning") if len(source_df)>50 else None
             
             # Print progress every 100 iterations (every second)
             if iteration % 100 == 0:
@@ -209,19 +238,24 @@ def write_csv_at_100hz(source_filePath, data_filePath):
         print(f"Active time: {elapsed_active:.2f} seconds")
         print(f"Average rate: {actual_rate:.1f} Hz")
         print(f"Data written to {data_filePath}")
+    finally:
+        # Restore terminal settings on Unix systems
+        if sys.platform != 'win32':
+            restore_terminal()
 
 if __name__ == "__main__":
     # Set Path to source and data folder
     currentDir = os.path.dirname(os.path.abspath(__file__))
     sourceDir = "C:\\Users\\ga94bow\\Documents\\codesandstuff\\knee_analysis\\data_processed"
+    # sourceDir = "C:\\Users\\ga94bow\\Documents\\codesandstuff\\knee_analysis\\data_corrected"
     source_fileName = os.path.join("neutral.csv")
 
     # Set Patients name and examiner if needed
-    patientName = "P4_pre"
+    patientName = "P8_post"
     examinerName = "Claudio"
 
     # Set name of the test
-    testName = "neutral.csv"
+    testName = "rot.csv"
     output_fileName = "data.csv"
 
     # Combine Paths; If debug is set, then take the measuremung where the leg is supposed to be straight
