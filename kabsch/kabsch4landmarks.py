@@ -187,8 +187,8 @@ def transform_landmarks(bone_name):
     
     print(f"Transformed {bone_name} landmarks saved to {output_file}")
 
-folderPreOP = "data_for_gui/preOP"
-folderPostOP = "data_for_gui"
+folderPreOP = "kabsch/pre_op"
+folderPostOP = "kabsch"
 
 # Process both femur and tibia
 transform_landmarks("femur")

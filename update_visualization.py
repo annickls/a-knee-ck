@@ -453,6 +453,9 @@ class UpdateVisualization():
         if hasattr(self, 'tibia_axis_shaft_ap') and self.tibia_axis_shaft_ap  is not None:
             self.gl_view.removeItem(self.tibia_axis_shaft_ap)
 
+        if hasattr(self, 'tibia_axis_shaft_temp') and self.tibia_axis_shaft_temp  is not None:
+            self.gl_view.removeItem(self.tibia_axis_shaft_temp)
+
         #Femur medial-lateral axis
         self.femur_axis_shaft_ml = MeshUtils.create_tibia_axis(
             femurmedial, 
@@ -482,7 +485,13 @@ class UpdateVisualization():
             color="k", 
             arrow_size=500, shaft_width=2
         )
-
+        #Tibia temp (gives rotation with crossproduct of floating axis)
+        self.tibia_axis_shaft_temp = MeshUtils.create_tibia_axis(
+            tibiaproximal, 
+            tibiaproximal + UpdateVisualization.temp_tibia, 
+            color="r", 
+            arrow_size=500, shaft_width=2
+        )
 
         if self.femur_axis_shaft_ml is not None:
             self.gl_view.addItem(self.femur_axis_shaft_ml)
@@ -495,6 +504,9 @@ class UpdateVisualization():
 
         if self.tibia_axis_shaft_ap is not None:
             self.gl_view.addItem(self.tibia_axis_shaft_ap)
+
+        if self.tibia_axis_shaft_temp is not None:
+            self.gl_view.addItem(self.tibia_axis_shaft_temp)
 
         # Create/update legend
         UpdateVisualization.create_legend(self)

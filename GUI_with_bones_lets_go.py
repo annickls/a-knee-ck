@@ -306,6 +306,7 @@ class KneeFlexionExperiment(QMainWindow):
                     FT_quaternion = np.array([float(parts[27]), float(parts[24]), float(parts[25]), float(parts[26])])
                     
                     # Store positions and quaternions for other methods to use
+                    self.last_timestamp = timestamp
                     self.last_femur_position = femur_position
                     self.last_femur_quaternion = femur_quaternion
                     self.last_tibia_position = tibia_position
