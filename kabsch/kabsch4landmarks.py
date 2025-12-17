@@ -22,7 +22,7 @@ def sort_points_relative(points1, points2):
     return sorted_points1, sorted_points2
 
 def kabsch(p, q):
-    """Calculate the optimal rigid transformation matrix from Q -> P using Kabsch algorithm"""
+    """Calculate the optimal rigid transformation matrix from P -> Q using Kabsch algorithm"""
 
     centroid_p = np.mean(p, axis=0)
     centroid_q = np.mean(q, axis=0)
@@ -30,17 +30,17 @@ def kabsch(p, q):
     p_centered = p - centroid_p
     q_centered = q - centroid_q
 
-    H = np.dot(p_centered.T, q_centered)
+    H = p_centered.T@q_centered
 
     U, _, vt = np.linalg.svd(H)
 
-    R = np.dot(vt.T, U.T)
+    R = vt.T@  U.T
 
     if np.linalg.det(R) < 0:
         vt[-1, :] *= -1
-        R = np.dot(vt.T, U.T)
+        R = vt.T @ U.T
 
-    t = centroid_q - np.dot(centroid_p, R.T)
+    t = centroid_q - R@centroid_p
 
     T = np.eye(4)
     T[:3, :3] = R
