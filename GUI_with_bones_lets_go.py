@@ -1094,8 +1094,10 @@ class KneeFlexionExperiment(QMainWindow):
             current_folder = os.path.dirname(os.path.abspath(__file__))
             yaml_path = os.path.join(current_folder, "data_for_gui/marker_coordinates.yaml")
             translation, rotation = MeshUtils.kabsch(yaml_path, "femur")
-            femur_vertices_centered = femur_vertices + translation
-            femur_vertices_transformed = (rotation@(femur_vertices_centered.T)).T
+            # femur_vertices_centered = femur_vertices + translation
+            # femur_vertices_transformed = (rotation@(femur_vertices_centered.T)).T
+
+            femur_vertices_transformed = (rotation @ femur_vertices.T).T + translation
 
             # Build KD-Tree from vertices
             face_centroids = femur_vertices[femur_faces].mean(axis=1)

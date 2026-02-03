@@ -12,18 +12,16 @@ ref_points = {
         {"x":0.025, "y": 0.0, "z":0.025},
         {"x":0.025, "y": 0.0, "z":-0.027},
         {"x":0.0455, "y": 0.0, "z":0.0}],
-    "femur": [ # "B2"
-        {"x":0.018, "y": 0.0, "z":0.0},
-        {"x":-0.028, "y": 0.0, "z":0.0},
-        {"x":0.0, "y": -0.0185, "z":-0.02},
-        {"x":0.0, "y": 0.0225, "z":-0.02},
-        {"x":0.0, "y": 0.0, "z":-0.035}],
-    "tibia": [ # "B1"
-        {"x":-0.02, "y": 0.0, "z":0.0},
-        {"x":0.018, "y": 0.0, "z":0.0},
-        {"x":0.0, "y": -0.0185, "z":-0.015},
-        {"x":0.0, "y": 0.0185, "z":-0.015},
-        {"x":0.0, "y": 0.0, "z":-0.0255}]
+    "tibia":[
+        {"x":0.0, "y": 0.0, "z": 0.0},
+        {"x":0.0, "y": 10.84, "z": 30.0},
+        {"x":0.0, "y": -27.47, "z": 65.84},
+        {"x":0.0, "y": 7.47, "z": 65.84}],
+    "femur":[
+        {"x": 0.0, "y": 0, "z": 0},
+        {"x": 0.0, "y": 0.04565, "z": 0},
+        {"x": 0.0, "y": 0.02368, "z": -0.04286},
+        {"x": 0.0, "y": 0, "z": -0.08616}],
 }
 #%%
 
@@ -77,7 +75,7 @@ def convert_csv_to_yaml(csv_files, yaml_file):
                     point_data.append({"x": x, "y": y, "z": z})
 
         # Find the corresponding reference marker
-        point_name = csv_file.removeprefix(current_folder+"\\").removesuffix(".fcsv")
+        point_name = csv_file.removeprefix(current_folder+"/").removesuffix(".fcsv")
         point_array = convert_dict_list_to_point_array(point_data)
         point_data = []
         point_name_stripped = point_name.removesuffix("_marker")

@@ -126,23 +126,22 @@ class MeshUtils:
     
     @staticmethod
     def kabsch(filePath, bone):
-        """Calculate the optimal rigid transformation matrix from Q -> P using Kabsch algorithm"""
+        """Calculate the optimal rigid transformation matrix from P -> Q using Kabsch algorithm"""
         with open(filePath, "r") as file:
             content = yaml.safe_load(file)
 
         def readYaml(marker):
             array = np.array([])
-            for i in range(5):
+            for i in range(4):
                 array = np.append(array, [content[marker][i]["x"], content[marker][i]["y"], content[marker][i]["z"]])
-            array = array.reshape([5,3])
+            array = array.reshape([4,3])
             return array
 
         bone_ref = readYaml(bone+"_ref")
         bone_slicer = readYaml(bone+"_slicer")
 
-        q = bone_ref
         p = bone_slicer
-        
+        q = bone_ref
 
         centroid_p = np.mean(p, axis=0)
         centroid_q = np.mean(q, axis=0)
@@ -150,17 +149,17 @@ class MeshUtils:
         p_centered = p - centroid_p
         q_centered = q - centroid_q
 
-        H = np.dot(p_centered.T, q_centered)
+        H = p_centered.T@q_centered
 
         U, _,  vt = np.linalg.svd(H)
 
-        R = np.dot(vt.T, U.T)
+        R = vt.T @  U.T
 
         if np.linalg.det(R) < 0:
             vt[-1, :] *= -1
-            R = np.dot(vt.T, U.T)
+            R = vt.T @ U.T
 
-        t = centroid_q - centroid_p
+        t = centroid_q - R@centroid_p
 
         return t, R
     
