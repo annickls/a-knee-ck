@@ -202,7 +202,7 @@ class KneeFlexionExperiment(QMainWindow):
                     R_tibia = MeshUtils.quaternion_to_transform_matrix(tibia_quaternion)[:3,:3]
                     # Calculate distances in sensor CoSy
                     sensor2tibia_sensor = R_sensor.T @ (tibia_position-FT_position)
-                    tibia2center_sensor = R_sensor.T @ R_tibia @ self.distance_tibia_center
+                    tibia2center_sensor = R_sensor.T @ (R_tibia@self.pos_tibia_prox - tibia_position)
                     sensor2center_sensor = sensor2tibia_sensor+tibia2center_sensor
 
                     # print(f"Sensor OptiCoSy: {np.round(FT_position,3)}")
@@ -210,15 +210,9 @@ class KneeFlexionExperiment(QMainWindow):
                     # print(f"Sensor zu Marker OptiCoSy: {np.round(tibia_position-FT_position,3)}")
                     # print(f"Sensor zu Marker SensorCoSy: {np.round(sensor2tibia_sensor,3)}")
                     # print(f"Marker zu Tibiazentrum: {np.round(tibia2center_sensor,3)}")
-
+                    
                     # calculate real torques in the knee joint from forces and torques
-                    tjx = torque[0] - force[2] * sensor2center_sensor[1] + force[1] * sensor2center_sensor[2]
-                    tjy = torque[1] - force[0] * sensor2center_sensor[2] - force[2] * sensor2center_sensor[0]
-                    tjz = torque[2] + force[1] * sensor2center_sensor[0] + force[0] * sensor2center_sensor[1]
-
-                    torque[0] = tjx
-                    torque[1] = tjy
-                    torque[2] = tjz
+                    torque = torque+np.cross(sensor2center_sensor, force)
 
                     # Transform calculated force and torque back to init CoSy for visualization
                     force = R_sensor @ force
@@ -1256,21 +1250,18 @@ class KneeFlexionExperiment(QMainWindow):
             tibia_lateral = constants.TIBIA_LATERAL
             tibia_proximal = constants.TIBIA_PROXIMAL
             tibia_distal = constants.TIBIA_DISTAL
-            tibia_marker = constants.TIBIA_MARKER
 
             tibia_medial_rot = rotation@tibia_medial + translation
             tibia_lateral_rot = rotation@tibia_lateral + translation
             tibia_proximal_rot = rotation@tibia_proximal + translation
             tibia_distal_rot = rotation@tibia_distal + translation
-            tibia_marker_rot = rotation@tibia_marker + translation
 
-            self.distance_tibia_center = (tibia_proximal_rot-tibia_marker_rot)*0.001
+            self.pos_tibia_prox = tibia_proximal_rot*0.001
 
             UpdateVisualization.add_landmark(self, tibia_medial_rot, "tibia_medial")
             UpdateVisualization.add_landmark(self, tibia_lateral_rot, "tibia_lateral")
             UpdateVisualization.add_landmark(self, tibia_proximal_rot, "tibia_proximal")
             UpdateVisualization.add_landmark(self, tibia_distal_rot, "tibia_distal")
-            UpdateVisualization.add_landmark(self, tibia_marker_rot, "tibia_marker")
 
 
 
