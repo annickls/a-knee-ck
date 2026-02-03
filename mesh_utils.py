@@ -126,7 +126,14 @@ class MeshUtils:
     
     @staticmethod
     def kabsch(filePath, bone):
-        """Calculate the optimal rigid transformation matrix from P -> Q using Kabsch algorithm"""
+        """
+        Calculate the optimal rigid transformation matrix from P -> Q using Kabsch algorithm
+        and returns the rotation matrix and translation, to that
+        Q = R * P + t
+        -> Test with (R @ bone_slicer.T).T + t
+        """
+
+        np.set_printoptions(suppress=True)
         with open(filePath, "r") as file:
             content = yaml.safe_load(file)
 

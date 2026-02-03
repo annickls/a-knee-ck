@@ -7,21 +7,21 @@ from scipy.spatial.distance import pdist, squareform
 
 ref_points = {
     "sensor": [
-        {"x":0.0, "y": -0.0255, "z":0.0},
-        {"x":0.0, "y": 0.0355, "z":0.0},
-        {"x":0.025, "y": 0.0, "z":0.025},
-        {"x":0.025, "y": 0.0, "z":-0.027},
-        {"x":0.0455, "y": 0.0, "z":0.0}],
+        {"x":0.0, "y": -25.5, "z":0.0},
+        {"x":0.0, "y": 35.5, "z":0.0},
+        {"x":25.0, "y": 0.0, "z":25.0},
+        {"x":25.0, "y": 0.0, "z": -27.0},
+        {"x":45.5, "y": 0.0, "z":0.0}],
     "tibia":[
         {"x":0.0, "y": 0.0, "z": 0.0},
         {"x":0.0, "y": 10.84, "z": 30.0},
         {"x":0.0, "y": -27.47, "z": 65.84},
         {"x":0.0, "y": 7.47, "z": 65.84}],
     "femur":[
-        {"x": 0.0, "y": 0, "z": 0},
-        {"x": 0.0, "y": 0.04565, "z": 0},
-        {"x": 0.0, "y": 0.02368, "z": -0.04286},
-        {"x": 0.0, "y": 0, "z": -0.08616}],
+        {"x": 0.0, "y": 0.0, "z": 0.0},
+        {"x": 0.0, "y": 45.65, "z": 0.0},
+        {"x": 0.0, "y": 23.68, "z": -42.86},
+        {"x": 0.0, "y": 0.0, "z": -86.16}],
 }
 #%%
 
@@ -75,7 +75,7 @@ def convert_csv_to_yaml(csv_files, yaml_file):
                     point_data.append({"x": x, "y": y, "z": z})
 
         # Find the corresponding reference marker
-        point_name = csv_file.removeprefix(current_folder+"/").removesuffix(".fcsv")
+        point_name = csv_file.removeprefix(current_folder+"\\").removesuffix(".fcsv")
         point_array = convert_dict_list_to_point_array(point_data)
         point_data = []
         point_name_stripped = point_name.removesuffix("_marker")

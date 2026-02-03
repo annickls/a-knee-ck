@@ -1157,10 +1157,10 @@ class KneeFlexionExperiment(QMainWindow):
             #femur_sphere_center_medial = constants.TEST_POINT_MEDIAL
             #femur_sphere_center_lateral = constants.TEST_POINT_LATERAL
 
-            femur_medial_rot = rotation@(femur_medial+translation)
-            femur_lateral_rot = rotation@(femur_lateral+translation)
-            femur_proximal_rot = rotation@(femur_proximal+translation)
-            femur_distal_rot = rotation@(femur_distal+translation)
+            femur_medial_rot = rotation@femur_medial + translation
+            femur_lateral_rot = rotation@femur_lateral + translation
+            femur_proximal_rot = rotation@femur_proximal + translation
+            femur_distal_rot = rotation@femur_distal + translation
             #femur_center_axis_medial_rot = rotation@(femur_center_axis_medial+translation)
             #femur_center_axis_lateral_rot = rotation@(femur_center_axis_lateral+translation)
             #femur_center_medial_1_rot = rotation@(femur_center_medial_1+translation)
@@ -1214,9 +1214,7 @@ class KneeFlexionExperiment(QMainWindow):
             current_folder = os.path.dirname(os.path.abspath(__file__))
             yaml_path = os.path.join(current_folder, "data_for_gui/marker_coordinates.yaml")
             translation, rotation = MeshUtils.kabsch(yaml_path, "tibia")
-            tibia_vertices_centered = tibia_vertices + translation
-            tibia_vertices_transformed = (rotation@(tibia_vertices_centered.T)).T
-
+            tibia_vertices_transformed = (rotation @ tibia_vertices.T).T + translation
 
             # Create mesh item with the repositioned and rotated vertices
             self.tibia_mesh = gl.GLMeshItem(
@@ -1260,11 +1258,11 @@ class KneeFlexionExperiment(QMainWindow):
             tibia_distal = constants.TIBIA_DISTAL
             tibia_marker = constants.TIBIA_MARKER
 
-            tibia_medial_rot = rotation@(tibia_medial+translation)
-            tibia_lateral_rot = rotation@(tibia_lateral+translation)
-            tibia_proximal_rot = rotation@(tibia_proximal+translation)
-            tibia_distal_rot = rotation@(tibia_distal+translation)
-            tibia_marker_rot = rotation@(tibia_marker+translation)
+            tibia_medial_rot = rotation@tibia_medial + translation
+            tibia_lateral_rot = rotation@tibia_lateral + translation
+            tibia_proximal_rot = rotation@tibia_proximal + translation
+            tibia_distal_rot = rotation@tibia_distal + translation
+            tibia_marker_rot = rotation@tibia_marker + translation
 
             self.distance_tibia_center = (tibia_proximal_rot-tibia_marker_rot)*0.001
 
