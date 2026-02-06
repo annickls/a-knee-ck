@@ -24,7 +24,10 @@ class MeshUtils:
     
     @staticmethod
     def quaternion_to_transform_matrix(quaternion, position=None):
-        """Convert a quaternion and position to a 4x4 transformation matrix."""
+        """
+        Convert a quaternion and position to a 4x4 transformation matrix.
+        Quaternion is expected of type: qw, qx, qy, qz
+        """
         q = np.array(quaternion)
         q = q / np.linalg.norm(q)
         w, x, y, z = q
@@ -171,13 +174,37 @@ class MeshUtils:
         return t, R
     
     @staticmethod
-    def update_mesh_with_data(mesh, position, quaternion):
+    def update_mesh_with_data(mesh, position, quaternion, quaternion_debug = None):
         """Update a mesh with position and rotation data."""
+        if np.any(quaternion_debug):
+            T_debug = MeshUtils.quaternion_to_transform_matrix(quaternion_debug)
+        else:
+            T_debug = np.identity(4)
+
         R_matrix = MeshUtils.quaternion_to_transform_matrix(quaternion)
         transform = R_matrix.copy()
         transform[0:3, 3] = position
         
         T_current = MeshUtils.quaternion_to_transform_matrix(quaternion, position*1000)
-        transform = T_current
+        transform = T_current@T_debug
         
         mesh.setTransform(transform)
+
+    @staticmethod
+    def multiply_quaternions(quat_orig, quat_debug):
+        """
+        Multiply two quaternions in the order that matches T_orig@T_debug
+        Input quaternions should be in format [qw, qx, qy, qz]
+        Returns resulting quaternion in same format
+        """
+        w1, x1, y1, z1 = quat_orig
+        w2, x2, y2, z2 = quat_debug
+        
+        # Quaternion multiplication formula
+        w = w1*w2 - x1*x2 - y1*y2 - z1*z2
+        x = w1*x2 + x1*w2 + y1*z2 - z1*y2
+        y = w1*y2 - x1*z2 + y1*w2 + z1*x2
+        z = w1*z2 + x1*y2 - y1*x2 + z1*w2
+        
+        # Return as numpy array in [qw, qx, qy, qz] format
+        return np.array([w, x, y, z])

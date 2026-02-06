@@ -1,0 +1,7 @@
+# Markups fiducial file version = 5.8
+# CoordinateSystem = LPS
+# columns = id,x,y,z,ow,ox,oy,oz,vis,sel,lock,label,desc,associatedNodeID
+1,-23.88123112744215,-71.52182721078137,1237.4272088103708,0,0,0,1,1,1,0,tibia_lateral,,vtkMRMLScalarVolumeNode2,2,0
+2,24.52839899702451,-79.81922380727201,1236.1384415959856,0,0,0,1,1,1,0,tibia_medial,,vtkMRMLScalarVolumeNode2,2,0
+3,5.192731720354288,-75.16875998615512,1246.909010625261,0,0,0,1,1,1,0,tibia_proximal,,vtkMRMLScalarVolumeNode2,2,0
+4,42.652927823372835,-88.16545991210707,873.5079936221496,0,0,0,1,1,1,0,tibia_distal,,vtkMRMLScalarVolumeNode2,2,0
