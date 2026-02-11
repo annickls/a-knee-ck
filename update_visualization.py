@@ -674,7 +674,7 @@ class UpdateVisualization():
             
             instanceGUI.joint_angles_text.setText(
                     f"Joint Angles: \n Flexion: {int(angles['flexion'])}°\n "
-                    f"Valgus (-) / Varus (+): {int(angles['adduction'])}°\n "
+                    f"Adduction (-) / Abduktion (+): {int(angles['adduction'])}°\n "
                     f"Int (-) and Ext (+) Rotation: {int(angles['rotation'])}°"
                 )
             
@@ -785,7 +785,7 @@ class UpdateVisualization():
                 # ============= ANGLE CALCULATIONS =============
             
             # 1. FLEXION/EXTENSION ANGLE
-
+                # Old code
             dot_product = np.dot(e2f,floating_axis)
             magnitude_e2f = np.linalg.norm(e2f)
             magnitude_floating_axis = np.linalg.norm(floating_axis)
@@ -802,8 +802,18 @@ class UpdateVisualization():
             flexion = -math.acos(cos_flexion)
             flexion_angle = flexion_sign * flexion * 180.0 / np.pi
             flexion_angle +=0
-            
-            
+
+            # new implementation from paper
+            cos_alpha = np.dot(e2f, floating_axis)
+            acos_alpha = math.acos(cos_alpha)
+            sin_alpha = -np.dot(floating_axis, e3f)
+            helper_sign_flexion = math.cos(np.pi/2 + acos_alpha)
+            if np.isclose(-sin_alpha, helper_sign_flexion):
+                sign_flexion = 1
+            else: 
+                sign_flexion = -1
+            flexion_angle = sign_flexion * acos_alpha * 180.0 / np.pi
+
             # 2. ABDUCTION/ADDUCTION ANGLE  
 
             dot_product = np.dot(e1f, e3t)
@@ -813,9 +823,14 @@ class UpdateVisualization():
             adduction = math.acos(cos_adduction)
             adduction_angle = (adduction - (np.pi/2))* 180.0 / np.pi
             #adduction_angle+= constants.ADDUCTION_OFFSET
-            adduction_angle-=UpdateVisualization.offset_adduction
-        
-            
+            # adduction_angle-=UpdateVisualization.offset_adduction
+
+            # new Implementation according to paper
+            cos_beta = np.dot(e1f, e3t)
+            acos_beta = math.acos(cos_beta)
+            # Calculation for left knee: 
+            adduction_angle = - (np.pi/2 - acos_beta) * 180 / np.pi
+
             # 3. INTERNAL/EXTERNAL ROTATION ANGLE
 
             dot_product = np.dot(floating_axis, e1t)
@@ -826,7 +841,18 @@ class UpdateVisualization():
             rotation_angle = rotation * 180.0 / np.pi
             #rotation_angle += constants.ROTATION_OFFSET
             rotation_angle-=UpdateVisualization.offset_rotation
-            
+
+            # New implementation from paper
+            cos_gamma = np.dot(e2t, floating_axis)
+            acos_gamma = math.acos(cos_gamma)
+            sin_gamma = -np.dot(floating_axis, e1t)
+            # Calculate the sign, here for the left knee
+            helper_sign_external = math.cos(np.pi/2 - acos_gamma)
+            if np.isclose(sin_gamma, helper_sign_external):
+                sign_external = 1
+            else: 
+                sign_external = -1
+            rotation_angle = sign_external * acos_gamma * 180.0 / np.pi
 
 
             # ============= TRANSLATION CALCULATIONS =============

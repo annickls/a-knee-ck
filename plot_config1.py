@@ -707,7 +707,7 @@ class OptimizedVarusValgusPlot(QWidget):
         elif self.current_mode == "rotation":
             label = "internal rotation              external rotation"
         elif self.current_mode == "adduction":
-            label = "varus angle        valgus angle"
+            label = "Adduction angle        Abduction angle"
         elif self.current_mode == "anterior":
             label = "anterior translation             posterior translation"
         elif self.current_mode == "medial":
