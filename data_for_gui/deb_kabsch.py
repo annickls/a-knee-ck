@@ -38,9 +38,9 @@ def kabsch(filePath, bone):
 
     def readYaml(marker):
         array = np.array([])
-        for i in range(4):
+        for i in range(5):
             array = np.append(array, [content[marker][i]["x"], content[marker][i]["y"], content[marker][i]["z"]])
-        array = array.reshape([4,3])
+        array = array.reshape([5,3])
         return array
 
     bone_ref = readYaml(bone+"_ref")
@@ -102,6 +102,7 @@ def convert_point_array_to_dict_list(point_array):
 #%%
 filepath_kabsch = "data_for_gui/marker_coordinates.yaml"
 
+kabsch("data_for_gui\P2_pre\marker_coordinates.yaml", "femur")
 with open(filepath_kabsch, "r") as file:
     content = yaml.safe_load(file)
 femur_points = convert_dict_list_to_point_array(content["femur_slicer"])
