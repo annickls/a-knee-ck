@@ -1,0 +1,12 @@
+# Markups fiducial file version = 5.8
+# CoordinateSystem = LPS
+# columns = id,x,y,z,ow,ox,oy,oz,vis,sel,lock,label,desc,associatedNodeID
+1,-24.014454403760197,-49.45866481201784,1797.168689209088,0,0,0,1,1,1,0,perimeter_tibia_med-1,,vtkMRMLScalarVolumeNode1,2,0
+2,-33.66747674024387,-51.00461979244101,1797.5901492662158,0,0,0,1,1,1,0,perimeter_tibia_med-2,,vtkMRMLScalarVolumeNode1,2,0
+3,-41.00377371597145,-54.48301849839315,1797.910458909633,0,0,0,1,1,1,0,perimeter_tibia_med-3,,vtkMRMLScalarVolumeNode1,2,0
+4,-46.40946622440231,-60.860082792638735,1798.1464765416245,0,0,0,1,1,1,0,perimeter_tibia_med-4,,vtkMRMLScalarVolumeNode1,2,0
+5,-49.884554265536416,-69.36283518496619,1798.2982021621906,0,0,0,1,1,1,0,perimeter_tibia_med-5,,vtkMRMLScalarVolumeNode1,2,0
+6,-49.3053729253474,-79.02505381261102,1798.2729145587627,0,0,0,1,1,1,0,perimeter_tibia_med-6,,vtkMRMLScalarVolumeNode1,2,0
+7,-45.058043097294586,-87.33456183238556,1798.0874721336265,0,0,0,1,1,1,0,perimeter_tibia_med-7,,vtkMRMLScalarVolumeNode1,2,0
+8,-38.88010880194504,-94.48460361684275,1797.8177376970648,0,0,0,1,1,1,0,perimeter_tibia_med-8,,vtkMRMLScalarVolumeNode1,2,0
+9,-15.504333107934919,-53.426185864374496,1796.7971292890463,0,0,0,1,1,1,0,perimeter_tibia_med-9,,vtkMRMLScalarVolumeNode1,2,0
