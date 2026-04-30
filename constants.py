@@ -42,7 +42,7 @@ ANTERIOR_TRANSLATION_OFFSET = 0
 current_folder = os.path.dirname(os.path.abspath(__file__))
 
 # Bone STLs
-data_folderName = "Model_demo"
+data_folderName = "P7_pre"
 femur_fileName = "Femur.stl"
 FEMUR = os.path.join(current_folder, "data_for_gui", data_folderName, femur_fileName)
 
