@@ -38,13 +38,13 @@ def kabsch(filePath, bone):
 
     def readYaml(marker):
         array = np.array([])
-        for i in range(5):
+        for i in range(4):
             array = np.append(array, [content[marker][i]["x"], content[marker][i]["y"], content[marker][i]["z"]])
-        array = array.reshape([5,3])
+        array = array.reshape([4,3])
         return array
 
     bone_ref = readYaml(bone+"_ref")
-    bone_stl = readYaml(bone+"_slicer")*0.001
+    bone_stl = readYaml(bone+"_slicer")
 
     p = bone_stl
     q = bone_ref
@@ -100,9 +100,9 @@ def convert_point_array_to_dict_list(point_array):
     return [{'x': float(p[0]), 'y': float(p[1]), 'z': float(p[2])} for p in point_array]
 
 #%%
-filepath_kabsch = "data_for_gui/marker_coordinates.yaml"
+filepath_kabsch = "/home/alexandergerard/a-knee-ck/data_for_gui/Model_demo/marker_coordinates.yaml"
 
-kabsch("data_for_gui\P2_pre\marker_coordinates.yaml", "femur")
+# kabsch("data_for_gui\P2_pre\marker_coordinates.yaml", "femur")
 with open(filepath_kabsch, "r") as file:
     content = yaml.safe_load(file)
 femur_points = convert_dict_list_to_point_array(content["femur_slicer"])
@@ -114,3 +114,4 @@ femur_points_rotated = (rotation@(femur_points.T)).T  + translation
 translation, rotation = kabsch(filepath_kabsch, "tibia")
 
 print(femur_points_rotated)
+# %%

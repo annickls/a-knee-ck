@@ -1,0 +1,24 @@
+# Requirements for the knee_viz package (the new GUI).
+#
+# The legacy GUI (GUI_with_bones_lets_go.py) keeps using requirements.txt and
+# PyQt5. Both can live in the same environment: pyqtgraph picks its binding by
+# checking sys.modules first, and the legacy entry point imports matplotlib's
+# Qt5 backend before pyqtgraph, so it still binds PyQt5.
+#
+#   pip install -r requirements-knee_viz.txt
+#
+# System dependency (Ubuntu): PyQt6 >= 6.5 needs the xcb cursor library, which
+# the wheel does not bundle. Without it Qt cannot open a window at all:
+#
+#   sudo apt install libxcb-cursor0
+#
+PyQt6>=6.5
+numpy>=1.24
+numpy-stl>=3.0
+PyOpenGL>=3.1.7
+pyqtgraph>=0.13.7
+PyYAML>=6.0
+scipy>=1.10
+
+# Testing only
+pytest>=7.0
