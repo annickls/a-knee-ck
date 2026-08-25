@@ -206,6 +206,7 @@ class MplCanvas(FigureCanvas):
 class ColoredGLAxisItem(gl.GLAxisItem):
     def __init__(self, size=(1,1,1)):
         gl.GLAxisItem.__init__(self)
+        self.antialias = True
         self.setSize(*size)
         
     def paint(self):

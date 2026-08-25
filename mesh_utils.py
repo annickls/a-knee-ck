@@ -142,16 +142,16 @@ class MeshUtils:
 
         def readYaml(marker):
             array = np.array([])
-            for i in range(5):
+            for i in range(4):
                 array = np.append(array, [content[marker][i]["x"], content[marker][i]["y"], content[marker][i]["z"]])
-            array = array.reshape([5,3])
+            array = array.reshape([4,3])
             return array
 
         bone_ref = readYaml(bone+"_ref")
         bone_slicer = readYaml(bone+"_slicer")
 
         p = bone_slicer
-        q = bone_ref*1000
+        q = bone_ref
 
         centroid_p = np.mean(p, axis=0)
         centroid_q = np.mean(q, axis=0)

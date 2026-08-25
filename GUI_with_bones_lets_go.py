@@ -1233,11 +1233,11 @@ class KneeFlexionExperiment(QMainWindow):
             # Create mesh item with the repositioned and rotated vertices
             # Set up the mesh with proper shading
             self.femur_mesh = gl.GLMeshItem(
-                vertexes=femur_vertices_transformed,
+                vertexes=femur_vertices_transformed*0.8,
                 faces=femur_faces,
                 smooth=True,
                 drawEdges=False,
-                color=(112, 128, 144, 255),
+                color=QtGui.QColor(112, 128, 144),
                 computeNormals=True,
                 shader='shaded',
                 glOptions='opaque'
@@ -1342,12 +1342,11 @@ class KneeFlexionExperiment(QMainWindow):
 
             # Create mesh item with the repositioned and rotated vertices
             self.tibia_mesh = gl.GLMeshItem(
-                vertexes=tibia_vertices_transformed,
+                vertexes=tibia_vertices_transformed*0.8,
                 faces=tibia_faces,
                 smooth=True,
                 drawEdges=False,
-                #color = QtGui.QColor(47, 79, 79),
-                color=(112, 128, 144, 255),
+                color=QtGui.QColor(112, 128, 144),
                 computeNormals=True,
                 shader='shaded',
                 glOptions='opaque'

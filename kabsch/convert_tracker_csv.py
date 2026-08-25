@@ -75,7 +75,7 @@ def convert_csv_to_yaml(csv_files, yaml_file):
                     point_data.append({"x": x, "y": y, "z": z})
 
         # Find the corresponding reference marker
-        point_name = csv_file.removeprefix(current_folder+"\\").removesuffix(".fcsv")
+        point_name = csv_file.removeprefix(config_folder+"/").removesuffix(".fcsv")
         point_array = convert_dict_list_to_point_array(point_data)
         point_data = []
         point_name_stripped = point_name.removesuffix("_marker")
@@ -92,8 +92,8 @@ def convert_csv_to_yaml(csv_files, yaml_file):
 if __name__ == "__main__":
 
     current_folder = os.path.dirname(os.path.abspath(__file__))
-    config_folder = os.path.join(current_folder, "config")
-    config_folder = current_folder
+    config_folder = os.path.join("data_for_gui", "Model_demo")
+    # config_folder = current_folder
     csv_files = [os.path.join(config_folder, file) for file in os.listdir(config_folder) if file.endswith("_marker.fcsv")]
 
     convert_csv_to_yaml(csv_files, config_folder+"/marker_coordinates.yaml")
